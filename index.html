@@ -15,14 +15,14 @@
     .releases {
       width: 100%;
       min-height: 100vh;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 0;
+      position: relative;
+      overflow: hidden;
     }
     .releases a {
       display: block;
-      width: 100%;
-      aspect-ratio: 1 / 1;
+      position: absolute;
+      width: 180px;
+      height: 180px;
       overflow: hidden;
     }
     .releases img {
@@ -102,7 +102,7 @@
     <a data-index="65" href="https://vk.com/wall-27403455_165390" target="_blank" rel="noreferrer"><img src="img/54c40dc775439fef112951ac-ZJlCBeB9nDM.jpg" alt=""></a>
     <a data-index="66" href="https://vk.com/page-47287426_47484197" target="_blank" rel="noreferrer"><img src="img/58699da6e77a01160091e705-Untitled-13.jpg" alt=""></a>
     <a data-index="67" href="https://open.spotify.com/album/60UK5grsKN3EVblzwsHTlk" target="_blank" rel="noreferrer"><img src="img/54c42ed175439fef112952e7-xchU58v-jRM.jpg" alt=""></a>
-    <a data-index="68" href="http://music.reso-music.com/track/check-12-original-remix" target="_blank" rel="noreferrer"><img src="img/586eadabe77a01160091ed25-asset.jpg" alt=""></a>
+    <a data-index="68" href="https://open.spotify.com/album/72aO90F8WgLpavY1wsPNw1" target="_blank" rel="noreferrer"><img src="img/586eadabe77a01160091ed25-asset.jpg" alt=""></a>
     <a data-index="69" href="https://soundcloud.com/standingwave/sound-design-for-beeples-rmx?in=standingwave/sets/beeple-transparent-machines" target="_blank" rel="noreferrer"><img src="img/5882a46b7b1bd9160086b83e-21.jpg" alt=""></a>
     <a data-index="70" href="https://vk.com/wall-2266_87275" target="_blank" rel="noreferrer"><img src="img/5869a784e77a01160091e732-Untitled-7.jpg" alt=""></a>
     <a data-index="71" href="https://pauljebanasam.bandcamp.com/" target="_blank" rel="noreferrer"><img src="img/58789f0ee77a01160091f153-Untitled-6.jpg" alt=""></a>
@@ -437,5 +437,38 @@
     <a data-index="400" href="https://theghostof313.bandcamp.com/album/mozyk013-the-saturn-return" target="_blank" rel="noreferrer"><img src="img/5867a8a8e77a01160091e359-Untitled-1.jpg" alt=""></a>
     <a data-index="401" href="https://ant-zen.bandcamp.com/album/immer-wieder-nein" target="_blank" rel="noreferrer"><img src="img/586c08c2e77a01160091ea9b-asset.jpg" alt=""></a>
   </div>
+  <script>
+    (function () {
+      const releases = document.querySelector('.releases');
+      if (!releases) return;
+
+      const tiles = Array.from(releases.querySelectorAll('a'));
+      const MIN_TILE = 180;
+      const OVERLAP = 1;
+
+      function updateGrid() {
+        const viewportWidth = document.documentElement.clientWidth;
+        const cols = Math.max(1, Math.floor(viewportWidth / MIN_TILE));
+        const cellSize = Math.max(1, Math.floor(viewportWidth / cols));
+        const rows = Math.ceil(tiles.length / cols);
+
+        releases.style.height = rows * cellSize + 'px';
+
+        for (let i = 0; i < tiles.length; i += 1) {
+          const col = i % cols;
+          const row = Math.floor(i / cols);
+          const tile = tiles[i];
+
+          tile.style.left = col * cellSize + 'px';
+          tile.style.top = row * cellSize + 'px';
+          tile.style.width = cellSize + OVERLAP + 'px';
+          tile.style.height = cellSize + OVERLAP + 'px';
+        }
+      }
+
+      updateGrid();
+      window.addEventListener('resize', updateGrid);
+    })();
+  </script>
 </body>
 </html>
