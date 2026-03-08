@@ -148,6 +148,12 @@
       max-width: 100%;
       overflow: hidden;
     }
+    html.performance-mode .control-pill,
+    body.performance-mode .control-pill {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
     .control-pill::before {
       content: "";
       position: absolute;
@@ -435,6 +441,12 @@
       -webkit-backface-visibility: hidden;
       transform-style: flat;
       -webkit-transform-style: flat;
+    }
+    html.performance-mode .canvas-tile,
+    body.performance-mode .canvas-tile {
+      box-shadow:
+        0 8px 18px rgba(0, 0, 0, 0.36),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.12);
     }
     .canvas-tile img {
       display: block;
@@ -968,6 +980,15 @@
       const controlPills = Array.from(document.querySelectorAll('.control-pill'));
       const sectionClusters = Array.from(document.querySelectorAll('.control-cluster[data-section]'));
       const initialSearchParams = new URLSearchParams(window.location.search);
+      const userAgent = navigator.userAgent || '';
+      const coarsePointerMedia = window.matchMedia ? window.matchMedia('(hover: none) and (pointer: coarse)') : null;
+      const reducedMotionMedia = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+      const isCoarsePointer = !!(coarsePointerMedia && coarsePointerMedia.matches);
+      const prefersReducedMotion = !!(reducedMotionMedia && reducedMotionMedia.matches);
+      const isTelegramWebView = /\bTelegram(?:Desktop)?\b/i.test(userAgent) || !!(window.Telegram && window.Telegram.WebApp);
+      const usePerformanceMode = isTelegramWebView || isCoarsePointer || prefersReducedMotion;
+      const enableSceneHover = !isCoarsePointer;
+      const enableSceneIdleMotion = !usePerformanceMode;
 
       const tiles = Array.from(releases.querySelectorAll('a'));
       const releaseImages = Array.from(releases.querySelectorAll('img'));
@@ -975,6 +996,8 @@
       const OVERLAP = 1;
       const X1_TILE_SIZE = 40;
       const COMPACT_CONTROLS_BREAKPOINT = 760;
+      const SCENE_RESIZE_WIDTH_REBUILD_THRESHOLD = usePerformanceMode ? 12 : 1;
+      const SCENE_RESIZE_HEIGHT_REBUILD_THRESHOLD = usePerformanceMode ? 120 : 1;
       const SIZE_SCALE = { 4: 0.9, 3: 0.6, 2: 0.34, 1: 0.14 };
       const originalTiles = tiles.slice();
       let orderedTiles = originalTiles.slice();
@@ -994,6 +1017,15 @@
       let compactSection = 'type';
       let pageLoaderHidden = !pageLoader;
 
+      if (usePerformanceMode) {
+        document.documentElement.classList.add('performance-mode');
+        document.body.classList.add('performance-mode');
+      }
+      if (isTelegramWebView) {
+        document.documentElement.classList.add('telegram-webview');
+        document.body.classList.add('telegram-webview');
+      }
+
       function hidePageLoader() {
         if (!pageLoader || pageLoaderHidden) return;
         pageLoaderHidden = true;
@@ -1003,6 +1035,26 @@
         window.setTimeout(function () {
           if (pageLoader.parentNode) pageLoader.parentNode.removeChild(pageLoader);
         }, 420);
+      }
+
+      function getSceneViewportSize() {
+        const visualViewport = window.visualViewport;
+        const width = Math.max(
+          320,
+          Math.round((canvasMode && canvasMode.clientWidth) || (visualViewport && visualViewport.width) || window.innerWidth)
+        );
+        const height = Math.max(
+          280,
+          Math.round((canvasMode && canvasMode.clientHeight) || (visualViewport && visualViewport.height) || window.innerHeight)
+        );
+        return { width: width, height: height };
+      }
+
+      function sceneNeedsFullRebuild(previousViewport, nextViewport) {
+        if (!previousViewport || !nextViewport) return true;
+        if (Math.abs(nextViewport.width - previousViewport.width) >= SCENE_RESIZE_WIDTH_REBUILD_THRESHOLD) return true;
+        if (Math.abs(nextViewport.height - previousViewport.height) >= SCENE_RESIZE_HEIGHT_REBUILD_THRESHOLD) return true;
+        return false;
       }
 
       function waitForReleaseImages() {
@@ -1187,7 +1239,7 @@
         tileImage.src = srcImage.currentSrc || srcImage.src;
         tileImage.alt = '';
         tileImage.decoding = 'async';
-        tileImage.loading = 'eager';
+        tileImage.loading = usePerformanceMode ? 'auto' : 'eager';
         tileImage.draggable = false;
         tile.appendChild(tileImage);
       }
@@ -1244,6 +1296,7 @@
         let motionNeedsRender = false;
         let motionTime = 0;
         let motionTimer = 0;
+        let lastViewport = null;
         let prevRotX = rotX;
         let prevRotY = rotY;
         let spinFaceX = 0;
@@ -1308,8 +1361,10 @@
           hoverNeedsRender = true;
           motionNeedsRender = true;
           motionTime = 0;
-          const viewportWidth = Math.max(320, canvasMode.clientWidth || window.innerWidth);
-          const viewportHeight = Math.max(280, canvasMode.clientHeight || window.innerHeight);
+          const viewport = getSceneViewportSize();
+          const viewportWidth = viewport.width;
+          const viewportHeight = viewport.height;
+          lastViewport = viewport;
           const minViewport = Math.max(280, Math.min(viewportWidth, viewportHeight));
           const releaseCount = Math.max(1, tilesForCanvas.length);
           const dynamicStep = Math.max(1, Math.floor(releaseCount / 92));
@@ -1379,7 +1434,7 @@
             tile.style.height = tileSize + 'px';
             mountCanvasTileImage(tile, img);
             field.appendChild(tile);
-            const isDynamic = i % dynamicStep === 0;
+            const isDynamic = enableSceneIdleMotion && i % dynamicStep === 0;
             const state = {
               el: tile,
               baseX: baseX,
@@ -1412,79 +1467,81 @@
             };
             tileStates.push(state);
 
-            tile.addEventListener('pointerenter', function (event) {
-              state.targetHover = 1;
-              state.isPointerOver = true;
-              state.recoilLife = 0;
-              state.hasPointerSample = true;
-              state.lastPointerX = event.clientX;
-              state.lastPointerY = event.clientY;
-              const rect = tile.getBoundingClientRect();
-              if (rect.width && rect.height) {
-                const centerX = rect.left + rect.width * 0.5;
-                const centerY = rect.top + rect.height * 0.5;
-                const dx = event.clientX - centerX;
-                const dy = event.clientY - centerY;
+            if (enableSceneHover) {
+              tile.addEventListener('pointerenter', function (event) {
+                state.targetHover = 1;
+                state.isPointerOver = true;
+                state.recoilLife = 0;
+                state.hasPointerSample = true;
+                state.lastPointerX = event.clientX;
+                state.lastPointerY = event.clientY;
+                const rect = tile.getBoundingClientRect();
+                if (rect.width && rect.height) {
+                  const centerX = rect.left + rect.width * 0.5;
+                  const centerY = rect.top + rect.height * 0.5;
+                  const dx = event.clientX - centerX;
+                  const dy = event.clientY - centerY;
+                  const magnetScale = Math.max(26, Math.min(rect.width, rect.height) * 0.86);
+                  const pullCenterX = clamp(dx / magnetScale, -0.72, 0.72);
+                  const pullCenterY = clamp(dy / magnetScale, -0.72, 0.72);
+                  state.targetPullX = pullCenterX;
+                  state.targetPullY = pullCenterY;
+                  state.pullX = pullCenterX;
+                  state.pullY = pullCenterY;
+                }
+                hoverNeedsRender = true;
+                ensureRender();
+              });
+              tile.addEventListener('pointerleave', function (event) {
+                state.targetHover = 0;
+                state.isPointerOver = false;
+                state.hasPointerSample = false;
+                const rect = tile.getBoundingClientRect();
+                if (rect.width && rect.height) {
+                  const centerX = rect.left + rect.width * 0.5;
+                  const centerY = rect.top + rect.height * 0.5;
+                  const dx = event.clientX - centerX;
+                  const dy = event.clientY - centerY;
+                  const recoilScale = Math.max(28, Math.min(rect.width, rect.height) * 0.86);
+                  state.recoilX = clamp(-dx / recoilScale, -0.8, 0.8);
+                  state.recoilY = clamp(-dy / recoilScale, -0.8, 0.8);
+                } else {
+                  state.recoilX = clamp(-(state.pullX * 0.9 + state.targetPullX * 0.24), -0.8, 0.8);
+                  state.recoilY = clamp(-(state.pullY * 0.9 + state.targetPullY * 0.24), -0.8, 0.8);
+                }
+                state.recoilLife = 1;
+                hoverNeedsRender = true;
+                ensureRender();
+              });
+              tile.addEventListener('pointermove', function (event) {
+                const rect = tile.getBoundingClientRect();
+                if (!rect.width || !rect.height) return;
                 const magnetScale = Math.max(26, Math.min(rect.width, rect.height) * 0.86);
-                const pullCenterX = clamp(dx / magnetScale, -0.72, 0.72);
-                const pullCenterY = clamp(dy / magnetScale, -0.72, 0.72);
-                state.targetPullX = pullCenterX;
-                state.targetPullY = pullCenterY;
-                state.pullX = pullCenterX;
-                state.pullY = pullCenterY;
-              }
-              hoverNeedsRender = true;
-              ensureRender();
-            });
-            tile.addEventListener('pointerleave', function (event) {
-              state.targetHover = 0;
-              state.isPointerOver = false;
-              state.hasPointerSample = false;
-              const rect = tile.getBoundingClientRect();
-              if (rect.width && rect.height) {
+                if (state.hasPointerSample) {
+                  const deltaX = event.clientX - state.lastPointerX;
+                  const deltaY = event.clientY - state.lastPointerY;
+                  state.targetPullX += deltaX / magnetScale;
+                  state.targetPullY += deltaY / magnetScale;
+                }
                 const centerX = rect.left + rect.width * 0.5;
                 const centerY = rect.top + rect.height * 0.5;
                 const dx = event.clientX - centerX;
                 const dy = event.clientY - centerY;
-                const recoilScale = Math.max(28, Math.min(rect.width, rect.height) * 0.86);
-                state.recoilX = clamp(-dx / recoilScale, -0.8, 0.8);
-                state.recoilY = clamp(-dy / recoilScale, -0.8, 0.8);
-              } else {
-                state.recoilX = clamp(-(state.pullX * 0.9 + state.targetPullX * 0.24), -0.8, 0.8);
-                state.recoilY = clamp(-(state.pullY * 0.9 + state.targetPullY * 0.24), -0.8, 0.8);
-              }
-              state.recoilLife = 1;
-              hoverNeedsRender = true;
-              ensureRender();
-            });
-            tile.addEventListener('pointermove', function (event) {
-              const rect = tile.getBoundingClientRect();
-              if (!rect.width || !rect.height) return;
-              const magnetScale = Math.max(26, Math.min(rect.width, rect.height) * 0.86);
-              if (state.hasPointerSample) {
-                const deltaX = event.clientX - state.lastPointerX;
-                const deltaY = event.clientY - state.lastPointerY;
-                state.targetPullX += deltaX / magnetScale;
-                state.targetPullY += deltaY / magnetScale;
-              }
-              const centerX = rect.left + rect.width * 0.5;
-              const centerY = rect.top + rect.height * 0.5;
-              const dx = event.clientX - centerX;
-              const dy = event.clientY - centerY;
-              const centerPullX = dx / magnetScale;
-              const centerPullY = dy / magnetScale;
-              state.targetPullX += (centerPullX - state.targetPullX) * 0.44;
-              state.targetPullY += (centerPullY - state.targetPullY) * 0.44;
-              state.targetPullX = clamp(state.targetPullX, -0.72, 0.72);
-              state.targetPullY = clamp(state.targetPullY, -0.72, 0.72);
-              state.hasPointerSample = true;
-              state.lastPointerX = event.clientX;
-              state.lastPointerY = event.clientY;
-              state.isPointerOver = true;
-              state.recoilLife = 0;
-              hoverNeedsRender = true;
-              ensureRender();
-            });
+                const centerPullX = dx / magnetScale;
+                const centerPullY = dy / magnetScale;
+                state.targetPullX += (centerPullX - state.targetPullX) * 0.44;
+                state.targetPullY += (centerPullY - state.targetPullY) * 0.44;
+                state.targetPullX = clamp(state.targetPullX, -0.72, 0.72);
+                state.targetPullY = clamp(state.targetPullY, -0.72, 0.72);
+                state.hasPointerSample = true;
+                state.lastPointerX = event.clientX;
+                state.lastPointerY = event.clientY;
+                state.isPointerOver = true;
+                state.recoilLife = 0;
+                hoverNeedsRender = true;
+                ensureRender();
+              });
+            }
           }
         }
 
@@ -1700,6 +1757,10 @@
         }
 
         function resize() {
+          const nextViewport = getSceneViewportSize();
+          if (!sceneNeedsFullRebuild(lastViewport, nextViewport)) {
+            return;
+          }
           buildTiles();
           updateCamera();
           renderTiles(true);
@@ -1712,11 +1773,13 @@
         renderTiles(true);
         hoverNeedsRender = false;
         motionNeedsRender = false;
-        motionTimer = window.setInterval(function () {
-          motionTime += 0.035;
-          motionNeedsRender = true;
-          ensureRender();
-        }, 70);
+        if (enableSceneIdleMotion) {
+          motionTimer = window.setInterval(function () {
+            motionTime += 0.035;
+            motionNeedsRender = true;
+            ensureRender();
+          }, 70);
+        }
         space.addEventListener('pointerdown', onPointerDown);
         window.addEventListener('pointermove', onPointerMove);
         window.addEventListener('pointerup', onPointerUp);
@@ -1808,6 +1871,7 @@
         let motionNeedsRender = false;
         let motionTime = 0;
         let motionTimer = 0;
+        let lastViewport = null;
 
         function clamp(value, min, max) {
           return Math.max(min, Math.min(max, value));
@@ -1851,8 +1915,10 @@
           hoverNeedsRender = true;
           motionNeedsRender = true;
           motionTime = 0;
-          const viewportWidth = Math.max(320, canvasMode.clientWidth || window.innerWidth);
-          const viewportHeight = Math.max(280, canvasMode.clientHeight || window.innerHeight);
+          const viewport = getSceneViewportSize();
+          const viewportWidth = viewport.width;
+          const viewportHeight = viewport.height;
+          lastViewport = viewport;
           const minViewport = Math.max(280, Math.min(viewportWidth, viewportHeight));
           const releaseCount = Math.max(1, tilesForCards.length);
           const spreadFactor = sizeSpreadForCards(currentCardsSizeFactor);
@@ -1907,9 +1973,9 @@
               rotZ: (hash(i * 11.63 + 6) - 0.5) * 12,
               motionPhase: hash(i * 5.49 + 7) * Math.PI * 2,
               motionSpeed: 0.36 + hash(i * 8.77 + 8) * 0.54,
-              motionAmpX: 3 + hash(i * 13.41 + 9) * 10,
-              motionAmpY: 2 + hash(i * 15.23 + 10) * 8,
-              motionAmpZ: 2 + hash(i * 21.19 + 11) * 10,
+              motionAmpX: enableSceneIdleMotion ? (3 + hash(i * 13.41 + 9) * 10) : 0,
+              motionAmpY: enableSceneIdleMotion ? (2 + hash(i * 15.23 + 10) * 8) : 0,
+              motionAmpZ: enableSceneIdleMotion ? (2 + hash(i * 21.19 + 11) * 10) : 0,
               hover: 0,
               targetHover: 0,
               depthRank: -1,
@@ -1917,16 +1983,18 @@
             };
             tileStates.push(state);
 
-            tile.addEventListener('pointerenter', function () {
-              state.targetHover = 1;
-              hoverNeedsRender = true;
-              ensureRender();
-            });
-            tile.addEventListener('pointerleave', function () {
-              state.targetHover = 0;
-              hoverNeedsRender = true;
-              ensureRender();
-            });
+            if (enableSceneHover) {
+              tile.addEventListener('pointerenter', function () {
+                state.targetHover = 1;
+                hoverNeedsRender = true;
+                ensureRender();
+              });
+              tile.addEventListener('pointerleave', function () {
+                state.targetHover = 0;
+                hoverNeedsRender = true;
+                ensureRender();
+              });
+            }
           }
         }
 
@@ -2104,6 +2172,10 @@
         }
 
         function resize() {
+          const nextViewport = getSceneViewportSize();
+          if (!sceneNeedsFullRebuild(lastViewport, nextViewport)) {
+            return;
+          }
           buildTiles();
           updateCamera();
           renderTiles(true);
@@ -2116,11 +2188,13 @@
         renderTiles(true);
         hoverNeedsRender = false;
         motionNeedsRender = false;
-        motionTimer = window.setInterval(function () {
-          motionTime += 0.035;
-          motionNeedsRender = true;
-          ensureRender();
-        }, 70);
+        if (enableSceneIdleMotion) {
+          motionTimer = window.setInterval(function () {
+            motionTime += 0.035;
+            motionNeedsRender = true;
+            ensureRender();
+          }, 70);
+        }
         space.addEventListener('pointerdown', onPointerDown);
         window.addEventListener('pointermove', onPointerMove);
         window.addEventListener('pointerup', onPointerUp);
