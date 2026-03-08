@@ -21,6 +21,57 @@
       box-sizing: border-box;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
+    body.is-page-loading {
+      overflow: hidden;
+    }
+    .page-loader {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #060606;
+      background-image:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01)),
+        radial-gradient(120% 180% at 0% 50%, rgba(255, 255, 255, 0.08), transparent 42%),
+        radial-gradient(120% 180% at 100% 50%, rgba(255, 255, 255, 0.08), transparent 42%);
+      opacity: 1;
+      visibility: visible;
+      transition:
+        opacity 360ms ease,
+        visibility 0s linear 360ms;
+    }
+    .page-loader::before {
+      content: "";
+      position: absolute;
+      width: min(54vw, 420px);
+      height: min(54vw, 420px);
+      border-radius: 50%;
+      background:
+        radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.08) 26%, rgba(255, 255, 255, 0) 72%);
+      filter: blur(24px);
+      opacity: 0.7;
+    }
+    .page-loader.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .page-loader__spinner {
+      position: relative;
+      z-index: 1;
+      width: min(24vw, 156px);
+      height: min(24vw, 156px);
+      min-width: 96px;
+      min-height: 96px;
+      color: rgba(255, 255, 255, 0.94);
+      filter: drop-shadow(0 0 24px rgba(255, 255, 255, 0.12));
+    }
+    .page-loader__spinner svg {
+      width: 100%;
+      height: 100%;
+    }
     .controls {
       min-height: 50px;
       display: flex;
@@ -358,7 +409,24 @@
     }
   </style>
 </head>
-	<body>
+	<body class="is-page-loading">
+	  <div class="page-loader" id="pageLoader" aria-hidden="false">
+	    <div class="page-loader__spinner" role="status" aria-label="Loading">
+	      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" fill="none" stroke="currentColor">
+	        <title>Loading...</title>
+	        <g fill="none" fill-rule="evenodd" stroke-width="2">
+	          <circle cx="22" cy="22" r="1">
+	            <animate attributeName="r" begin="0s" dur="1.8s" values="1; 20" calcMode="spline" keyTimes="0; 1" keySplines="0.165, 0.84, 0.44, 1" repeatCount="indefinite"></animate>
+	            <animate attributeName="stroke-opacity" begin="0s" dur="1.8s" values="1; 0" calcMode="spline" keyTimes="0; 1" keySplines="0.3, 0.61, 0.355, 1" repeatCount="indefinite"></animate>
+	          </circle>
+	          <circle cx="22" cy="22" r="1">
+	            <animate attributeName="r" begin="-0.9s" dur="1.8s" values="1; 20" calcMode="spline" keyTimes="0; 1" keySplines="0.165, 0.84, 0.44, 1" repeatCount="indefinite"></animate>
+	            <animate attributeName="stroke-opacity" begin="-0.9s" dur="1.8s" values="1; 0" calcMode="spline" keyTimes="0; 1" keySplines="0.3, 0.61, 0.355, 1" repeatCount="indefinite"></animate>
+	          </circle>
+	        </g>
+	      </svg>
+	    </div>
+	  </div>
 	  <div class="controls is-booting">
 	    <div class="control-cluster compact-switch-cluster" id="compactSectionCluster" aria-hidden="true">
 	      <div class="control-pill" role="radiogroup" aria-label="Controls">
@@ -804,6 +872,7 @@
     (function () {
       const releases = document.querySelector('.releases');
       if (!releases) return;
+      const pageLoader = document.getElementById('pageLoader');
       const typeShuffleBtn = document.getElementById('typeShuffleBtn');
       const typeNormalBtn = document.getElementById('typeNormalBtn');
       const viewPlainBtn = document.getElementById('viewPlainBtn');
@@ -826,6 +895,7 @@
       const sectionClusters = Array.from(document.querySelectorAll('.control-cluster[data-section]'));
 
       const tiles = Array.from(releases.querySelectorAll('a'));
+      const releaseImages = Array.from(releases.querySelectorAll('img'));
       const BASE_MIN_TILE = 180;
       const OVERLAP = 1;
       const X1_TILE_SIZE = 40;
@@ -846,6 +916,45 @@
       let controlsFontsLoaded = !(document.fonts && typeof document.fonts.ready === 'object' && typeof document.fonts.ready.then === 'function');
       let compactControlsMode = false;
       let compactSection = 'type';
+      let pageLoaderHidden = !pageLoader;
+
+      function hidePageLoader() {
+        if (!pageLoader || pageLoaderHidden) return;
+        pageLoaderHidden = true;
+        pageLoader.classList.add('is-hidden');
+        pageLoader.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('is-page-loading');
+        window.setTimeout(function () {
+          if (pageLoader.parentNode) pageLoader.parentNode.removeChild(pageLoader);
+        }, 420);
+      }
+
+      function waitForReleaseImages() {
+        if (!releaseImages.length) {
+          hidePageLoader();
+          return;
+        }
+
+        let pendingImages = releaseImages.length;
+
+        function markImageReady() {
+          pendingImages -= 1;
+          if (pendingImages > 0) return;
+          window.requestAnimationFrame(function () {
+            window.requestAnimationFrame(hidePageLoader);
+          });
+        }
+
+        for (let i = 0; i < releaseImages.length; i += 1) {
+          const img = releaseImages[i];
+          if (img.complete) {
+            markImageReady();
+            continue;
+          }
+          img.addEventListener('load', markImageReady, { once: true });
+          img.addEventListener('error', markImageReady, { once: true });
+        }
+      }
 
       function syncCanvasTopOffset() {
         if (!controlsRoot) return;
@@ -2159,6 +2268,7 @@
       updateViewButtons();
       refreshControlsLayout();
       scheduleControlsLayout();
+      waitForReleaseImages();
       renderOrderedGrid();
       maybeFinishControlsBootstrap();
       window.addEventListener('load', function () {
