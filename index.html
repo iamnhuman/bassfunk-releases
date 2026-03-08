@@ -175,6 +175,9 @@
     .controls.is-booting button .shuffle-reshuffle::before {
       transition: none !important;
     }
+    .control-pill.is-slider-jumping::before {
+      transition: none !important;
+    }
     .control-pill > * {
       position: relative;
       z-index: 1;
@@ -1138,7 +1141,11 @@
         if (compactSectionSliderRafId) window.cancelAnimationFrame(compactSectionSliderRafId);
         compactSectionSliderRafId = window.requestAnimationFrame(function () {
           compactSectionSliderRafId = 0;
-          syncAllPillSliders();
+          if (compactSectionCluster) {
+            syncPillSlider(compactSectionCluster.querySelector('.control-pill'));
+          }
+          const visibleClusterPill = controlsRoot ? controlsRoot.querySelector('.control-cluster.is-compact-visible .control-pill') : null;
+          syncPillSliderInstant(visibleClusterPill);
         });
       }
 
@@ -1207,6 +1214,21 @@
         const w = activeButton.offsetWidth;
         pill.style.setProperty('--slider-x', x + 'px');
         pill.style.setProperty('--slider-w', w + 'px');
+      }
+
+      function syncPillSliderInstant(pill) {
+        if (!pill || !pill.offsetParent) return;
+        if (pill._sliderJumpResetRaf1) window.cancelAnimationFrame(pill._sliderJumpResetRaf1);
+        if (pill._sliderJumpResetRaf2) window.cancelAnimationFrame(pill._sliderJumpResetRaf2);
+        pill.classList.add('is-slider-jumping');
+        syncPillSlider(pill);
+        pill._sliderJumpResetRaf1 = window.requestAnimationFrame(function () {
+          pill._sliderJumpResetRaf1 = 0;
+          pill._sliderJumpResetRaf2 = window.requestAnimationFrame(function () {
+            pill._sliderJumpResetRaf2 = 0;
+            pill.classList.remove('is-slider-jumping');
+          });
+        });
       }
 
       function syncAllPillSliders() {
