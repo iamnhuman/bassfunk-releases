@@ -3,7 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --ui-font: "Montserrat", sans-serif;
+    }
     html, body {
       width: 100%;
       height: 100%;
@@ -19,7 +25,7 @@
     body {
       overflow-x: hidden;
       box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: var(--ui-font);
     }
     body.is-page-loading {
       overflow: hidden;
@@ -126,9 +132,9 @@
       color: #efefef;
       font-size: 10px;
       font-weight: 400;
-      font-family: "SF Mono", "JetBrains Mono", "IBM Plex Mono", "Fira Mono", "Segoe UI", sans-serif;
+      font-family: var(--ui-font);
       letter-spacing: 0.03em;
-      padding: 2px 0 0 4px;
+      padding: 0 0 0 4px;
       opacity: 0.9;
       line-height: 1;
       white-space: nowrap;
@@ -189,7 +195,7 @@
       align-items: center;
       justify-content: center;
       gap: 5px;
-      padding: 2px 10px 0;
+      padding: 0 10px 0;
       box-sizing: border-box;
       position: relative;
       appearance: none;
@@ -200,7 +206,7 @@
       color: #f1f1f1;
       font-size: 10px;
       font-weight: 400;
-      font-family: "SF Mono", "JetBrains Mono", "IBM Plex Mono", "Fira Mono", "Segoe UI", sans-serif;
+      font-family: var(--ui-font);
       letter-spacing: 0.03em;
       line-height: 1;
       text-transform: uppercase;
@@ -212,10 +218,17 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 2px 23px 0 10px;
+      padding: 0 23px 0 10px;
     }
     .controls button:hover {
       background: rgba(255, 255, 255, 0.08);
+    }
+    .controls button.is-hover-fill-suppressed,
+    .controls button.is-hover-fill-suppressed:hover,
+    .controls button.is-hover-fill-suppressed:focus,
+    .controls button.is-hover-fill-suppressed:focus-visible {
+      background: transparent !important;
+      transition: none !important;
     }
     .controls button:active { transform: none; }
     .controls button.is-active {
@@ -346,12 +359,12 @@
         height: 22px;
         min-width: 50px;
         gap: 4px;
-        padding: 2px 8px 0;
+        padding: 0 8px 0;
         font-size: 10px;
         letter-spacing: 0.02em;
       }
       #typeShuffleBtn {
-        padding: 2px 22px 0 8px;
+        padding: 0 22px 0 8px;
       }
       .controls button .shuffle-reshuffle {
         width: 17px;
@@ -479,7 +492,7 @@
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.14);
       color: #fff;
-      font-family: "SF Mono", "JetBrains Mono", "IBM Plex Mono", "Fira Mono", "Segoe UI", sans-serif;
+      font-family: var(--ui-font);
       font-size: 11px;
       line-height: 1;
       cursor: pointer;
@@ -1001,6 +1014,8 @@
       const COMPACT_CONTROLS_BREAKPOINT = 760;
       const SCENE_RESIZE_WIDTH_REBUILD_THRESHOLD = usePerformanceMode ? 12 : 1;
       const SCENE_RESIZE_HEIGHT_REBUILD_THRESHOLD = usePerformanceMode ? 120 : 1;
+      const DRAG_START_THRESHOLD = isCoarsePointer ? 10 : 6;
+      const PILL_SLIDER_TRANSITION_MS = 340;
       const SIZE_SCALE = { 4: 0.9, 3: 0.6, 2: 0.34, 1: 0.14 };
       const originalTiles = tiles.slice();
       let orderedTiles = originalTiles.slice();
@@ -1131,8 +1146,9 @@
         applyCompactControlsState(controlsNeedCompactMode());
       }
 
-      function setCompactSection(nextSection) {
+      function setCompactSection(nextSection, triggerButton) {
         if (!nextSection || compactSection === nextSection) return;
+        suppressButtonHoverFill(triggerButton);
         compactSection = nextSection;
         updateCompactSectionButtons();
         if (!compactControlsMode) return;
@@ -1235,6 +1251,16 @@
         for (let i = 0; i < controlPills.length; i += 1) syncPillSlider(controlPills[i]);
       }
 
+      function suppressButtonHoverFill(button) {
+        if (!button) return;
+        if (button._hoverFillResetTimer) window.clearTimeout(button._hoverFillResetTimer);
+        button.classList.add('is-hover-fill-suppressed');
+        button._hoverFillResetTimer = window.setTimeout(function () {
+          button._hoverFillResetTimer = 0;
+          button.classList.remove('is-hover-fill-suppressed');
+        }, PILL_SLIDER_TRANSITION_MS);
+      }
+
       for (let i = 0; i < controlButtons.length; i += 1) {
         const button = controlButtons[i];
         const span = button.querySelector('span');
@@ -1295,6 +1321,8 @@
         const SIZE_TO_CANVAS_OVERLAP = { 4: 0.86, 3: 0.82, 2: 0.78, 1: 0.72 };
         const INITIAL_ZOOM_PULL = 180;
         const RAD_TO_DEG = 180 / Math.PI;
+        const BUTTON_ZOOM_STEP = 320;
+        const PINCH_ZOOM_FACTOR = 2.8;
         let tileSize = 58;
         let sphereRadius = 360;
         let currentCanvasSizeFactor = sizeFactor;
@@ -1323,6 +1351,10 @@
         let prevRotY = rotY;
         let spinFaceX = 0;
         let spinFaceY = 0;
+        let pinchActive = false;
+        let pinchStartDistance = 0;
+        let pinchStartZoom = zoom;
+        const trackedPointers = new Map();
 
         function clamp(value, min, max) {
           return Math.max(min, Math.min(max, value));
@@ -1337,6 +1369,41 @@
 
         function snap(value) {
           return Math.round(value * 10) / 10;
+        }
+
+        function setTrackedPointer(event) {
+          trackedPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        }
+
+        function removeTrackedPointer(pointerId) {
+          trackedPointers.delete(pointerId);
+        }
+
+        function getTrackedPointerPair() {
+          if (trackedPointers.size < 2) return null;
+          const pointers = Array.from(trackedPointers.values());
+          return [pointers[0], pointers[1]];
+        }
+
+        function getPointerDistance(pair) {
+          if (!pair) return 0;
+          const dx = pair[0].x - pair[1].x;
+          const dy = pair[0].y - pair[1].y;
+          return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function trySetPointerCapture(pointerId) {
+          if (!space.setPointerCapture || pointerId === null) return;
+          try {
+            space.setPointerCapture(pointerId);
+          } catch (e) {}
+        }
+
+        function tryReleasePointerCapture(pointerId) {
+          if (!space.releasePointerCapture || pointerId === null) return;
+          try {
+            space.releasePointerCapture(pointerId);
+          } catch (e) {}
         }
 
         function sizeScaleForCanvas(nextSizeFactor) {
@@ -1365,6 +1432,36 @@
 
         function overlapLimitForCanvas(nextSizeFactor) {
           return SIZE_TO_CANVAS_OVERLAP[nextSizeFactor] || 0.8;
+        }
+
+        function startPinchGesture() {
+          const pair = getTrackedPointerPair();
+          if (!pair) return false;
+          pinchActive = true;
+          pinchStartDistance = Math.max(1, getPointerDistance(pair));
+          pinchStartZoom = targetZoom;
+          didDrag = true;
+          endDrag(activePointerId);
+          return true;
+        }
+
+        function stopPinchGesture() {
+          pinchActive = false;
+          pinchStartDistance = 0;
+          pinchStartZoom = targetZoom;
+        }
+
+        function updatePinchGesture() {
+          const pair = getTrackedPointerPair();
+          if (!pair) return false;
+          const distance = Math.max(1, getPointerDistance(pair));
+          targetZoom = clamp(
+            pinchStartZoom + (distance - pinchStartDistance) * PINCH_ZOOM_FACTOR,
+            zoomFarLimit,
+            zoomNearLimit
+          );
+          ensureRender();
+          return true;
         }
 
         function updateCamera() {
@@ -1696,7 +1793,14 @@
         }
 
         function onPointerDown(event) {
-          if (event.button !== 0) return;
+          if (event.pointerType === 'mouse' && event.button !== 0) return;
+          setTrackedPointer(event);
+          trySetPointerCapture(event.pointerId);
+          if (trackedPointers.size >= 2) {
+            startPinchGesture();
+            ensureRender();
+            return;
+          }
           if (isDragging) return;
           isDragging = true;
           activePointerId = event.pointerId;
@@ -1704,21 +1808,26 @@
           startX = event.clientX;
           startY = event.clientY;
           space.classList.add('is-dragging');
-          if (space.setPointerCapture) {
-            try {
-              space.setPointerCapture(activePointerId);
-            } catch (e) {}
-          }
           ensureRender();
         }
 
         function onPointerMove(event) {
+          if (!trackedPointers.has(event.pointerId)) return;
+          setTrackedPointer(event);
+          if (trackedPointers.size >= 2) {
+            if (!pinchActive) startPinchGesture();
+            updatePinchGesture();
+            return;
+          }
+          if (pinchActive) {
+            stopPinchGesture();
+          }
           if (!isDragging) return;
           if (activePointerId !== null && event.pointerId !== activePointerId) return;
           const dx = event.clientX - startX;
           const dy = event.clientY - startY;
           if (!didDrag) {
-            if (Math.abs(dx) + Math.abs(dy) <= 6) return;
+            if (Math.abs(dx) + Math.abs(dy) <= DRAG_START_THRESHOLD) return;
             didDrag = true;
             startX = event.clientX;
             startY = event.clientY;
@@ -1740,26 +1849,42 @@
           isDragging = false;
           activePointerId = null;
           space.classList.remove('is-dragging');
-          if (space.releasePointerCapture && pointerId !== null) {
-            try {
-              space.releasePointerCapture(pointerId);
-            } catch (e) {}
-          }
+          tryReleasePointerCapture(pointerId);
         }
 
         function onPointerUp(event) {
+          if (!trackedPointers.has(event.pointerId)) return;
+          removeTrackedPointer(event.pointerId);
+          tryReleasePointerCapture(event.pointerId);
+          if (pinchActive) {
+            if (trackedPointers.size < 2) stopPinchGesture();
+            endDrag(activePointerId);
+            ensureRender();
+            return;
+          }
           if (activePointerId !== null && event.pointerId !== activePointerId) return;
           endDrag(event.pointerId);
           ensureRender();
         }
 
         function onPointerCancel(event) {
+          if (!trackedPointers.has(event.pointerId)) return;
+          removeTrackedPointer(event.pointerId);
+          tryReleasePointerCapture(event.pointerId);
+          if (pinchActive) {
+            if (trackedPointers.size < 2) stopPinchGesture();
+            endDrag(activePointerId);
+            ensureRender();
+            return;
+          }
           if (activePointerId !== null && event.pointerId !== activePointerId) return;
           endDrag(event.pointerId);
           ensureRender();
         }
 
         function onWindowBlur() {
+          trackedPointers.clear();
+          stopPinchGesture();
           endDrag(activePointerId);
         }
 
@@ -1813,11 +1938,11 @@
         return {
           resize: resize,
           zoomIn: function () {
-            targetZoom = clamp(targetZoom + 120, zoomFarLimit, zoomNearLimit);
+            targetZoom = clamp(targetZoom + BUTTON_ZOOM_STEP, zoomFarLimit, zoomNearLimit);
             ensureRender();
           },
           zoomOut: function () {
-            targetZoom = clamp(targetZoom - 120, zoomFarLimit, zoomNearLimit);
+            targetZoom = clamp(targetZoom - BUTTON_ZOOM_STEP, zoomFarLimit, zoomNearLimit);
             ensureRender();
           },
           setSizeFactor: function (nextSizeFactor) {
@@ -1862,6 +1987,8 @@
         const SIZE_TO_CARDS_SCALE = { 4: 3.2, 3: 2.35, 2: 1.55, 1: 1.08 };
         const SIZE_TO_CARDS_SPREAD = { 4: 1.05, 3: 1.0, 2: 0.92, 1: 0.84 };
         const PERSPECTIVE = 1100;
+        const BUTTON_ZOOM_STEP = 420;
+        const PINCH_ZOOM_FACTOR = 3.4;
         let currentCardsSizeFactor = sizeFactor;
         let tileSize = 72;
         let cloudSpreadX = 1600;
@@ -1894,6 +2021,10 @@
         let motionTime = 0;
         let motionTimer = 0;
         let lastViewport = null;
+        let pinchActive = false;
+        let pinchStartDistance = 0;
+        let pinchStartZoom = zoom;
+        const trackedPointers = new Map();
 
         function clamp(value, min, max) {
           return Math.max(min, Math.min(max, value));
@@ -1911,12 +2042,77 @@
           return out - Math.floor(out);
         }
 
+        function setTrackedPointer(event) {
+          trackedPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        }
+
+        function removeTrackedPointer(pointerId) {
+          trackedPointers.delete(pointerId);
+        }
+
+        function getTrackedPointerPair() {
+          if (trackedPointers.size < 2) return null;
+          const pointers = Array.from(trackedPointers.values());
+          return [pointers[0], pointers[1]];
+        }
+
+        function getPointerDistance(pair) {
+          if (!pair) return 0;
+          const dx = pair[0].x - pair[1].x;
+          const dy = pair[0].y - pair[1].y;
+          return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function trySetPointerCapture(pointerId) {
+          if (!space.setPointerCapture || pointerId === null) return;
+          try {
+            space.setPointerCapture(pointerId);
+          } catch (e) {}
+        }
+
+        function tryReleasePointerCapture(pointerId) {
+          if (!space.releasePointerCapture || pointerId === null) return;
+          try {
+            space.releasePointerCapture(pointerId);
+          } catch (e) {}
+        }
+
         function sizeScaleForCards(nextSizeFactor) {
           return SIZE_TO_CARDS_SCALE[nextSizeFactor] || 1;
         }
 
         function sizeSpreadForCards(nextSizeFactor) {
           return SIZE_TO_CARDS_SPREAD[nextSizeFactor] || 1;
+        }
+
+        function startPinchGesture() {
+          const pair = getTrackedPointerPair();
+          if (!pair) return false;
+          pinchActive = true;
+          pinchStartDistance = Math.max(1, getPointerDistance(pair));
+          pinchStartZoom = targetZoom;
+          didDrag = true;
+          endDrag(activePointerId);
+          return true;
+        }
+
+        function stopPinchGesture() {
+          pinchActive = false;
+          pinchStartDistance = 0;
+          pinchStartZoom = targetZoom;
+        }
+
+        function updatePinchGesture() {
+          const pair = getTrackedPointerPair();
+          if (!pair) return false;
+          const distance = Math.max(1, getPointerDistance(pair));
+          targetZoom = clamp(
+            pinchStartZoom + (distance - pinchStartDistance) * PINCH_ZOOM_FACTOR,
+            zoomFarLimit,
+            zoomNearLimit
+          );
+          ensureRender();
+          return true;
         }
 
         function updateCamera() {
@@ -2001,7 +2197,8 @@
               hover: 0,
               targetHover: 0,
               depthRank: -1,
-              screenAlpha: -1
+              screenAlpha: -1,
+              pointerEnabled: false
             };
             tileStates.push(state);
 
@@ -2055,12 +2252,14 @@
               alpha = 1 - (projectedSize - fadeStartSizePx) / fadeSpan;
               alpha = clamp(alpha, 0, 1);
             }
-            if (Math.abs(alpha - t.screenAlpha) > 0.01) {
+            const pointerEnabled = projectedSize <= fadeStartSizePx;
+            if (Math.abs(alpha - t.screenAlpha) > 0.01 || pointerEnabled !== t.pointerEnabled) {
               t.screenAlpha = alpha;
+              t.pointerEnabled = pointerEnabled;
               t.el.style.opacity = alpha.toFixed(3);
-              t.el.style.pointerEvents = alpha > 0.02 ? 'auto' : 'none';
+              t.el.style.pointerEvents = pointerEnabled ? 'auto' : 'none';
             }
-            if (alpha <= 0.02) {
+            if (!pointerEnabled) {
               t.targetHover = 0;
             }
             const depthRank = Math.round((zCamera + cloudSpreadZ + 4000) * 1000) + i;
@@ -2113,7 +2312,14 @@
         }
 
         function onPointerDown(event) {
-          if (event.button !== 0) return;
+          if (event.pointerType === 'mouse' && event.button !== 0) return;
+          setTrackedPointer(event);
+          trySetPointerCapture(event.pointerId);
+          if (trackedPointers.size >= 2) {
+            startPinchGesture();
+            ensureRender();
+            return;
+          }
           if (isDragging) return;
           isDragging = true;
           activePointerId = event.pointerId;
@@ -2121,21 +2327,26 @@
           startX = event.clientX;
           startY = event.clientY;
           space.classList.add('is-dragging');
-          if (space.setPointerCapture) {
-            try {
-              space.setPointerCapture(activePointerId);
-            } catch (e) {}
-          }
           ensureRender();
         }
 
         function onPointerMove(event) {
+          if (!trackedPointers.has(event.pointerId)) return;
+          setTrackedPointer(event);
+          if (trackedPointers.size >= 2) {
+            if (!pinchActive) startPinchGesture();
+            updatePinchGesture();
+            return;
+          }
+          if (pinchActive) {
+            stopPinchGesture();
+          }
           if (!isDragging) return;
           if (activePointerId !== null && event.pointerId !== activePointerId) return;
           const dx = event.clientX - startX;
           const dy = event.clientY - startY;
           if (!didDrag) {
-            if (Math.abs(dx) + Math.abs(dy) <= 6) return;
+            if (Math.abs(dx) + Math.abs(dy) <= DRAG_START_THRESHOLD) return;
             didDrag = true;
             startX = event.clientX;
             startY = event.clientY;
@@ -2155,26 +2366,42 @@
           isDragging = false;
           activePointerId = null;
           space.classList.remove('is-dragging');
-          if (space.releasePointerCapture && pointerId !== null) {
-            try {
-              space.releasePointerCapture(pointerId);
-            } catch (e) {}
-          }
+          tryReleasePointerCapture(pointerId);
         }
 
         function onPointerUp(event) {
+          if (!trackedPointers.has(event.pointerId)) return;
+          removeTrackedPointer(event.pointerId);
+          tryReleasePointerCapture(event.pointerId);
+          if (pinchActive) {
+            if (trackedPointers.size < 2) stopPinchGesture();
+            endDrag(activePointerId);
+            ensureRender();
+            return;
+          }
           if (activePointerId !== null && event.pointerId !== activePointerId) return;
           endDrag(event.pointerId);
           ensureRender();
         }
 
         function onPointerCancel(event) {
+          if (!trackedPointers.has(event.pointerId)) return;
+          removeTrackedPointer(event.pointerId);
+          tryReleasePointerCapture(event.pointerId);
+          if (pinchActive) {
+            if (trackedPointers.size < 2) stopPinchGesture();
+            endDrag(activePointerId);
+            ensureRender();
+            return;
+          }
           if (activePointerId !== null && event.pointerId !== activePointerId) return;
           endDrag(event.pointerId);
           ensureRender();
         }
 
         function onWindowBlur() {
+          trackedPointers.clear();
+          stopPinchGesture();
           endDrag(activePointerId);
         }
 
@@ -2228,11 +2455,11 @@
         return {
           resize: resize,
           zoomIn: function () {
-            targetZoom = clamp(targetZoom + 160, zoomFarLimit, zoomNearLimit);
+            targetZoom = clamp(targetZoom + BUTTON_ZOOM_STEP, zoomFarLimit, zoomNearLimit);
             ensureRender();
           },
           zoomOut: function () {
-            targetZoom = clamp(targetZoom - 160, zoomFarLimit, zoomNearLimit);
+            targetZoom = clamp(targetZoom - BUTTON_ZOOM_STEP, zoomFarLimit, zoomNearLimit);
             ensureRender();
           },
           setSizeFactor: function (nextSizeFactor) {
@@ -2339,8 +2566,9 @@
         if (viewSphereBtn) viewSphereBtn.classList.toggle('is-active', viewMode === 'sphere');
       }
 
-      function setTypeMode(nextMode) {
+      function setTypeMode(nextMode, triggerButton) {
         if (typeMode === nextMode) return;
+        suppressButtonHoverFill(triggerButton);
         compactSection = 'type';
         typeMode = nextMode;
         applyTypeOrder();
@@ -2383,8 +2611,9 @@
         iconEl.style.setProperty('--shuffle-icon-spin', (nextTurns * 360) + 'deg');
       }
 
-      function setViewMode(nextMode) {
+      function setViewMode(nextMode, triggerButton) {
         if (viewMode === nextMode) return;
+        suppressButtonHoverFill(triggerButton);
         compactSection = 'view';
         const was3dMode = viewMode === 'sphere' || viewMode === 'cards';
         const is3dMode = nextMode === 'sphere' || nextMode === 'cards';
@@ -2414,17 +2643,18 @@
             reshuffleNow();
             return;
           }
-          setTypeMode('shuffle');
+          setTypeMode('shuffle', typeShuffleBtn);
         });
       }
-      if (typeNormalBtn) typeNormalBtn.addEventListener('click', function () { setTypeMode('normal'); });
-      if (viewPlainBtn) viewPlainBtn.addEventListener('click', function () { setViewMode('plain'); });
-      if (viewSphereBtn) viewSphereBtn.addEventListener('click', function () { setViewMode('sphere'); });
-      if (viewCardsBtn) viewCardsBtn.addEventListener('click', function () { setViewMode('cards'); });
+      if (typeNormalBtn) typeNormalBtn.addEventListener('click', function () { setTypeMode('normal', typeNormalBtn); });
+      if (viewPlainBtn) viewPlainBtn.addEventListener('click', function () { setViewMode('plain', viewPlainBtn); });
+      if (viewSphereBtn) viewSphereBtn.addEventListener('click', function () { setViewMode('sphere', viewSphereBtn); });
+      if (viewCardsBtn) viewCardsBtn.addEventListener('click', function () { setViewMode('cards', viewCardsBtn); });
       if (canvasZoomInBtn) canvasZoomInBtn.addEventListener('click', function () { if (floatingScene) floatingScene.zoomIn(); });
       if (canvasZoomOutBtn) canvasZoomOutBtn.addEventListener('click', function () { if (floatingScene) floatingScene.zoomOut(); });
 
-      function setSize(nextFactor) {
+      function setSize(nextFactor, triggerButton) {
+        suppressButtonHoverFill(triggerButton);
         compactSection = 'size';
         sizeFactor = nextFactor;
         if (sizeX4Btn) sizeX4Btn.classList.toggle('is-active', sizeFactor === 4);
@@ -2441,13 +2671,13 @@
         }
       }
 
-      if (sizeX4Btn) sizeX4Btn.addEventListener('click', function () { setSize(4); });
-      if (sizeX3Btn) sizeX3Btn.addEventListener('click', function () { setSize(3); });
-      if (sizeX2Btn) sizeX2Btn.addEventListener('click', function () { setSize(2); });
-      if (sizeX1Btn) sizeX1Btn.addEventListener('click', function () { setSize(1); });
-      if (compactTypeBtn) compactTypeBtn.addEventListener('click', function () { setCompactSection('type'); });
-      if (compactViewBtn) compactViewBtn.addEventListener('click', function () { setCompactSection('view'); });
-      if (compactSizeBtn) compactSizeBtn.addEventListener('click', function () { setCompactSection('size'); });
+      if (sizeX4Btn) sizeX4Btn.addEventListener('click', function () { setSize(4, sizeX4Btn); });
+      if (sizeX3Btn) sizeX3Btn.addEventListener('click', function () { setSize(3, sizeX3Btn); });
+      if (sizeX2Btn) sizeX2Btn.addEventListener('click', function () { setSize(2, sizeX2Btn); });
+      if (sizeX1Btn) sizeX1Btn.addEventListener('click', function () { setSize(1, sizeX1Btn); });
+      if (compactTypeBtn) compactTypeBtn.addEventListener('click', function () { setCompactSection('type', compactTypeBtn); });
+      if (compactViewBtn) compactViewBtn.addEventListener('click', function () { setCompactSection('view', compactViewBtn); });
+      if (compactSizeBtn) compactSizeBtn.addEventListener('click', function () { setCompactSection('size', compactSizeBtn); });
 
       function applyInitialStateFromUrl() {
         if (!initialSearchParams || !initialSearchParams.toString()) return;
