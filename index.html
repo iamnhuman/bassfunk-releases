@@ -64,13 +64,16 @@
     .control-cluster.size-cluster {
       margin-left: 8px;
     }
+    .control-cluster.view-cluster {
+      margin-left: 8px;
+    }
     .control-label {
       color: #efefef;
       font-size: 6px;
       font-weight: 400;
       font-family: "SF Mono", "JetBrains Mono", "IBM Plex Mono", "Fira Mono", "Segoe UI", sans-serif;
       letter-spacing: 0.03em;
-      padding: 1px 2px 0;
+      padding: 1px 0 0 2px;
       opacity: 0.9;
       line-height: 1;
       white-space: nowrap;
@@ -112,8 +115,10 @@
     .controls button {
       height: 14px;
       min-width: 30px;
-      display: inline-grid;
-      place-items: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
       padding: 1px 5px 0;
       box-sizing: border-box;
       appearance: none;
@@ -141,10 +146,59 @@
       background: transparent;
       box-shadow: none;
     }
-    .controls button > span {
+    .controls button > span:not(.shuffle-reshuffle) {
       position: relative;
       z-index: 1;
       pointer-events: none;
+    }
+    .controls button .shuffle-reshuffle {
+      width: 0;
+      height: 0;
+      min-width: 0;
+      opacity: 0;
+      pointer-events: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.03);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+      transform: scale(0.7);
+      transition:
+        width 0.2s ease,
+        height 0.2s ease,
+        margin-left 0.2s ease,
+        opacity 0.16s ease,
+        transform 0.16s ease,
+        background-color 0.16s ease;
+    }
+    .controls button .shuffle-reshuffle::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 0 1 15.3-6.3L21 8'/%3E%3Cpath d='M21 3v5h-5'/%3E%3Cpath d='M21 12a9 9 0 0 1-15.3 6.3L3 16'/%3E%3Cpath d='M8 21H3v-5'/%3E%3C/svg%3E");
+      background-size: 7px 7px;
+      background-repeat: no-repeat;
+      background-position: center;
+      transition: transform 0.18s ease;
+    }
+    .controls button.is-active .shuffle-reshuffle {
+      width: 11px;
+      height: 11px;
+      margin-left: 2px;
+      opacity: 0.95;
+      pointer-events: auto;
+      transform: scale(1);
+    }
+    .controls button.is-active .shuffle-reshuffle:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: scale(1.08);
+    }
+    .controls button.is-active .shuffle-reshuffle:hover::before {
+      transform: rotate(36deg);
+    }
+    .controls button.is-active .shuffle-reshuffle:active {
+      transform: scale(0.94);
     }
     @media (max-width: 820px) {
       .controls {
@@ -158,13 +212,16 @@
       .control-cluster.size-cluster {
         margin-left: 6px;
       }
+      .control-cluster.view-cluster {
+        margin-left: 6px;
+      }
       .control-pill {
         gap: 3px;
         padding: 2px;
       }
       .control-label {
         font-size: 6px;
-        padding: 1px 2px 0;
+        padding: 1px 0 0 2px;
       }
       .controls button {
         height: 13px;
@@ -192,6 +249,103 @@
       height: 100%;
       object-fit: cover;
     }
+    .canvas-mode {
+      position: fixed;
+      top: var(--controls-h, 31px);
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 2;
+      display: none;
+      background:
+        radial-gradient(120% 140% at 50% 0%, rgba(36, 36, 36, 0.45), rgba(3, 3, 3, 0.95)),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
+      overflow: hidden;
+    }
+    .canvas-mode.is-active {
+      display: block;
+    }
+    .canvas-space {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      perspective: 1100px;
+      cursor: grab;
+      touch-action: none;
+    }
+    .canvas-space.is-dragging {
+      cursor: grabbing;
+    }
+    .canvas-camera {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+    .canvas-field {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform-style: preserve-3d;
+      transform-origin: center center;
+      will-change: transform;
+    }
+    .canvas-tile {
+      position: absolute;
+      display: block;
+      border-radius: 2px;
+      overflow: hidden;
+      cursor: pointer;
+      background: #0f0f0f;
+      background-position: center center;
+      background-repeat: no-repeat;
+      background-size: cover;
+      aspect-ratio: 1 / 1;
+      box-shadow:
+        0 12px 30px rgba(0, 0, 0, 0.42),
+        0 3px 10px rgba(0, 0, 0, 0.34);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      transform-style: flat;
+      will-change: transform;
+      contain: none;
+      isolation: isolate;
+      outline: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .canvas-tools {
+      position: absolute;
+      right: 10px;
+      bottom: 12px;
+      display: inline-flex;
+      gap: 5px;
+      z-index: 3;
+      pointer-events: auto;
+    }
+    .canvas-tools button {
+      width: 24px;
+      min-width: 24px;
+      height: 24px;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+      font-family: "SF Mono", "JetBrains Mono", "IBM Plex Mono", "Fira Mono", "Segoe UI", sans-serif;
+      font-size: 11px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    html.canvas-active,
+    body.canvas-active {
+      overflow: hidden;
+    }
+    body.canvas-active {
+      height: 100vh;
+    }
+    body.canvas-active .releases {
+      display: none;
+      visibility: hidden;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -200,7 +354,15 @@
       <span class="control-label">Type</span>
       <div class="control-pill" role="radiogroup" aria-label="Type">
         <button type="button" id="typeNormalBtn" class="is-active"><span>Normal</span></button>
-        <button type="button" id="typeShuffleBtn"><span>Shuffle</span></button>
+        <button type="button" id="typeShuffleBtn"><span>Shuffle</span><span class="shuffle-reshuffle" title="Reshuffle"></span></button>
+      </div>
+    </div>
+    <div class="control-cluster view-cluster">
+      <span class="control-label">View</span>
+      <div class="control-pill" role="radiogroup" aria-label="View">
+        <button type="button" id="viewPlainBtn" class="is-active"><span>Plain</span></button>
+        <button type="button" id="viewCardsBtn"><span>Cards</span></button>
+        <button type="button" id="viewSphereBtn"><span>Sphere</span></button>
       </div>
     </div>
     <div class="control-cluster size-cluster">
@@ -615,16 +777,29 @@
     <a data-index="400" href="https://theghostof313.bandcamp.com/album/mozyk013-the-saturn-return" target="_blank" rel="noreferrer"><img src="img/5867a8a8e77a01160091e359-Untitled-1.jpg" alt=""></a>
     <a data-index="401" href="https://ant-zen.bandcamp.com/album/immer-wieder-nein" target="_blank" rel="noreferrer"><img src="img/586c08c2e77a01160091ea9b-asset.jpg" alt=""></a>
   </div>
+  <div class="canvas-mode" id="canvasMode" aria-hidden="true">
+    <div class="canvas-tools">
+      <button type="button" id="canvasZoomOutBtn" aria-label="Zoom out">-</button>
+      <button type="button" id="canvasZoomInBtn" aria-label="Zoom in">+</button>
+    </div>
+  </div>
   <script>
     (function () {
       const releases = document.querySelector('.releases');
       if (!releases) return;
       const typeShuffleBtn = document.getElementById('typeShuffleBtn');
       const typeNormalBtn = document.getElementById('typeNormalBtn');
+      const viewPlainBtn = document.getElementById('viewPlainBtn');
+      const viewCardsBtn = document.getElementById('viewCardsBtn');
+      const viewSphereBtn = document.getElementById('viewSphereBtn');
       const sizeX4Btn = document.getElementById('sizeX4Btn');
       const sizeX3Btn = document.getElementById('sizeX3Btn');
       const sizeX2Btn = document.getElementById('sizeX2Btn');
       const sizeX1Btn = document.getElementById('sizeX1Btn');
+      const controlsRoot = document.querySelector('.controls');
+      const canvasMode = document.getElementById('canvasMode');
+      const canvasZoomInBtn = document.getElementById('canvasZoomInBtn');
+      const canvasZoomOutBtn = document.getElementById('canvasZoomOutBtn');
       const controlButtons = Array.from(document.querySelectorAll('.controls button'));
       const controlPills = Array.from(document.querySelectorAll('.control-pill'));
 
@@ -635,8 +810,16 @@
       const SIZE_SCALE = { 4: 0.9, 3: 0.6, 2: 0.34, 1: 0.14 };
       const originalTiles = tiles.slice();
       let orderedTiles = originalTiles.slice();
-      let orderMode = 'normal';
+      let typeMode = 'normal';
+      let viewMode = 'plain';
       let sizeFactor = 3;
+      let floatingScene = null;
+      let floatingSceneType = '';
+
+      function syncCanvasTopOffset() {
+        if (!controlsRoot) return;
+        document.documentElement.style.setProperty('--controls-h', controlsRoot.offsetHeight + 'px');
+      }
 
       function lockControlButtonWidths() {
         for (let i = 0; i < controlButtons.length; i += 1) {
@@ -673,19 +856,16 @@
       }
 
       function syncAllPillSliders() {
-        for (let i = 0; i < controlPills.length; i += 1) {
-          syncPillSlider(controlPills[i]);
-        }
+        for (let i = 0; i < controlPills.length; i += 1) syncPillSlider(controlPills[i]);
       }
 
       for (let i = 0; i < controlButtons.length; i += 1) {
         const button = controlButtons[i];
         const span = button.querySelector('span');
-        if (span) {
-          const label = (span.textContent || '').toUpperCase();
-          span.textContent = label;
-          button.dataset.label = label;
-        }
+        if (!span) continue;
+        const label = (span.textContent || '').toUpperCase();
+        span.textContent = label;
+        button.dataset.label = label;
       }
 
       function shuffleInPlace(arr) {
@@ -697,11 +877,1017 @@
         }
       }
 
+      function sampleTilesForCanvas() {
+        return orderedTiles.slice();
+      }
+
+      function createSphereScene() {
+        if (!canvasMode) return null;
+        const tilesForCanvas = sampleTilesForCanvas();
+        const space = document.createElement('div');
+        const camera = document.createElement('div');
+        const field = document.createElement('div');
+        space.className = 'canvas-space';
+        camera.className = 'canvas-camera';
+        field.className = 'canvas-field';
+        camera.appendChild(field);
+        space.appendChild(camera);
+        canvasMode.prepend(space);
+
+        const tileStates = [];
+        const PERSPECTIVE = 1100;
+        const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+        const SIZE_TO_CANVAS_SCALE = { 4: 3.6, 3: 2.5, 2: 1.6, 1: 1.05 };
+        const SIZE_TO_CANVAS_FILL = { 4: 1.24, 3: 1.04, 2: 0.9, 1: 0.78 };
+        const SIZE_TO_CANVAS_ZOOM_BIAS = { 4: 430, 3: 280, 2: 140, 1: 40 };
+        const SIZE_TO_CANVAS_NEAR_FACTOR = { 4: 0.52, 3: 0.42, 2: 0.3, 1: 0.18 };
+        const SIZE_TO_CANVAS_NEAR_OFFSET = { 4: 10, 3: 26, 2: 48, 1: 110 };
+        const SIZE_TO_CANVAS_NEAR_MIN = { 4: 220, 3: 190, 2: 165, 1: 130 };
+        const SIZE_TO_CANVAS_OVERLAP = { 4: 0.86, 3: 0.82, 2: 0.78, 1: 0.72 };
+        const INITIAL_ZOOM_PULL = 180;
+        const RAD_TO_DEG = 180 / Math.PI;
+        let tileSize = 58;
+        let sphereRadius = 360;
+        let currentCanvasSizeFactor = sizeFactor;
+        let rotX = -14;
+        let rotY = 18;
+        let zoom = -920;
+        let zoomNearLimit = -320;
+        let zoomFarLimit = -5200;
+        let targetRotX = rotX;
+        let targetRotY = rotY;
+        let targetZoom = zoom;
+        let rafId = 0;
+        let stopped = false;
+        let startX = 0;
+        let startY = 0;
+        let isDragging = false;
+        let activePointerId = null;
+        let didDrag = false;
+        let isRendering = false;
+        let hoverNeedsRender = false;
+        let motionNeedsRender = false;
+        let motionTime = 0;
+        let motionTimer = 0;
+        let prevRotX = rotX;
+        let prevRotY = rotY;
+        let spinFaceX = 0;
+        let spinFaceY = 0;
+
+        function clamp(value, min, max) {
+          return Math.max(min, Math.min(max, value));
+        }
+
+        function normalizeAngle(value) {
+          let out = value % 360;
+          if (out > 180) out -= 360;
+          if (out < -180) out += 360;
+          return out;
+        }
+
+        function snap(value) {
+          return Math.round(value * 10) / 10;
+        }
+
+        function sizeScaleForCanvas(nextSizeFactor) {
+          return SIZE_TO_CANVAS_SCALE[nextSizeFactor] || 1;
+        }
+
+        function sizeFillForCanvas(nextSizeFactor) {
+          return SIZE_TO_CANVAS_FILL[nextSizeFactor] || 1;
+        }
+
+        function sizeZoomBiasForCanvas(nextSizeFactor) {
+          return SIZE_TO_CANVAS_ZOOM_BIAS[nextSizeFactor] || 0;
+        }
+
+        function sizeNearFactorForCanvas(nextSizeFactor) {
+          return SIZE_TO_CANVAS_NEAR_FACTOR[nextSizeFactor] || 0.6;
+        }
+
+        function sizeNearOffsetForCanvas(nextSizeFactor) {
+          return SIZE_TO_CANVAS_NEAR_OFFSET[nextSizeFactor] || 0;
+        }
+
+        function sizeNearMinForCanvas(nextSizeFactor) {
+          return SIZE_TO_CANVAS_NEAR_MIN[nextSizeFactor] || 150;
+        }
+
+        function overlapLimitForCanvas(nextSizeFactor) {
+          return SIZE_TO_CANVAS_OVERLAP[nextSizeFactor] || 0.8;
+        }
+
+        function updateCamera() {
+          camera.style.transform = 'translateZ(' + zoom.toFixed(2) + 'px) rotateX(' + rotX.toFixed(2) + 'deg) rotateY(' + rotY.toFixed(2) + 'deg)';
+        }
+
+        function ensureRender() {
+          if (stopped || isRendering) return;
+          isRendering = true;
+          rafId = window.requestAnimationFrame(frame);
+        }
+
+        function buildTiles() {
+          field.innerHTML = '';
+          tileStates.length = 0;
+          hoverNeedsRender = true;
+          motionNeedsRender = true;
+          motionTime = 0;
+          const viewportWidth = Math.max(320, canvasMode.clientWidth || window.innerWidth);
+          const viewportHeight = Math.max(280, canvasMode.clientHeight || window.innerHeight);
+          const minViewport = Math.max(280, Math.min(viewportWidth, viewportHeight));
+          const releaseCount = Math.max(1, tilesForCanvas.length);
+          const dynamicStep = Math.max(1, Math.floor(releaseCount / 92));
+          const sphereBase = minViewport * 0.54;
+          const sphereBoost = Math.sqrt(releaseCount) * 3.2;
+          sphereRadius = clamp(sphereBase + sphereBoost, 260, 980);
+          zoomNearLimit = -Math.max(
+            sizeNearMinForCanvas(currentCanvasSizeFactor),
+            sphereRadius * sizeNearFactorForCanvas(currentCanvasSizeFactor) - sizeNearOffsetForCanvas(currentCanvasSizeFactor)
+          );
+          zoomFarLimit = -Math.max(5200, sphereRadius * 7.6);
+          const densitySize = minViewport / (Math.sqrt(releaseCount) * 1.18);
+          const sphereArea = 4 * Math.PI * sphereRadius * sphereRadius;
+          const surfaceSpacing = Math.sqrt(sphereArea / releaseCount);
+          const overlapCappedMax = surfaceSpacing * overlapLimitForCanvas(currentCanvasSizeFactor);
+          const requestedTileSize = densitySize * sizeScaleForCanvas(currentCanvasSizeFactor);
+          tileSize = Math.round(clamp(Math.min(requestedTileSize, overlapCappedMax), 18, 220));
+          const sphereDiameter = sphereRadius * 2 + tileSize * 1.8;
+          const fillFactor = sizeFillForCanvas(currentCanvasSizeFactor);
+          const fitScaleW = (viewportWidth * fillFactor) / Math.max(1, sphereDiameter);
+          const fitScaleH = (viewportHeight * Math.max(0.64, fillFactor - 0.11)) / Math.max(1, sphereDiameter);
+          const fitScale = Math.min(fitScaleW, fitScaleH);
+          const requiredDistance = fitScale < 1 ? (PERSPECTIVE * (1 / fitScale - 1)) : 0;
+          const zoomBias = sizeZoomBiasForCanvas(currentCanvasSizeFactor);
+          const fitDistance = requiredDistance + 430 - zoomBias;
+          const fitZoom = -clamp(fitDistance - INITIAL_ZOOM_PULL, Math.abs(zoomNearLimit) + 8, Math.abs(zoomFarLimit));
+          zoom = fitZoom;
+          targetZoom = fitZoom;
+          rotX = -14;
+          rotY = 18;
+          targetRotX = rotX;
+          targetRotY = rotY;
+          prevRotX = rotX;
+          prevRotY = rotY;
+          spinFaceX = 0;
+          spinFaceY = 0;
+
+          for (let i = 0; i < tilesForCanvas.length; i += 1) {
+            const srcTile = tilesForCanvas[i];
+            const img = srcTile.querySelector('img');
+            if (!img) continue;
+            const t = releaseCount === 1 ? 0.5 : i / (releaseCount - 1);
+            const ny = 1 - t * 2;
+            const ringRadius = Math.sqrt(Math.max(0, 1 - ny * ny));
+            const theta = GOLDEN_ANGLE * i;
+            const nx = Math.cos(theta) * ringRadius;
+            const nz = Math.sin(theta) * ringRadius;
+            const tangentX = -Math.sin(theta);
+            const tangentY = 0;
+            const tangentZ = Math.cos(theta);
+            const bitangentX = ny * Math.cos(theta);
+            const bitangentY = -ringRadius;
+            const bitangentZ = ny * Math.sin(theta);
+            const radialJitter = (Math.random() - 0.5) * tileSize * 0.58;
+            const tangentJitter = (Math.random() - 0.5) * tileSize * 0.46;
+            const bitangentJitter = (Math.random() - 0.5) * tileSize * 0.46;
+            const radiusWithJitter = sphereRadius + radialJitter;
+            const baseX = nx * radiusWithJitter + tangentX * tangentJitter + bitangentX * bitangentJitter;
+            const baseY = ny * radiusWithJitter + tangentY * tangentJitter + bitangentY * bitangentJitter;
+            const baseZ = nz * radiusWithJitter + tangentZ * tangentJitter + bitangentZ * bitangentJitter;
+            const tile = document.createElement('a');
+            tile.className = 'canvas-tile';
+            tile.href = srcTile.getAttribute('href') || '#';
+            tile.target = '_blank';
+            tile.rel = 'noreferrer noopener';
+            tile.style.width = tileSize + 'px';
+            tile.style.height = tileSize + 'px';
+            tile.style.backgroundImage = 'url("' + img.src.replace(/"/g, '\\"') + '")';
+            field.appendChild(tile);
+            const isDynamic = i % dynamicStep === 0;
+            const state = {
+              el: tile,
+              baseX: baseX,
+              baseY: baseY,
+              baseZ: baseZ,
+              rotX: (Math.random() - 0.5) * 8.6,
+              rotY: (Math.random() - 0.5) * 9.2,
+              rotZ: (Math.random() - 0.5) * 12.4,
+              isDynamic: isDynamic,
+              motionPhase: Math.random() * Math.PI * 2,
+              motionSpeed: 0.48 + Math.random() * 0.45,
+              motionAmpX: isDynamic ? (0.7 + Math.random() * 2.1) : 0,
+              motionAmpY: isDynamic ? (0.5 + Math.random() * 1.4) : 0,
+              motionAmpZ: isDynamic ? (0.6 + Math.random() * 2.3) : 0,
+              hover: 0,
+              targetHover: 0,
+              pullX: 0,
+              pullY: 0,
+              targetPullX: 0,
+              targetPullY: 0,
+              isPointerOver: false,
+              hasPointerSample: false,
+              lastPointerX: 0,
+              lastPointerY: 0,
+              recoilX: 0,
+              recoilY: 0,
+              recoilLife: 0,
+              depthRank: -1,
+              screenAlpha: -1
+            };
+            tileStates.push(state);
+
+            tile.addEventListener('pointerenter', function (event) {
+              state.targetHover = 1;
+              state.isPointerOver = true;
+              state.recoilLife = 0;
+              state.hasPointerSample = true;
+              state.lastPointerX = event.clientX;
+              state.lastPointerY = event.clientY;
+              const rect = tile.getBoundingClientRect();
+              if (rect.width && rect.height) {
+                const centerX = rect.left + rect.width * 0.5;
+                const centerY = rect.top + rect.height * 0.5;
+                const dx = event.clientX - centerX;
+                const dy = event.clientY - centerY;
+                const magnetScale = Math.max(26, Math.min(rect.width, rect.height) * 0.86);
+                const pullCenterX = clamp(dx / magnetScale, -0.72, 0.72);
+                const pullCenterY = clamp(dy / magnetScale, -0.72, 0.72);
+                state.targetPullX = pullCenterX;
+                state.targetPullY = pullCenterY;
+                state.pullX = pullCenterX;
+                state.pullY = pullCenterY;
+              }
+              hoverNeedsRender = true;
+              ensureRender();
+            });
+            tile.addEventListener('pointerleave', function (event) {
+              state.targetHover = 0;
+              state.isPointerOver = false;
+              state.hasPointerSample = false;
+              const rect = tile.getBoundingClientRect();
+              if (rect.width && rect.height) {
+                const centerX = rect.left + rect.width * 0.5;
+                const centerY = rect.top + rect.height * 0.5;
+                const dx = event.clientX - centerX;
+                const dy = event.clientY - centerY;
+                const recoilScale = Math.max(28, Math.min(rect.width, rect.height) * 0.86);
+                state.recoilX = clamp(-dx / recoilScale, -0.8, 0.8);
+                state.recoilY = clamp(-dy / recoilScale, -0.8, 0.8);
+              } else {
+                state.recoilX = clamp(-(state.pullX * 0.9 + state.targetPullX * 0.24), -0.8, 0.8);
+                state.recoilY = clamp(-(state.pullY * 0.9 + state.targetPullY * 0.24), -0.8, 0.8);
+              }
+              state.recoilLife = 1;
+              hoverNeedsRender = true;
+              ensureRender();
+            });
+            tile.addEventListener('pointermove', function (event) {
+              const rect = tile.getBoundingClientRect();
+              if (!rect.width || !rect.height) return;
+              const magnetScale = Math.max(26, Math.min(rect.width, rect.height) * 0.86);
+              if (state.hasPointerSample) {
+                const deltaX = event.clientX - state.lastPointerX;
+                const deltaY = event.clientY - state.lastPointerY;
+                state.targetPullX += deltaX / magnetScale;
+                state.targetPullY += deltaY / magnetScale;
+              }
+              const centerX = rect.left + rect.width * 0.5;
+              const centerY = rect.top + rect.height * 0.5;
+              const dx = event.clientX - centerX;
+              const dy = event.clientY - centerY;
+              const centerPullX = dx / magnetScale;
+              const centerPullY = dy / magnetScale;
+              state.targetPullX += (centerPullX - state.targetPullX) * 0.44;
+              state.targetPullY += (centerPullY - state.targetPullY) * 0.44;
+              state.targetPullX = clamp(state.targetPullX, -0.72, 0.72);
+              state.targetPullY = clamp(state.targetPullY, -0.72, 0.72);
+              state.hasPointerSample = true;
+              state.lastPointerX = event.clientX;
+              state.lastPointerY = event.clientY;
+              state.isPointerOver = true;
+              state.recoilLife = 0;
+              hoverNeedsRender = true;
+              ensureRender();
+            });
+          }
+        }
+
+        function renderTiles(forceAll) {
+          let hoverAnimating = false;
+          const radX = rotX * Math.PI / 180;
+          const radY = rotY * Math.PI / 180;
+          const sinX = Math.sin(radX);
+          const cosX = Math.cos(radX);
+          const sinY = Math.sin(radY);
+          const cosY = Math.cos(radY);
+          for (let i = 0; i < tileStates.length; i += 1) {
+            const t = tileStates[i];
+            const hoverDelta = t.targetHover - t.hover;
+            t.hover += hoverDelta * 0.24;
+            if (Math.abs(hoverDelta) > 0.002) hoverAnimating = true;
+            const hoverActive = Math.abs(hoverDelta) > 0.002 || t.hover > 0.001;
+
+            if (!t.isPointerOver) {
+              if (t.recoilLife > 0.003) {
+                const recoilEnvelope = t.recoilLife * t.recoilLife;
+                t.targetPullX = t.recoilX * recoilEnvelope;
+                t.targetPullY = t.recoilY * recoilEnvelope;
+                t.recoilLife *= 0.82;
+                hoverAnimating = true;
+              } else {
+                t.recoilLife = 0;
+                t.targetPullX *= 0.74;
+                t.targetPullY *= 0.74;
+                if (Math.abs(t.targetPullX) < 0.001) t.targetPullX = 0;
+                if (Math.abs(t.targetPullY) < 0.001) t.targetPullY = 0;
+              }
+            }
+
+            const pullDeltaX = t.targetPullX - t.pullX;
+            const pullDeltaY = t.targetPullY - t.pullY;
+            t.pullX += pullDeltaX * 0.28;
+            t.pullY += pullDeltaY * 0.28;
+            if (Math.abs(pullDeltaX) > 0.002 || Math.abs(pullDeltaY) > 0.002) hoverAnimating = true;
+
+            if (!forceAll && !hoverActive && !t.isDynamic) continue;
+
+            let driftX = 0;
+            let driftY = 0;
+            let driftZ = 0;
+            if (t.isDynamic) {
+              const p = motionTime * t.motionSpeed + t.motionPhase;
+              driftX = Math.cos(p) * t.motionAmpX;
+              driftY = Math.sin(p * 1.07) * t.motionAmpY;
+              driftZ = Math.sin(p * 0.75) * t.motionAmpZ;
+            }
+
+            const pullDistance = tileSize * (0.36 + t.hover * 0.08);
+            const pullX = t.pullX * pullDistance;
+            const pullY = t.pullY * pullDistance;
+            const hoverLift = t.hover * (tileSize * 0.76) + (Math.abs(t.pullX) + Math.abs(t.pullY)) * tileSize * 0.14;
+            const scale = 1 + t.hover * 0.31;
+            const hoverRotX = -t.pullY * 3.2;
+            const hoverRotY = t.pullX * 3.8;
+            const worldX = t.baseX + driftX + pullX;
+            const worldY = t.baseY + driftY + pullY;
+            const worldZ = t.baseZ + driftZ + hoverLift;
+            const horizontal = Math.max(0.0001, Math.sqrt(worldX * worldX + worldZ * worldZ));
+            const sphereFaceY = Math.atan2(worldX, worldZ) * RAD_TO_DEG;
+            const sphereFaceX = -Math.atan2(worldY, horizontal) * RAD_TO_DEG;
+
+            // Compute depth in camera space using the same rotation basis as the sphere.
+            const zAfterY = -worldX * sinY + worldZ * cosY;
+            const zCamera = worldY * sinX + zAfterY * cosX;
+            if (t.screenAlpha !== 1) {
+              t.screenAlpha = 1;
+              t.el.style.opacity = '1';
+              t.el.style.pointerEvents = 'auto';
+            }
+            const depthRank = Math.round((zCamera + sphereRadius * 4 + 3000) * 1000) + i;
+            if (depthRank !== t.depthRank) {
+              t.depthRank = depthRank;
+              t.el.style.zIndex = String(depthRank);
+            }
+            t.el.style.transform =
+              'translate3d(' + snap(worldX).toFixed(1) + 'px,' +
+              snap(worldY).toFixed(1) + 'px,' +
+              snap(worldZ).toFixed(1) + 'px) ' +
+              'rotateY(' + snap(sphereFaceY + spinFaceY + t.rotY + hoverRotY).toFixed(1) + 'deg) ' +
+              'rotateX(' + snap(sphereFaceX + spinFaceX + t.rotX + hoverRotX).toFixed(1) + 'deg) ' +
+              'rotateZ(' + snap(t.rotZ).toFixed(1) + 'deg) ' +
+              'scale(' + scale.toFixed(3) + ')';
+          }
+          return hoverAnimating;
+        }
+
+        function frame() {
+          if (stopped) {
+            isRendering = false;
+            return;
+          }
+          const rotDeltaX = normalizeAngle(targetRotX - prevRotX);
+          const rotDeltaY = normalizeAngle(targetRotY - prevRotY);
+          spinFaceX += (clamp(rotDeltaX * -3.4, -16, 16) - spinFaceX) * 0.24;
+          spinFaceY += (clamp(rotDeltaY * 3.6, -20, 20) - spinFaceY) * 0.24;
+          prevRotX = targetRotX;
+          prevRotY = targetRotY;
+          rotX = targetRotX;
+          rotY = targetRotY;
+          const zoomDelta = targetZoom - zoom;
+          if (Math.abs(zoomDelta) < 0.06) {
+            zoom = targetZoom;
+          } else {
+            zoom += zoomDelta * 0.24;
+          }
+
+          updateCamera();
+          const cameraAnimating =
+            Math.abs(targetZoom - zoom) > 0.1;
+          const spinAnimating =
+            Math.abs(spinFaceX) > 0.06 || Math.abs(spinFaceY) > 0.06;
+          let hoverAnimating = false;
+          if (hoverNeedsRender || motionNeedsRender || cameraAnimating || spinAnimating) {
+            hoverAnimating = renderTiles(!!(cameraAnimating || spinAnimating));
+            hoverNeedsRender = hoverAnimating;
+            motionNeedsRender = false;
+          }
+
+          if (hoverAnimating || cameraAnimating || spinAnimating) {
+            rafId = window.requestAnimationFrame(frame);
+            return;
+          }
+          isRendering = false;
+          rafId = 0;
+        }
+
+        function onPointerDown(event) {
+          if (event.button !== 0) return;
+          if (isDragging) return;
+          isDragging = true;
+          activePointerId = event.pointerId;
+          didDrag = false;
+          startX = event.clientX;
+          startY = event.clientY;
+          space.classList.add('is-dragging');
+          if (space.setPointerCapture) {
+            try {
+              space.setPointerCapture(activePointerId);
+            } catch (e) {}
+          }
+          ensureRender();
+        }
+
+        function onPointerMove(event) {
+          if (!isDragging) return;
+          if (activePointerId !== null && event.pointerId !== activePointerId) return;
+          const dx = event.clientX - startX;
+          const dy = event.clientY - startY;
+          if (!didDrag) {
+            if (Math.abs(dx) + Math.abs(dy) <= 6) return;
+            didDrag = true;
+            startX = event.clientX;
+            startY = event.clientY;
+            return;
+          }
+          targetRotY += dx * 0.18;
+          targetRotX -= dy * 0.14;
+          targetRotX = normalizeAngle(targetRotX);
+          targetRotY = normalizeAngle(targetRotY);
+          rotX = targetRotX;
+          rotY = targetRotY;
+          startX = event.clientX;
+          startY = event.clientY;
+          ensureRender();
+        }
+
+        function endDrag(pointerId) {
+          if (!isDragging) return;
+          isDragging = false;
+          activePointerId = null;
+          space.classList.remove('is-dragging');
+          if (space.releasePointerCapture && pointerId !== null) {
+            try {
+              space.releasePointerCapture(pointerId);
+            } catch (e) {}
+          }
+        }
+
+        function onPointerUp(event) {
+          if (activePointerId !== null && event.pointerId !== activePointerId) return;
+          endDrag(event.pointerId);
+          ensureRender();
+        }
+
+        function onPointerCancel(event) {
+          if (activePointerId !== null && event.pointerId !== activePointerId) return;
+          endDrag(event.pointerId);
+          ensureRender();
+        }
+
+        function onWindowBlur() {
+          endDrag(activePointerId);
+        }
+
+        function onWheel(event) {
+          event.preventDefault();
+          const wheelUnit = event.deltaMode === 1 ? 16 : (event.deltaMode === 2 ? window.innerHeight : 1);
+          const wheelDelta = event.deltaY * wheelUnit;
+          targetZoom = clamp(targetZoom - wheelDelta * 1.9, zoomFarLimit, zoomNearLimit);
+          ensureRender();
+        }
+
+        function onClickCapture(event) {
+          if (!didDrag) return;
+          didDrag = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }
+
+        function resize() {
+          buildTiles();
+          updateCamera();
+          renderTiles(true);
+          hoverNeedsRender = false;
+          motionNeedsRender = false;
+        }
+
+        buildTiles();
+        updateCamera();
+        renderTiles(true);
+        hoverNeedsRender = false;
+        motionNeedsRender = false;
+        motionTimer = window.setInterval(function () {
+          motionTime += 0.035;
+          motionNeedsRender = true;
+          ensureRender();
+        }, 70);
+        space.addEventListener('pointerdown', onPointerDown);
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerCancel);
+        window.addEventListener('blur', onWindowBlur);
+        space.addEventListener('wheel', onWheel, { passive: false });
+        space.addEventListener('click', onClickCapture, true);
+
+        return {
+          resize: resize,
+          zoomIn: function () {
+            targetZoom = clamp(targetZoom + 120, zoomFarLimit, zoomNearLimit);
+            ensureRender();
+          },
+          zoomOut: function () {
+            targetZoom = clamp(targetZoom - 120, zoomFarLimit, zoomNearLimit);
+            ensureRender();
+          },
+          setSizeFactor: function (nextSizeFactor) {
+            currentCanvasSizeFactor = nextSizeFactor;
+            buildTiles();
+            updateCamera();
+            renderTiles(true);
+            hoverNeedsRender = false;
+            motionNeedsRender = false;
+          },
+          destroy: function () {
+            stopped = true;
+            if (rafId) window.cancelAnimationFrame(rafId);
+            if (motionTimer) window.clearInterval(motionTimer);
+            endDrag(activePointerId);
+            space.removeEventListener('pointerdown', onPointerDown);
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+            window.removeEventListener('pointercancel', onPointerCancel);
+            window.removeEventListener('blur', onWindowBlur);
+            space.removeEventListener('wheel', onWheel);
+            space.removeEventListener('click', onClickCapture, true);
+            if (space.parentNode) space.parentNode.removeChild(space);
+          }
+        };
+      }
+
+      function createCardsScene() {
+        if (!canvasMode) return null;
+        const tilesForCards = sampleTilesForCanvas();
+        const space = document.createElement('div');
+        const camera = document.createElement('div');
+        const field = document.createElement('div');
+        space.className = 'canvas-space';
+        camera.className = 'canvas-camera';
+        field.className = 'canvas-field';
+        camera.appendChild(field);
+        space.appendChild(camera);
+        canvasMode.prepend(space);
+
+        const tileStates = [];
+        const SIZE_TO_CARDS_SCALE = { 4: 3.2, 3: 2.35, 2: 1.55, 1: 1.08 };
+        const SIZE_TO_CARDS_SPREAD = { 4: 1.05, 3: 1.0, 2: 0.92, 1: 0.84 };
+        const PERSPECTIVE = 1100;
+        let currentCardsSizeFactor = sizeFactor;
+        let tileSize = 72;
+        let cloudSpreadX = 1600;
+        let cloudSpreadY = 1200;
+        let cloudSpreadZ = 2200;
+        let fadeStartSizePx = 520;
+        let fadeEndSizePx = 760;
+        let camX = 0;
+        let camY = 0;
+        let zoom = -1200;
+        let rotX = -4;
+        let rotY = 0;
+        let targetCamX = camX;
+        let targetCamY = camY;
+        let targetZoom = zoom;
+        let targetRotX = rotX;
+        let targetRotY = rotY;
+        let zoomNearLimit = -120;
+        let zoomFarLimit = -6200;
+        let rafId = 0;
+        let stopped = false;
+        let startX = 0;
+        let startY = 0;
+        let isDragging = false;
+        let activePointerId = null;
+        let didDrag = false;
+        let isRendering = false;
+        let hoverNeedsRender = false;
+        let motionNeedsRender = false;
+        let motionTime = 0;
+        let motionTimer = 0;
+
+        function clamp(value, min, max) {
+          return Math.max(min, Math.min(max, value));
+        }
+
+        function normalizeAngle(value) {
+          let out = value % 360;
+          if (out > 180) out -= 360;
+          if (out < -180) out += 360;
+          return out;
+        }
+
+        function hash(num) {
+          const out = Math.sin(num * 91.173 + 57.139) * 43758.5453;
+          return out - Math.floor(out);
+        }
+
+        function sizeScaleForCards(nextSizeFactor) {
+          return SIZE_TO_CARDS_SCALE[nextSizeFactor] || 1;
+        }
+
+        function sizeSpreadForCards(nextSizeFactor) {
+          return SIZE_TO_CARDS_SPREAD[nextSizeFactor] || 1;
+        }
+
+        function updateCamera() {
+          camera.style.transform =
+            'translate3d(' + camX.toFixed(2) + 'px,' + camY.toFixed(2) + 'px,' + zoom.toFixed(2) + 'px) ' +
+            'rotateX(' + rotX.toFixed(2) + 'deg) rotateY(' + rotY.toFixed(2) + 'deg)';
+        }
+
+        function ensureRender() {
+          if (stopped || isRendering) return;
+          isRendering = true;
+          rafId = window.requestAnimationFrame(frame);
+        }
+
+        function buildTiles() {
+          field.innerHTML = '';
+          tileStates.length = 0;
+          hoverNeedsRender = true;
+          motionNeedsRender = true;
+          motionTime = 0;
+          const viewportWidth = Math.max(320, canvasMode.clientWidth || window.innerWidth);
+          const viewportHeight = Math.max(280, canvasMode.clientHeight || window.innerHeight);
+          const minViewport = Math.max(280, Math.min(viewportWidth, viewportHeight));
+          const releaseCount = Math.max(1, tilesForCards.length);
+          const spreadFactor = sizeSpreadForCards(currentCardsSizeFactor);
+          const densitySize = minViewport / (Math.sqrt(releaseCount) * 1.2);
+          tileSize = Math.round(clamp(densitySize * sizeScaleForCards(currentCardsSizeFactor), 18, 220));
+          cloudSpreadX = clamp(viewportWidth * 2.3 * spreadFactor, 900, 3600);
+          cloudSpreadY = clamp(viewportHeight * 1.95 * spreadFactor, 760, 2800);
+          cloudSpreadZ = clamp(Math.sqrt(releaseCount) * 92 * spreadFactor, 980, 4200);
+          fadeStartSizePx = clamp(minViewport * 0.17, 120, 260);
+          fadeEndSizePx = clamp(minViewport * 0.26, fadeStartSizePx + 75, 390);
+          zoomNearLimit = Math.max(tileSize * 1.2, cloudSpreadZ * 0.76);
+          zoomFarLimit = -Math.max(6200, cloudSpreadZ * 1.7);
+          zoom = -clamp(cloudSpreadZ * 0.44, Math.abs(zoomNearLimit) + 20, Math.abs(zoomFarLimit) * 0.75);
+          targetZoom = zoom;
+          camX = 0;
+          camY = 0;
+          targetCamX = camX;
+          targetCamY = camY;
+          rotX = -4;
+          rotY = 0;
+          targetRotX = rotX;
+          targetRotY = rotY;
+
+          for (let i = 0; i < tilesForCards.length; i += 1) {
+            const srcTile = tilesForCards[i];
+            const img = srcTile.querySelector('img');
+            if (!img) continue;
+            const phi = hash(i * 17.33 + 1) * Math.PI * 2;
+            const cosTheta = hash(i * 19.79 + 2) * 2 - 1;
+            const sinTheta = Math.sqrt(Math.max(0, 1 - cosTheta * cosTheta));
+            const r = Math.cbrt(hash(i * 23.41 + 3));
+            const baseX = Math.cos(phi) * sinTheta * r * cloudSpreadX * 0.5;
+            const baseY = cosTheta * r * cloudSpreadY * 0.5;
+            const baseZ = Math.sin(phi) * sinTheta * r * cloudSpreadZ * 0.5;
+            const tile = document.createElement('a');
+            tile.className = 'canvas-tile';
+            tile.href = srcTile.getAttribute('href') || '#';
+            tile.target = '_blank';
+            tile.rel = 'noreferrer noopener';
+            tile.style.width = tileSize + 'px';
+            tile.style.height = tileSize + 'px';
+            tile.style.backgroundImage = 'url("' + img.src.replace(/"/g, '\\"') + '")';
+            field.appendChild(tile);
+
+            const state = {
+              el: tile,
+              baseX: baseX,
+              baseY: baseY,
+              baseZ: baseZ,
+              rotX: (hash(i * 7.17 + 4) - 0.5) * 24,
+              rotY: (hash(i * 9.91 + 5) - 0.5) * 26,
+              rotZ: (hash(i * 11.63 + 6) - 0.5) * 12,
+              motionPhase: hash(i * 5.49 + 7) * Math.PI * 2,
+              motionSpeed: 0.36 + hash(i * 8.77 + 8) * 0.54,
+              motionAmpX: 3 + hash(i * 13.41 + 9) * 10,
+              motionAmpY: 2 + hash(i * 15.23 + 10) * 8,
+              motionAmpZ: 2 + hash(i * 21.19 + 11) * 10,
+              hover: 0,
+              targetHover: 0,
+              depthRank: -1,
+              screenAlpha: -1
+            };
+            tileStates.push(state);
+
+            tile.addEventListener('pointerenter', function () {
+              state.targetHover = 1;
+              hoverNeedsRender = true;
+              ensureRender();
+            });
+            tile.addEventListener('pointerleave', function () {
+              state.targetHover = 0;
+              hoverNeedsRender = true;
+              ensureRender();
+            });
+          }
+        }
+
+        function renderTiles(forceAll) {
+          let hoverAnimating = false;
+          const radX = rotX * Math.PI / 180;
+          const radY = rotY * Math.PI / 180;
+          const sinX = Math.sin(radX);
+          const cosX = Math.cos(radX);
+          const sinY = Math.sin(radY);
+          const cosY = Math.cos(radY);
+          for (let i = 0; i < tileStates.length; i += 1) {
+            const t = tileStates[i];
+            const hoverDelta = t.targetHover - t.hover;
+            t.hover += hoverDelta * 0.24;
+            if (Math.abs(hoverDelta) > 0.002) hoverAnimating = true;
+            const hoverActive = Math.abs(hoverDelta) > 0.002 || t.hover > 0.001;
+            if (!forceAll && !hoverActive) continue;
+
+            const p = motionTime * t.motionSpeed + t.motionPhase;
+            const driftX = Math.cos(p) * t.motionAmpX;
+            const driftY = Math.sin(p * 1.13) * t.motionAmpY;
+            const driftZ = Math.sin(p * 0.79) * t.motionAmpZ;
+            const worldX = t.baseX + driftX;
+            const worldY = t.baseY + driftY;
+            const worldZ = t.baseZ + driftZ + t.hover * tileSize * 0.42;
+            const zAfterY = -worldX * sinY + worldZ * cosY;
+            const zCamera = worldY * sinX + zAfterY * cosX;
+            const viewZ = zCamera + zoom;
+            const scale = 1 + t.hover * 0.22;
+            const perspectiveDiv = Math.max(1, PERSPECTIVE - viewZ);
+            const projectedSize = tileSize * scale * (PERSPECTIVE / perspectiveDiv);
+            let alpha = 1;
+            if (projectedSize > fadeStartSizePx) {
+              const fadeSpan = Math.max(1, fadeEndSizePx - fadeStartSizePx);
+              alpha = 1 - (projectedSize - fadeStartSizePx) / fadeSpan;
+              alpha = clamp(alpha, 0, 1);
+            }
+            if (Math.abs(alpha - t.screenAlpha) > 0.01) {
+              t.screenAlpha = alpha;
+              t.el.style.opacity = alpha.toFixed(3);
+              t.el.style.pointerEvents = alpha > 0.02 ? 'auto' : 'none';
+            }
+            if (alpha <= 0.02) {
+              t.targetHover = 0;
+            }
+            const depthRank = Math.round((zCamera + cloudSpreadZ + 4000) * 1000) + i;
+            if (depthRank !== t.depthRank) {
+              t.depthRank = depthRank;
+              t.el.style.zIndex = String(depthRank);
+            }
+            t.el.style.transform =
+              'translate3d(' + worldX.toFixed(1) + 'px,' + worldY.toFixed(1) + 'px,' + worldZ.toFixed(1) + 'px) ' +
+              'rotateY(' + (t.rotY - rotY * 0.46).toFixed(1) + 'deg) rotateX(' + (t.rotX - rotX * 0.42).toFixed(1) + 'deg) ' +
+              'rotateZ(' + t.rotZ.toFixed(1) + 'deg) scale(' + scale.toFixed(3) + ')';
+          }
+          return hoverAnimating;
+        }
+
+        function frame() {
+          if (stopped) {
+            isRendering = false;
+            return;
+          }
+          camX += (targetCamX - camX) * 0.2;
+          camY += (targetCamY - camY) * 0.2;
+          rotX += (targetRotX - rotX) * 0.2;
+          rotY += (targetRotY - rotY) * 0.2;
+          const zoomDelta = targetZoom - zoom;
+          if (Math.abs(zoomDelta) < 0.08) {
+            zoom = targetZoom;
+          } else {
+            zoom += zoomDelta * 0.22;
+          }
+          updateCamera();
+          const cameraAnimating =
+            Math.abs(targetCamX - camX) > 0.2 ||
+            Math.abs(targetCamY - camY) > 0.2 ||
+            Math.abs(targetRotX - rotX) > 0.02 ||
+            Math.abs(targetRotY - rotY) > 0.02 ||
+            Math.abs(targetZoom - zoom) > 0.12;
+          let hoverAnimating = false;
+          if (hoverNeedsRender || motionNeedsRender || cameraAnimating) {
+            hoverAnimating = renderTiles(!!cameraAnimating);
+            hoverNeedsRender = hoverAnimating;
+            motionNeedsRender = false;
+          }
+          if (hoverAnimating || cameraAnimating) {
+            rafId = window.requestAnimationFrame(frame);
+            return;
+          }
+          isRendering = false;
+          rafId = 0;
+        }
+
+        function onPointerDown(event) {
+          if (event.button !== 0) return;
+          if (isDragging) return;
+          isDragging = true;
+          activePointerId = event.pointerId;
+          didDrag = false;
+          startX = event.clientX;
+          startY = event.clientY;
+          space.classList.add('is-dragging');
+          if (space.setPointerCapture) {
+            try {
+              space.setPointerCapture(activePointerId);
+            } catch (e) {}
+          }
+          ensureRender();
+        }
+
+        function onPointerMove(event) {
+          if (!isDragging) return;
+          if (activePointerId !== null && event.pointerId !== activePointerId) return;
+          const dx = event.clientX - startX;
+          const dy = event.clientY - startY;
+          if (!didDrag) {
+            if (Math.abs(dx) + Math.abs(dy) <= 6) return;
+            didDrag = true;
+            startX = event.clientX;
+            startY = event.clientY;
+            return;
+          }
+          targetCamX = clamp(targetCamX + dx * 1.08, -cloudSpreadX * 0.44, cloudSpreadX * 0.44);
+          targetCamY = clamp(targetCamY + dy * 1.08, -cloudSpreadY * 0.44, cloudSpreadY * 0.44);
+          targetRotY = normalizeAngle(targetRotY + dx * 0.045);
+          targetRotX = clamp(targetRotX - dy * 0.04, -40, 40);
+          startX = event.clientX;
+          startY = event.clientY;
+          ensureRender();
+        }
+
+        function endDrag(pointerId) {
+          if (!isDragging) return;
+          isDragging = false;
+          activePointerId = null;
+          space.classList.remove('is-dragging');
+          if (space.releasePointerCapture && pointerId !== null) {
+            try {
+              space.releasePointerCapture(pointerId);
+            } catch (e) {}
+          }
+        }
+
+        function onPointerUp(event) {
+          if (activePointerId !== null && event.pointerId !== activePointerId) return;
+          endDrag(event.pointerId);
+          ensureRender();
+        }
+
+        function onPointerCancel(event) {
+          if (activePointerId !== null && event.pointerId !== activePointerId) return;
+          endDrag(event.pointerId);
+          ensureRender();
+        }
+
+        function onWindowBlur() {
+          endDrag(activePointerId);
+        }
+
+        function onWheel(event) {
+          event.preventDefault();
+          const wheelUnit = event.deltaMode === 1 ? 16 : (event.deltaMode === 2 ? window.innerHeight : 1);
+          const wheelDelta = event.deltaY * wheelUnit;
+          targetZoom = clamp(targetZoom - wheelDelta * 2.2, zoomFarLimit, zoomNearLimit);
+          ensureRender();
+        }
+
+        function onClickCapture(event) {
+          if (!didDrag) return;
+          didDrag = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }
+
+        function resize() {
+          buildTiles();
+          updateCamera();
+          renderTiles(true);
+          hoverNeedsRender = false;
+          motionNeedsRender = false;
+        }
+
+        buildTiles();
+        updateCamera();
+        renderTiles(true);
+        hoverNeedsRender = false;
+        motionNeedsRender = false;
+        motionTimer = window.setInterval(function () {
+          motionTime += 0.035;
+          motionNeedsRender = true;
+          ensureRender();
+        }, 70);
+        space.addEventListener('pointerdown', onPointerDown);
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerCancel);
+        window.addEventListener('blur', onWindowBlur);
+        space.addEventListener('wheel', onWheel, { passive: false });
+        space.addEventListener('click', onClickCapture, true);
+
+        return {
+          resize: resize,
+          zoomIn: function () {
+            targetZoom = clamp(targetZoom + 160, zoomFarLimit, zoomNearLimit);
+            ensureRender();
+          },
+          zoomOut: function () {
+            targetZoom = clamp(targetZoom - 160, zoomFarLimit, zoomNearLimit);
+            ensureRender();
+          },
+          setSizeFactor: function (nextSizeFactor) {
+            currentCardsSizeFactor = nextSizeFactor;
+            buildTiles();
+            updateCamera();
+            renderTiles(true);
+            hoverNeedsRender = false;
+            motionNeedsRender = false;
+          },
+          destroy: function () {
+            stopped = true;
+            if (rafId) window.cancelAnimationFrame(rafId);
+            if (motionTimer) window.clearInterval(motionTimer);
+            endDrag(activePointerId);
+            space.removeEventListener('pointerdown', onPointerDown);
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+            window.removeEventListener('pointercancel', onPointerCancel);
+            window.removeEventListener('blur', onWindowBlur);
+            space.removeEventListener('wheel', onWheel);
+            space.removeEventListener('click', onClickCapture, true);
+            if (space.parentNode) space.parentNode.removeChild(space);
+          }
+        };
+      }
+
+      function createSceneByMode(nextMode) {
+        if (nextMode === 'cards') return createCardsScene();
+        return createSphereScene();
+      }
+
+      function enterCanvasMode(nextMode) {
+        if (!canvasMode) return;
+        document.documentElement.classList.add('canvas-active');
+        document.body.classList.add('canvas-active');
+        canvasMode.classList.add('is-active');
+        canvasMode.setAttribute('aria-hidden', 'false');
+        if (floatingScene && floatingSceneType !== nextMode) {
+          floatingScene.destroy();
+          floatingScene = null;
+        }
+        if (!floatingScene) {
+          floatingScene = createSceneByMode(nextMode);
+          floatingSceneType = nextMode;
+        }
+        if (floatingScene) floatingScene.resize();
+      }
+
+      function leaveCanvasMode() {
+        document.documentElement.classList.remove('canvas-active');
+        document.body.classList.remove('canvas-active');
+        if (canvasMode) {
+          canvasMode.classList.remove('is-active');
+          canvasMode.setAttribute('aria-hidden', 'true');
+        }
+        if (floatingScene) {
+          floatingScene.destroy();
+          floatingScene = null;
+        }
+        floatingSceneType = '';
+      }
+
       function updateGrid() {
         const effectiveFactor = SIZE_SCALE[sizeFactor] || 1;
-        const minTile = sizeFactor === 1
-          ? X1_TILE_SIZE
-          : Math.max(48, Math.floor(BASE_MIN_TILE * effectiveFactor));
+        const minTile = sizeFactor === 1 ? X1_TILE_SIZE : Math.max(48, Math.floor(BASE_MIN_TILE * effectiveFactor));
         const viewportWidth = document.documentElement.clientWidth;
         const cols = Math.max(1, Math.ceil(viewportWidth / minTile));
         const cellSize = Math.max(1, Math.ceil(viewportWidth / cols));
@@ -714,7 +1900,6 @@
           const col = i % cols;
           const row = Math.floor(i / cols);
           const tile = orderedTiles[i];
-
           tile.style.left = col * cellSize + 'px';
           tile.style.top = row * cellSize + 'px';
           tile.style.width = cellSize + overlap + 'px';
@@ -722,23 +1907,97 @@
         }
       }
 
-      function setOrderMode(nextMode) {
-        orderMode = nextMode;
-        if (typeShuffleBtn) typeShuffleBtn.classList.toggle('is-active', orderMode === 'shuffle');
-        if (typeNormalBtn) typeNormalBtn.classList.toggle('is-active', orderMode === 'normal');
-        syncAllPillSliders();
-
+      function applyTypeOrder() {
         orderedTiles = originalTiles.slice();
-        if (orderMode === 'shuffle') shuffleInPlace(orderedTiles);
+        if (typeMode === 'shuffle') shuffleInPlace(orderedTiles);
+      }
 
-        for (let i = 0; i < orderedTiles.length; i += 1) {
-          releases.appendChild(orderedTiles[i]);
-        }
+      function renderOrderedGrid() {
+        for (let i = 0; i < orderedTiles.length; i += 1) releases.appendChild(orderedTiles[i]);
         updateGrid();
       }
 
-      if (typeShuffleBtn) typeShuffleBtn.addEventListener('click', function () { setOrderMode('shuffle'); });
-      if (typeNormalBtn) typeNormalBtn.addEventListener('click', function () { setOrderMode('normal'); });
+      function updateTypeButtons() {
+        if (typeShuffleBtn) typeShuffleBtn.classList.toggle('is-active', typeMode === 'shuffle');
+        if (typeNormalBtn) typeNormalBtn.classList.toggle('is-active', typeMode === 'normal');
+      }
+
+      function updateViewButtons() {
+        if (viewPlainBtn) viewPlainBtn.classList.toggle('is-active', viewMode === 'plain');
+        if (viewCardsBtn) viewCardsBtn.classList.toggle('is-active', viewMode === 'cards');
+        if (viewSphereBtn) viewSphereBtn.classList.toggle('is-active', viewMode === 'sphere');
+      }
+
+      function setTypeMode(nextMode) {
+        if (typeMode === nextMode) return;
+        typeMode = nextMode;
+        applyTypeOrder();
+        updateTypeButtons();
+        lockControlButtonWidths();
+        syncAllPillSliders();
+        if (viewMode === 'plain') {
+          renderOrderedGrid();
+          return;
+        }
+        if (floatingScene) {
+          floatingScene.destroy();
+          floatingScene = null;
+          floatingSceneType = '';
+        }
+        enterCanvasMode(viewMode);
+      }
+
+      function reshuffleNow() {
+        if (typeMode !== 'shuffle') return;
+        applyTypeOrder();
+        if (viewMode === 'plain') {
+          renderOrderedGrid();
+          return;
+        }
+        if (floatingScene) {
+          floatingScene.destroy();
+          floatingScene = null;
+          floatingSceneType = '';
+        }
+        enterCanvasMode(viewMode);
+      }
+
+      function setViewMode(nextMode) {
+        if (viewMode === nextMode) return;
+        const was3dMode = viewMode === 'sphere' || viewMode === 'cards';
+        const is3dMode = nextMode === 'sphere' || nextMode === 'cards';
+        if (was3dMode && !is3dMode) leaveCanvasMode();
+        viewMode = nextMode;
+        updateViewButtons();
+        syncAllPillSliders();
+        if (nextMode === 'sphere' && sizeFactor !== 2) {
+          setSize(2);
+        }
+        if (is3dMode) {
+          enterCanvasMode(viewMode);
+          return;
+        }
+        renderOrderedGrid();
+      }
+
+      if (typeShuffleBtn) {
+        typeShuffleBtn.addEventListener('click', function (event) {
+          const target = event.target;
+          if (target && target.classList && target.classList.contains('shuffle-reshuffle')) {
+            event.preventDefault();
+            event.stopPropagation();
+            reshuffleNow();
+            return;
+          }
+          setTypeMode('shuffle');
+        });
+      }
+      if (typeNormalBtn) typeNormalBtn.addEventListener('click', function () { setTypeMode('normal'); });
+      if (viewPlainBtn) viewPlainBtn.addEventListener('click', function () { setViewMode('plain'); });
+      if (viewSphereBtn) viewSphereBtn.addEventListener('click', function () { setViewMode('sphere'); });
+      if (viewCardsBtn) viewCardsBtn.addEventListener('click', function () { setViewMode('cards'); });
+      if (canvasZoomInBtn) canvasZoomInBtn.addEventListener('click', function () { if (floatingScene) floatingScene.zoomIn(); });
+      if (canvasZoomOutBtn) canvasZoomOutBtn.addEventListener('click', function () { if (floatingScene) floatingScene.zoomOut(); });
 
       function setSize(nextFactor) {
         sizeFactor = nextFactor;
@@ -747,7 +2006,13 @@
         if (sizeX2Btn) sizeX2Btn.classList.toggle('is-active', sizeFactor === 2);
         if (sizeX1Btn) sizeX1Btn.classList.toggle('is-active', sizeFactor === 1);
         syncAllPillSliders();
-        updateGrid();
+        if (viewMode !== 'sphere' && viewMode !== 'cards') {
+          updateGrid();
+          return;
+        }
+        if (floatingScene && typeof floatingScene.setSizeFactor === 'function') {
+          floatingScene.setSizeFactor(sizeFactor);
+        }
       }
 
       if (sizeX4Btn) sizeX4Btn.addEventListener('click', function () { setSize(4); });
@@ -756,11 +2021,20 @@
       if (sizeX1Btn) sizeX1Btn.addEventListener('click', function () { setSize(1); });
 
       lockControlButtonWidths();
+      syncCanvasTopOffset();
+      applyTypeOrder();
+      updateTypeButtons();
+      updateViewButtons();
       syncAllPillSliders();
-      updateGrid();
+      renderOrderedGrid();
       window.addEventListener('resize', function () {
         lockControlButtonWidths();
+        syncCanvasTopOffset();
         syncAllPillSliders();
+        if (viewMode === 'sphere' || viewMode === 'cards') {
+          if (floatingScene) floatingScene.resize();
+          return;
+        }
         updateGrid();
       });
     })();
