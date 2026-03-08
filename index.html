@@ -291,6 +291,70 @@
     .controls.is-compact .control-cluster[data-section].is-compact-visible .control-pill {
       max-width: 100%;
     }
+    @media (hover: none) and (pointer: coarse) {
+      a,
+      button,
+      .shuffle-reshuffle {
+        -webkit-tap-highlight-color: transparent;
+      }
+      .controls button:focus,
+      .controls button:focus-visible,
+      .releases a:focus,
+      .releases a:focus-visible,
+      .shuffle-reshuffle:focus,
+      .shuffle-reshuffle:focus-visible {
+        outline: none;
+        box-shadow: none;
+      }
+    }
+    @media (max-width: 760px) {
+      .controls {
+        min-height: 40px;
+        gap: 6px;
+        padding: 4px 8px;
+      }
+      .control-cluster {
+        gap: 6px;
+      }
+      .control-cluster.size-cluster,
+      .control-cluster.view-cluster {
+        margin-left: 8px;
+      }
+      .control-label {
+        font-size: 8px;
+        padding-left: 2px;
+      }
+      .control-pill {
+        gap: 3px;
+        padding: 2px;
+      }
+      .control-pill::before {
+        top: 2px;
+        left: var(--slider-x, 2px);
+        height: calc(100% - 4px);
+      }
+      .controls button {
+        height: 18px;
+        min-width: 42px;
+        gap: 3px;
+        padding: 1px 7px 0;
+        font-size: 8px;
+        letter-spacing: 0.02em;
+      }
+      #typeShuffleBtn {
+        padding: 1px 18px 0 7px;
+      }
+      .controls button .shuffle-reshuffle {
+        width: 14px;
+        height: 14px;
+        min-width: 14px;
+      }
+      .controls button .shuffle-reshuffle::before {
+        width: 7px;
+        height: 7px;
+        background-size: 7px 7px;
+      }
+    }
     .releases {
       width: 100%;
       min-height: 100vh;
@@ -899,6 +963,7 @@
       const BASE_MIN_TILE = 180;
       const OVERLAP = 1;
       const X1_TILE_SIZE = 40;
+      const COMPACT_CONTROLS_BREAKPOINT = 760;
       const SIZE_SCALE = { 4: 0.9, 3: 0.6, 2: 0.34, 1: 0.14 };
       const originalTiles = tiles.slice();
       let orderedTiles = originalTiles.slice();
@@ -981,6 +1046,7 @@
 
       function controlsNeedCompactMode() {
         if (!controlsRoot || sectionClusters.length < 2) return false;
+        if (document.documentElement.clientWidth > COMPACT_CONTROLS_BREAKPOINT) return false;
         const prevCompactMode = compactControlsMode;
         if (prevCompactMode) applyCompactControlsState(false);
         let wrapped = false;
