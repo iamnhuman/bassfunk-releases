@@ -395,6 +395,8 @@
       inset: 0;
       overflow: hidden;
       perspective: 1100px;
+      perspective-origin: 50% 50%;
+      -webkit-perspective: 1100px;
       cursor: grab;
       touch-action: none;
     }
@@ -405,6 +407,7 @@
       position: absolute;
       inset: 0;
       transform-style: preserve-3d;
+      -webkit-transform-style: preserve-3d;
       will-change: transform;
     }
     .canvas-field {
@@ -412,6 +415,7 @@
       top: 50%;
       left: 50%;
       transform-style: preserve-3d;
+      -webkit-transform-style: preserve-3d;
       transform-origin: center center;
       will-change: transform;
     }
@@ -422,20 +426,26 @@
       overflow: hidden;
       cursor: pointer;
       background: #0f0f0f;
-      background-position: center center;
-      background-repeat: no-repeat;
-      background-size: cover;
       aspect-ratio: 1 / 1;
       box-shadow:
         0 12px 30px rgba(0, 0, 0, 0.42),
-        0 3px 10px rgba(0, 0, 0, 0.34);
+        0 3px 10px rgba(0, 0, 0, 0.34),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.14);
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
       transform-style: flat;
-      will-change: transform;
-      contain: none;
-      isolation: isolate;
-      outline: 1px solid rgba(255, 255, 255, 0.15);
+      -webkit-transform-style: flat;
+    }
+    .canvas-tile img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-drag: none;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
     }
     .canvas-tools {
       position: absolute;
@@ -957,6 +967,7 @@
       const controlButtons = Array.from(document.querySelectorAll('.controls button'));
       const controlPills = Array.from(document.querySelectorAll('.control-pill'));
       const sectionClusters = Array.from(document.querySelectorAll('.control-cluster[data-section]'));
+      const initialSearchParams = new URLSearchParams(window.location.search);
 
       const tiles = Array.from(releases.querySelectorAll('a'));
       const releaseImages = Array.from(releases.querySelectorAll('img'));
@@ -1168,6 +1179,19 @@
         }
       }
 
+      function mountCanvasTileImage(tile, srcImage) {
+        if (!tile || !srcImage) return;
+        tile.textContent = '';
+        tile.style.backgroundImage = '';
+        const tileImage = document.createElement('img');
+        tileImage.src = srcImage.currentSrc || srcImage.src;
+        tileImage.alt = '';
+        tileImage.decoding = 'async';
+        tileImage.loading = 'eager';
+        tileImage.draggable = false;
+        tile.appendChild(tileImage);
+      }
+
       function sampleTilesForCanvas() {
         return orderedTiles.slice();
       }
@@ -1353,7 +1377,7 @@
             tile.rel = 'noreferrer noopener';
             tile.style.width = tileSize + 'px';
             tile.style.height = tileSize + 'px';
-            tile.style.backgroundImage = 'url("' + img.src.replace(/"/g, '\\"') + '")';
+            mountCanvasTileImage(tile, img);
             field.appendChild(tile);
             const isDynamic = i % dynamicStep === 0;
             const state = {
@@ -1870,7 +1894,7 @@
             tile.rel = 'noreferrer noopener';
             tile.style.width = tileSize + 'px';
             tile.style.height = tileSize + 'px';
-            tile.style.backgroundImage = 'url("' + img.src.replace(/"/g, '\\"') + '")';
+            mountCanvasTileImage(tile, img);
             field.appendChild(tile);
 
             const state = {
@@ -2329,6 +2353,16 @@
       if (compactViewBtn) compactViewBtn.addEventListener('click', function () { setCompactSection('view'); });
       if (compactSizeBtn) compactSizeBtn.addEventListener('click', function () { setCompactSection('size'); });
 
+      function applyInitialStateFromUrl() {
+        if (!initialSearchParams || !initialSearchParams.toString()) return;
+        const nextView = (initialSearchParams.get('view') || '').toLowerCase();
+        const nextType = (initialSearchParams.get('type') || '').toLowerCase();
+        const nextSize = Number(initialSearchParams.get('size') || '0');
+        if (nextType === 'normal' || nextType === 'shuffle') setTypeMode(nextType);
+        if (nextView === 'plain' || nextView === 'cards' || nextView === 'sphere') setViewMode(nextView);
+        if (nextSize >= 1 && nextSize <= 4) setSize(nextSize);
+      }
+
       applyTypeOrder();
       updateTypeButtons();
       updateViewButtons();
@@ -2336,6 +2370,7 @@
       scheduleControlsLayout();
       waitForReleaseImages();
       renderOrderedGrid();
+      applyInitialStateFromUrl();
       maybeFinishControlsBootstrap();
       window.addEventListener('load', function () {
         controlsPageLoaded = true;
