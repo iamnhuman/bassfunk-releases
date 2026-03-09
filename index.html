@@ -122,11 +122,12 @@
       display: none;
       margin-left: 0;
     }
+    .control-cluster.type-cluster,
     .control-cluster.size-cluster {
       margin-left: 15px;
     }
     .control-cluster.view-cluster {
-      margin-left: 15px;
+      margin-left: 0;
     }
     .control-label {
       color: #efefef;
@@ -338,9 +339,12 @@
       .control-cluster {
         gap: 7px;
       }
-      .control-cluster.size-cluster,
-      .control-cluster.view-cluster {
+      .control-cluster.type-cluster,
+      .control-cluster.size-cluster {
         margin-left: 10px;
+      }
+      .control-cluster.view-cluster {
+        margin-left: 0;
       }
       .control-label {
         font-size: 10px;
@@ -421,6 +425,9 @@
       -webkit-perspective: 1100px;
       cursor: grab;
       touch-action: none;
+    }
+    .canvas-space.has-clickable-hover {
+      cursor: pointer;
     }
     .canvas-space.is-dragging {
       cursor: grabbing;
@@ -532,16 +539,9 @@
 	  <div class="controls is-booting">
 	    <div class="control-cluster compact-switch-cluster" id="compactSectionCluster" aria-hidden="true">
 	      <div class="control-pill" role="radiogroup" aria-label="Controls">
-	        <button type="button" id="compactTypeBtn" class="is-active"><span>Sort</span></button>
-	        <button type="button" id="compactViewBtn"><span>View</span></button>
+	        <button type="button" id="compactViewBtn" class="is-active"><span>View</span></button>
+	        <button type="button" id="compactTypeBtn"><span>Sort</span></button>
 	        <button type="button" id="compactSizeBtn"><span>Size</span></button>
-	      </div>
-	    </div>
-	    <div class="control-cluster" data-section="type">
-      <span class="control-label">Sort</span>
-	      <div class="control-pill" role="radiogroup" aria-label="Type">
-	        <button type="button" id="typeNormalBtn" class="is-active"><span>Normal</span></button>
-	        <button type="button" id="typeShuffleBtn"><span>Shuffle</span><span class="shuffle-reshuffle" title="Reshuffle"></span></button>
 	      </div>
 	    </div>
 	    <div class="control-cluster view-cluster" data-section="view">
@@ -550,6 +550,13 @@
 	        <button type="button" id="viewPlainBtn" class="is-active"><span>Plain</span></button>
 	        <button type="button" id="viewCardsBtn"><span>Cards</span></button>
 	        <button type="button" id="viewSphereBtn"><span>Sphere</span></button>
+	      </div>
+	    </div>
+	    <div class="control-cluster type-cluster" data-section="type">
+      <span class="control-label">Sort</span>
+	      <div class="control-pill" role="radiogroup" aria-label="Type">
+	        <button type="button" id="typeNormalBtn" class="is-active"><span>Normal</span></button>
+	        <button type="button" id="typeShuffleBtn"><span>Shuffle</span><span class="shuffle-reshuffle" title="Reshuffle"></span></button>
 	      </div>
 	    </div>
 	    <div class="control-cluster size-cluster" data-section="size">
@@ -1032,7 +1039,7 @@
       let controlsPageLoaded = document.readyState === 'complete';
       let controlsFontsLoaded = !(document.fonts && typeof document.fonts.ready === 'object' && typeof document.fonts.ready.then === 'function');
       let compactControlsMode = false;
-      let compactSection = 'type';
+      let compactSection = 'view';
       let pageLoaderHidden = !pageLoader;
 
       if (usePerformanceMode) {
@@ -1836,7 +1843,6 @@
           targetRotY += dx * 0.18;
           targetRotX -= dy * 0.14;
           targetRotX = normalizeAngle(targetRotX);
-          targetRotY = normalizeAngle(targetRotY);
           rotX = targetRotX;
           rotY = targetRotY;
           startX = event.clientX;
@@ -1989,6 +1995,7 @@
         const PERSPECTIVE = 1100;
         const BUTTON_ZOOM_STEP = 420;
         const PINCH_ZOOM_FACTOR = 3.4;
+        const CLICKABLE_ALPHA_THRESHOLD = 0.02;
         let currentCardsSizeFactor = sizeFactor;
         let tileSize = 72;
         let cloudSpreadX = 1600;
@@ -2024,6 +2031,11 @@
         let pinchActive = false;
         let pinchStartDistance = 0;
         let pinchStartZoom = zoom;
+        let suppressNextClick = false;
+        let hoverPointerX = 0;
+        let hoverPointerY = 0;
+        let hasHoverPointer = false;
+        let hoveredTileState = null;
         const trackedPointers = new Map();
 
         function clamp(value, min, max) {
@@ -2121,6 +2133,174 @@
             'rotateX(' + rotX.toFixed(2) + 'deg) rotateY(' + rotY.toFixed(2) + 'deg)';
         }
 
+        function rotatePointZ(x, y, z, angleDeg) {
+          const angle = angleDeg * Math.PI / 180;
+          const sin = Math.sin(angle);
+          const cos = Math.cos(angle);
+          return {
+            x: x * cos - y * sin,
+            y: x * sin + y * cos,
+            z: z
+          };
+        }
+
+        function rotatePointX(x, y, z, angleDeg) {
+          const angle = angleDeg * Math.PI / 180;
+          const sin = Math.sin(angle);
+          const cos = Math.cos(angle);
+          return {
+            x: x,
+            y: y * cos - z * sin,
+            z: y * sin + z * cos
+          };
+        }
+
+        function rotatePointY(x, y, z, angleDeg) {
+          const angle = angleDeg * Math.PI / 180;
+          const sin = Math.sin(angle);
+          const cos = Math.cos(angle);
+          return {
+            x: x * cos + z * sin,
+            y: y,
+            z: -x * sin + z * cos
+          };
+        }
+
+        function projectWorldPoint(worldX, worldY, worldZ, spaceRect) {
+          const radX = rotX * Math.PI / 180;
+          const radY = rotY * Math.PI / 180;
+          const sinX = Math.sin(radX);
+          const cosX = Math.cos(radX);
+          const sinY = Math.sin(radY);
+          const cosY = Math.cos(radY);
+          const xAfterY = worldX * cosY + worldZ * sinY;
+          const zAfterY = -worldX * sinY + worldZ * cosY;
+          const yCamera = worldY * cosX - zAfterY * sinX;
+          const zCamera = worldY * sinX + zAfterY * cosX;
+          const viewX = xAfterY + camX;
+          const viewY = yCamera + camY;
+          const viewZ = zCamera + zoom;
+          const perspectiveDiv = Math.max(1, PERSPECTIVE - viewZ);
+          const projection = PERSPECTIVE / perspectiveDiv;
+          return {
+            x: spaceRect.left + spaceRect.width * 0.5 + viewX * projection,
+            y: spaceRect.top + spaceRect.height * 0.5 + viewY * projection,
+            z: zCamera,
+            projection: projection
+          };
+        }
+
+        function updateTileHitQuad(t, worldX, worldY, worldZ, scale, spaceRect) {
+          if (!t.pointerEnabled || t.screenAlpha <= CLICKABLE_ALPHA_THRESHOLD) {
+            t.hitQuad = null;
+            return;
+          }
+          const centerX = worldX + tileSize * 0.5;
+          const centerY = worldY + tileSize * 0.5;
+          const centerZ = worldZ;
+          const half = tileSize * 0.5;
+          const tileRotY = t.rotY - rotY * 0.46;
+          const tileRotX = t.rotX - rotX * 0.42;
+          const corners = [
+            { x: -half, y: -half, z: 0 },
+            { x: half, y: -half, z: 0 },
+            { x: half, y: half, z: 0 },
+            { x: -half, y: half, z: 0 }
+          ];
+          const quad = [];
+          for (let i = 0; i < corners.length; i += 1) {
+            const base = corners[i];
+            let point = { x: base.x * scale, y: base.y * scale, z: 0 };
+            point = rotatePointZ(point.x, point.y, point.z, t.rotZ);
+            point = rotatePointX(point.x, point.y, point.z, tileRotX);
+            point = rotatePointY(point.x, point.y, point.z, tileRotY);
+            quad.push(projectWorldPoint(centerX + point.x, centerY + point.y, centerZ + point.z, spaceRect));
+          }
+          t.hitQuad = quad;
+        }
+
+        function pointInTriangle(px, py, a, b, c) {
+          const sign1 = (px - b.x) * (a.y - b.y) - (a.x - b.x) * (py - b.y);
+          const sign2 = (px - c.x) * (b.y - c.y) - (b.x - c.x) * (py - c.y);
+          const sign3 = (px - a.x) * (c.y - a.y) - (c.x - a.x) * (py - a.y);
+          const hasNeg = sign1 < 0 || sign2 < 0 || sign3 < 0;
+          const hasPos = sign1 > 0 || sign2 > 0 || sign3 > 0;
+          return !(hasNeg && hasPos);
+        }
+
+        function pointInQuad(px, py, quad) {
+          if (!quad || quad.length !== 4) return false;
+          return (
+            pointInTriangle(px, py, quad[0], quad[1], quad[2]) ||
+            pointInTriangle(px, py, quad[0], quad[2], quad[3])
+          );
+        }
+
+        function pickTileAt(clientX, clientY) {
+          let picked = null;
+          for (let i = 0; i < tileStates.length; i += 1) {
+            const t = tileStates[i];
+            if (!t.pointerEnabled || t.screenAlpha <= CLICKABLE_ALPHA_THRESHOLD) continue;
+            const rect = t.el.getBoundingClientRect();
+            if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) continue;
+            if (!picked || t.depthRank > picked.depthRank) picked = t;
+          }
+          return picked;
+        }
+
+        function openTileLink(tileState) {
+          if (!tileState || !tileState.el) return false;
+          const href = tileState.el.getAttribute('href');
+          if (!href || href === '#') return false;
+          if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openLink === 'function') {
+            window.Telegram.WebApp.openLink(href);
+            return true;
+          }
+          const target = tileState.el.getAttribute('target') || '_blank';
+          const opened = window.open(href, target, 'noopener,noreferrer');
+          if (!opened && target !== '_blank') {
+            window.location.assign(href);
+          }
+          return true;
+        }
+
+        function refreshSpaceHoverCursor() {
+          if (isCoarsePointer || !hasHoverPointer || isDragging || pinchActive) {
+            space.classList.remove('has-clickable-hover');
+            return;
+          }
+          space.classList.toggle('has-clickable-hover', !!pickTileAt(hoverPointerX, hoverPointerY));
+        }
+
+        function updateSpaceHoverCursor(clientX, clientY) {
+          if (isCoarsePointer) return;
+          hoverPointerX = clientX;
+          hoverPointerY = clientY;
+          hasHoverPointer = true;
+          refreshSpaceHoverCursor();
+        }
+
+        function clearSpaceHoverCursor() {
+          hasHoverPointer = false;
+          space.classList.remove('has-clickable-hover');
+        }
+
+        function setHoveredTileState(nextState) {
+          if (hoveredTileState === nextState) return;
+          if (hoveredTileState) hoveredTileState.targetHover = 0;
+          hoveredTileState = nextState || null;
+          if (hoveredTileState) hoveredTileState.targetHover = 1;
+          hoverNeedsRender = true;
+        }
+
+        function syncCardsHoverState() {
+          if (!enableSceneHover || isCoarsePointer || !hasHoverPointer || isDragging || pinchActive) {
+            setHoveredTileState(null);
+            return;
+          }
+          setHoveredTileState(pickTileAt(hoverPointerX, hoverPointerY));
+        }
+
         function ensureRender() {
           if (stopped || isRendering) return;
           isRendering = true;
@@ -2133,6 +2313,7 @@
           hoverNeedsRender = true;
           motionNeedsRender = true;
           motionTime = 0;
+          hoveredTileState = null;
           const viewport = getSceneViewportSize();
           const viewportWidth = viewport.width;
           const viewportHeight = viewport.height;
@@ -2159,6 +2340,9 @@
           rotY = 0;
           targetRotX = rotX;
           targetRotY = rotY;
+          let centroidX = 0;
+          let centroidY = 0;
+          let centroidZ = 0;
 
           for (let i = 0; i < tilesForCards.length; i += 1) {
             const srcTile = tilesForCards[i];
@@ -2198,27 +2382,31 @@
               targetHover: 0,
               depthRank: -1,
               screenAlpha: -1,
-              pointerEnabled: false
+              pointerEnabled: false,
+              hitQuad: null
             };
             tileStates.push(state);
+            centroidX += baseX;
+            centroidY += baseY;
+            centroidZ += baseZ;
+          }
 
-            if (enableSceneHover) {
-              tile.addEventListener('pointerenter', function () {
-                state.targetHover = 1;
-                hoverNeedsRender = true;
-                ensureRender();
-              });
-              tile.addEventListener('pointerleave', function () {
-                state.targetHover = 0;
-                hoverNeedsRender = true;
-                ensureRender();
-              });
+          if (tileStates.length) {
+            const offsetX = centroidX / tileStates.length;
+            const offsetY = centroidY / tileStates.length;
+            const offsetZ = centroidZ / tileStates.length;
+            for (let i = 0; i < tileStates.length; i += 1) {
+              const t = tileStates[i];
+              t.baseX -= offsetX;
+              t.baseY -= offsetY;
+              t.baseZ -= offsetZ;
             }
           }
         }
 
         function renderTiles(forceAll) {
           let hoverAnimating = false;
+          const spaceRect = space.getBoundingClientRect();
           const radX = rotX * Math.PI / 180;
           const radY = rotY * Math.PI / 180;
           const sinX = Math.sin(radX);
@@ -2252,7 +2440,7 @@
               alpha = 1 - (projectedSize - fadeStartSizePx) / fadeSpan;
               alpha = clamp(alpha, 0, 1);
             }
-            const pointerEnabled = projectedSize <= fadeStartSizePx;
+            const pointerEnabled = alpha > CLICKABLE_ALPHA_THRESHOLD;
             if (Math.abs(alpha - t.screenAlpha) > 0.01 || pointerEnabled !== t.pointerEnabled) {
               t.screenAlpha = alpha;
               t.pointerEnabled = pointerEnabled;
@@ -2262,14 +2450,18 @@
             if (!pointerEnabled) {
               t.targetHover = 0;
             }
+            updateTileHitQuad(t, worldX, worldY, worldZ, scale, spaceRect);
             const depthRank = Math.round((zCamera + cloudSpreadZ + 4000) * 1000) + i;
             if (depthRank !== t.depthRank) {
               t.depthRank = depthRank;
               t.el.style.zIndex = String(depthRank);
             }
+            const localRotY = t.rotY * 0.32;
+            const localRotX = t.rotX * 0.28;
             t.el.style.transform =
               'translate3d(' + worldX.toFixed(1) + 'px,' + worldY.toFixed(1) + 'px,' + worldZ.toFixed(1) + 'px) ' +
-              'rotateY(' + (t.rotY - rotY * 0.46).toFixed(1) + 'deg) rotateX(' + (t.rotX - rotX * 0.42).toFixed(1) + 'deg) ' +
+              'rotateY(' + (-rotY).toFixed(1) + 'deg) rotateX(' + (-rotX).toFixed(1) + 'deg) ' +
+              'rotateY(' + localRotY.toFixed(1) + 'deg) rotateX(' + localRotX.toFixed(1) + 'deg) ' +
               'rotateZ(' + t.rotZ.toFixed(1) + 'deg) scale(' + scale.toFixed(3) + ')';
           }
           return hoverAnimating;
@@ -2303,7 +2495,9 @@
             hoverNeedsRender = hoverAnimating;
             motionNeedsRender = false;
           }
-          if (hoverAnimating || cameraAnimating) {
+          syncCardsHoverState();
+          refreshSpaceHoverCursor();
+          if (hoverAnimating || cameraAnimating || hoverNeedsRender) {
             rafId = window.requestAnimationFrame(frame);
             return;
           }
@@ -2327,6 +2521,8 @@
           startX = event.clientX;
           startY = event.clientY;
           space.classList.add('is-dragging');
+          setHoveredTileState(null);
+          refreshSpaceHoverCursor();
           ensureRender();
         }
 
@@ -2352,9 +2548,9 @@
             startY = event.clientY;
             return;
           }
-          targetCamX = clamp(targetCamX + dx * 1.08, -cloudSpreadX * 0.44, cloudSpreadX * 0.44);
-          targetCamY = clamp(targetCamY + dy * 1.08, -cloudSpreadY * 0.44, cloudSpreadY * 0.44);
-          targetRotY = normalizeAngle(targetRotY + dx * 0.045);
+          targetCamX = 0;
+          targetCamY = 0;
+          targetRotY += dx * 0.045;
           targetRotX = clamp(targetRotX - dy * 0.04, -40, 40);
           startX = event.clientX;
           startY = event.clientY;
@@ -2367,6 +2563,8 @@
           activePointerId = null;
           space.classList.remove('is-dragging');
           tryReleasePointerCapture(pointerId);
+          syncCardsHoverState();
+          refreshSpaceHoverCursor();
         }
 
         function onPointerUp(event) {
@@ -2380,7 +2578,12 @@
             return;
           }
           if (activePointerId !== null && event.pointerId !== activePointerId) return;
+          const shouldOpenTile = !didDrag;
+          const pickedTile = shouldOpenTile ? pickTileAt(event.clientX, event.clientY) : null;
           endDrag(event.pointerId);
+          if (pickedTile && openTileLink(pickedTile)) {
+            suppressNextClick = true;
+          }
           ensureRender();
         }
 
@@ -2403,6 +2606,8 @@
           trackedPointers.clear();
           stopPinchGesture();
           endDrag(activePointerId);
+          setHoveredTileState(null);
+          clearSpaceHoverCursor();
         }
 
         function onWheel(event) {
@@ -2414,10 +2619,31 @@
         }
 
         function onClickCapture(event) {
-          if (!didDrag) return;
-          didDrag = false;
-          event.preventDefault();
-          event.stopPropagation();
+          if (suppressNextClick) {
+            suppressNextClick = false;
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          if (didDrag) {
+            didDrag = false;
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+        }
+
+        function onSpacePointerMove(event) {
+          if (event.pointerType === 'touch') return;
+          updateSpaceHoverCursor(event.clientX, event.clientY);
+          syncCardsHoverState();
+          ensureRender();
+        }
+
+        function onSpacePointerLeave() {
+          setHoveredTileState(null);
+          clearSpaceHoverCursor();
+          ensureRender();
         }
 
         function resize() {
@@ -2445,6 +2671,8 @@
           }, 70);
         }
         space.addEventListener('pointerdown', onPointerDown);
+        space.addEventListener('pointermove', onSpacePointerMove);
+        space.addEventListener('pointerleave', onSpacePointerLeave);
         window.addEventListener('pointermove', onPointerMove);
         window.addEventListener('pointerup', onPointerUp);
         window.addEventListener('pointercancel', onPointerCancel);
@@ -2476,6 +2704,8 @@
             if (motionTimer) window.clearInterval(motionTimer);
             endDrag(activePointerId);
             space.removeEventListener('pointerdown', onPointerDown);
+            space.removeEventListener('pointermove', onSpacePointerMove);
+            space.removeEventListener('pointerleave', onSpacePointerLeave);
             window.removeEventListener('pointermove', onPointerMove);
             window.removeEventListener('pointerup', onPointerUp);
             window.removeEventListener('pointercancel', onPointerCancel);
