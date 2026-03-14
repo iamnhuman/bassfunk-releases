@@ -1,1 +1,7 @@
 .DS_Store
+.codex-artifacts/
+admin.html
+dev-server.mjs
+start.command
+scripts/admin.js
+dumps/
