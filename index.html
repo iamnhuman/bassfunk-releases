@@ -1,19 +1,18 @@
 <!doctype html>
-<html>
+<html class="is-page-loading">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --ui-font: "Montserrat", sans-serif;
+      --ui-font: "Google Sans Flex", sans-serif;
     }
     html, body {
       width: 100%;
       height: 100%;
-      scrollbar-gutter: stable;
       margin: 0;
       padding: 0;
       background-color: #060606;
@@ -23,17 +22,38 @@
         radial-gradient(120% 180% at 100% 50%, rgba(255, 255, 255, 0.08), transparent 42%);
       background-position: 0 0;
     }
+    html {
+      scrollbar-gutter: stable;
+    }
+    html.is-page-loading {
+      scrollbar-gutter: auto;
+    }
     body {
       overflow-x: hidden;
       box-sizing: border-box;
       font-family: var(--ui-font);
+    }
+    .page-noise {
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
+      pointer-events: none;
+      opacity: 0.22;
+      background-repeat: repeat;
+      background-position: 0 0;
+      background-size: 220px 220px;
+      mix-blend-mode: soft-light;
+      transform: translateZ(0);
     }
     body.is-page-loading {
       overflow: hidden;
     }
     .page-loader {
       position: fixed;
-      inset: 0;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
       z-index: 9999;
       overflow: hidden;
       background:
@@ -206,7 +226,6 @@
       transform: rotate(180deg);
       color: rgba(255, 41, 72, 0.94);
       font-size: clamp(13px, 1.6vw, 18px);
-      letter-spacing: 0.06em;
       text-transform: uppercase;
       text-shadow: 0 0 12px rgba(255, 21, 61, 0.44);
       animation: page-loader-red-flicker 2.1s steps(2, end) infinite;
@@ -217,7 +236,6 @@
       left: 0;
       color: rgba(255, 41, 72, 0.94);
       font-size: clamp(13px, 1.6vw, 18px);
-      letter-spacing: 0.03em;
       text-shadow: 0 0 10px rgba(255, 21, 61, 0.4);
       animation: page-loader-red-flicker 2.4s steps(2, end) infinite;
     }
@@ -292,7 +310,6 @@
       transform: rotate(180deg);
       color: rgba(255, 36, 67, 0.95);
       font-size: clamp(15px, 1.8vw, 22px);
-      letter-spacing: 0.04em;
       text-transform: uppercase;
       text-shadow: 0 0 12px rgba(255, 24, 58, 0.46);
       animation: page-loader-tag-flicker 1.9s steps(2, end) infinite;
@@ -303,7 +320,6 @@
       right: calc(50% - clamp(22px, 1.6vw, 32px));
       color: rgba(255, 36, 67, 0.95);
       font-size: clamp(18px, 2vw, 28px);
-      letter-spacing: 0.02em;
       text-shadow: 0 0 12px rgba(255, 24, 58, 0.42);
       animation: page-loader-red-flicker 2.6s steps(2, end) infinite;
     }
@@ -325,12 +341,10 @@
     }
     .page-loader__caption-label {
       font-size: clamp(12px, 1.3vw, 15px);
-      letter-spacing: 0.18em;
     }
     .page-loader__caption-state {
       color: rgba(178, 255, 115, 0.9);
       font-size: clamp(10px, 1vw, 12px);
-      letter-spacing: 0.16em;
       animation: page-loader-caption-pulse 1.4s ease-in-out infinite;
     }
     .page-loader__sr {
@@ -635,7 +649,7 @@
       background: #060606;
       border-bottom: 1px solid #2c2c2c;
       box-sizing: border-box;
-      font-size: 10px;
+      font-size: 9px;
       text-transform: uppercase;
     }
     .controls::before {
@@ -662,6 +676,10 @@
       gap: 10px;
       max-width: 100%;
     }
+    .control-cluster[hidden],
+    .controls button[hidden] {
+      display: none !important;
+    }
     .compact-switch-cluster {
       display: none;
       margin-left: 0;
@@ -678,7 +696,6 @@
       font-size: 10px;
       font-weight: 400;
       font-family: var(--ui-font);
-      letter-spacing: 0.03em;
       padding: 0 0 0 4px;
       opacity: 0.9;
       line-height: 1;
@@ -752,7 +769,6 @@
       font-size: 10px;
       font-weight: 400;
       font-family: var(--ui-font);
-      letter-spacing: 0.03em;
       line-height: 1;
       text-transform: uppercase;
       cursor: pointer;
@@ -766,9 +782,15 @@
     }
     #typeShuffleBtn {
       display: inline-flex;
+      width: 78px;
+      min-width: 78px;
       align-items: center;
       justify-content: center;
-      padding: 0 23px 0 10px;
+      padding: 0 23px 0 4px;
+    }
+    #view3dBtn {
+      min-width: 39px;
+      padding: 0 9px;
     }
     .controls button:hover {
       background: rgba(255, 255, 255, 0.08);
@@ -784,6 +806,14 @@
     .controls button.is-active {
       color: #f1f1f1;
       background: transparent;
+      box-shadow: none;
+    }
+    .controls button.is-size-locked,
+    .controls button.is-size-locked:hover,
+    .controls button.is-size-locked:focus,
+    .controls button.is-size-locked:focus-visible {
+      cursor: default;
+      background: transparent !important;
       box-shadow: none;
     }
     .controls button > span:not(.shuffle-reshuffle) {
@@ -914,9 +944,10 @@
         gap: 4px;
         padding: 0 8px 0;
         font-size: 10px;
-        letter-spacing: 0.02em;
       }
       #typeShuffleBtn {
+        width: 78px;
+        min-width: 78px;
         padding: 0 22px 0 8px;
       }
       .controls button .shuffle-reshuffle {
@@ -931,20 +962,49 @@
       }
     }
     .releases {
+      --releases-3d-origin-x: 50%;
+      --releases-3d-origin-y: 50%;
       width: 100%;
       min-height: 100vh;
       position: relative;
       overflow: hidden;
     }
+    body.is-view-3d .releases {
+      perspective: 1100px;
+      perspective-origin: var(--releases-3d-origin-x) var(--releases-3d-origin-y);
+      transform-style: preserve-3d;
+      -webkit-transform-style: preserve-3d;
+    }
     .releases a {
+      --release-base-scale: 1;
+      --release-reactive-scale: 1;
+      --release-reactive-x: 0px;
+      --release-reactive-y: 0px;
+      --release-reactive-z: 0px;
+      --release-reactive-rot-x: 0deg;
+      --release-reactive-rot-y: 0deg;
       display: block;
       position: absolute;
       width: 180px;
       height: 180px;
       overflow: hidden;
+      border-radius: 5px;
       transform-origin: 50% 50%;
+      transform:
+        translate3d(var(--release-reactive-x), var(--release-reactive-y), var(--release-reactive-z))
+        rotateX(var(--release-reactive-rot-x))
+        rotateY(var(--release-reactive-rot-y))
+        scale(calc(var(--release-base-scale) * var(--release-reactive-scale)));
       transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
       will-change: transform;
+    }
+    body.is-view-3d .releases a {
+      border-radius: 999px;
+      transform-style: preserve-3d;
+      -webkit-transform-style: preserve-3d;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
     }
     .releases a::after {
       content: "";
@@ -965,7 +1025,16 @@
       object-fit: cover;
       transition: filter 220ms ease, transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease;
     }
-    .releases a.is-release-source-hidden,
+    .releases a.is-release-source-hidden {
+      opacity: 1;
+      --release-base-scale: 1;
+      --release-reactive-scale: 1;
+      --release-reactive-x: 0px;
+      --release-reactive-y: 0px;
+      --release-reactive-z: 0px;
+      --release-reactive-rot-x: 0deg;
+      --release-reactive-rot-y: 0deg;
+    }
     .canvas-tile.is-release-source-hidden {
       opacity: 1;
       transform: none;
@@ -983,7 +1052,7 @@
     }
     .releases.has-cloth-release-focus a.is-cloth-release-active {
       z-index: 4;
-      transform: scale(1.1);
+      --release-base-scale: 1.04;
     }
     .releases.has-cloth-release-focus a.is-cloth-release-active::after {
       opacity: 1;
@@ -994,7 +1063,7 @@
     }
     .releases.has-cloth-release-focus a.is-cloth-release-active img {
       filter: saturate(1.14) brightness(1.12) contrast(1.04);
-      transform: scale(1.12);
+      transform: scale(1.05);
       opacity: 1;
     }
     .plain-release-panel {
@@ -1061,10 +1130,10 @@
     }
     .plain-release-panel__scene {
       position: relative;
-      width: min(210px, calc(100vw - 24px));
+      width: min(185px, calc(100vw - 24px));
       transform-style: preserve-3d;
       overflow: hidden;
-      border-radius: 22px 22px 28px 26px;
+      border-radius: 22px;
       border: 0;
       background: transparent;
       isolation: isolate;
@@ -1202,18 +1271,18 @@
     }
     .plain-release-panel__nav::before {
       content: "";
-      width: 9px;
-      height: 9px;
-      border-right: 2px solid currentColor;
-      border-bottom: 2px solid currentColor;
+      width: 7px;
+      height: 7px;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
       display: block;
-      opacity: 0.92;
+      opacity: 0.9;
     }
     .plain-release-panel__nav--prev::before {
-      transform: translateX(1px) rotate(135deg);
+      transform: translateX(0.5px) rotate(135deg);
     }
     .plain-release-panel__nav--next::before {
-      transform: translateX(-1px) rotate(-45deg);
+      transform: translateX(-0.5px) rotate(-45deg);
     }
     .plain-release-panel__nav:hover {
       background:
@@ -1232,7 +1301,7 @@
       pointer-events: none;
     }
     .plain-release-panel__nav--prev {
-      left: calc(50% - min(210px, calc(100vw - 24px)) / 2 - 62px);
+      left: calc(50% - min(185px, calc(100vw - 24px)) / 2 - 62px);
       transform:
         translate3d(var(--plain-release-nav-shift-x), calc(-50% + var(--plain-release-nav-shift-y)), 0)
         rotateX(var(--plain-release-nav-tilt-x))
@@ -1240,7 +1309,7 @@
         rotate(var(--plain-release-nav-rotate));
     }
     .plain-release-panel__nav--next {
-      left: calc(50% + min(210px, calc(100vw - 24px)) / 2 + 24px);
+      left: calc(50% + min(185px, calc(100vw - 24px)) / 2 + 24px);
       transform:
         translate3d(calc(var(--plain-release-nav-shift-x) * -1), calc(-50% + var(--plain-release-nav-shift-y)), 0)
         rotateX(calc(var(--plain-release-nav-tilt-x) * -1))
@@ -1290,7 +1359,7 @@
       border: 0;
       background: transparent;
       color: #f3f1ea;
-      border-radius: 22px 22px 28px 26px;
+      border-radius: 22px;
       transform:
         translate3d(0, 0, 18px)
         rotateX(var(--plain-release-card-tilt-x))
@@ -1330,7 +1399,6 @@
     .plain-release-panel__surface {
       position: absolute;
       inset: 0;
-      border-radius: inherit;
       overflow: hidden;
       background:
         radial-gradient(circle at calc(48% + var(--plain-release-fabric-shift-x)) calc(16% + var(--plain-release-fabric-shift-y)), rgba(255, 255, 255, 0.12), transparent 34%),
@@ -1352,7 +1420,6 @@
       content: "";
       position: absolute;
       inset: 0;
-      border-radius: inherit;
       pointer-events: none;
     }
     .plain-release-panel__surface::before {
@@ -1401,7 +1468,6 @@
       content: "";
       position: absolute;
       inset: 0;
-      border-radius: inherit;
       pointer-events: none;
       z-index: 0;
     }
@@ -1414,7 +1480,7 @@
     }
     .plain-release-panel__card::after {
       inset: 1px;
-      border-radius: 17px;
+      border-radius: 21px;
       background:
         linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(0, 0, 0, 0.08) 58%, rgba(0, 0, 0, 0.22) 100%);
       box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
@@ -1431,8 +1497,8 @@
     }
     .plain-release-panel__close {
       position: absolute;
-      top: 12px;
-      right: 12px;
+      top: 14px;
+      right: 14px;
       width: 30px;
       height: 30px;
       min-width: 30px;
@@ -1455,6 +1521,10 @@
       -webkit-backdrop-filter: blur(12px) saturate(140%);
       cursor: pointer;
       z-index: 2;
+      transform: translate3d(0, 0, 40px);
+      transform-style: preserve-3d;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
       transition:
         background-color 180ms ease,
         color 180ms ease,
@@ -1465,11 +1535,11 @@
     .plain-release-panel__close::after {
       content: "";
       position: absolute;
-      width: 12px;
-      height: 2px;
+      width: 9px;
+      height: 1.6px;
       border-radius: 999px;
       background: currentColor;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
     }
     .plain-release-panel__close::before {
       transform: rotate(45deg);
@@ -1483,7 +1553,7 @@
       box-shadow:
         0 10px 24px rgba(0, 0, 0, 0.24),
         inset 0 0 0 1px rgba(255, 255, 255, 0.24);
-      transform: translateY(-1px);
+      transform: translate3d(0, 0, 40px);
     }
     .plain-release-panel__close:focus-visible {
       outline: none;
@@ -1491,6 +1561,7 @@
       box-shadow:
         0 0 0 2px rgba(255, 255, 255, 0.88),
         0 10px 24px rgba(0, 0, 0, 0.22);
+      transform: translate3d(0, 0, 40px);
     }
     .plain-release-panel__artwork-frame {
       position: relative;
@@ -1523,7 +1594,6 @@
       display: none;
       color: rgba(243, 241, 234, 0.58);
       font-size: 10px;
-      letter-spacing: 0.18em;
       text-transform: uppercase;
     }
     .plain-release-panel__artist,
@@ -1538,7 +1608,6 @@
       color: rgba(243, 241, 234, 0.82);
       font-size: 15px;
       font-weight: 500;
-      letter-spacing: 0.05em;
       text-transform: uppercase;
       position: relative;
       z-index: 1;
@@ -1551,7 +1620,6 @@
       font-size: 12px;
       line-height: 1.16;
       font-weight: 400;
-      letter-spacing: -0.01em;
       position: relative;
       z-index: 1;
     }
@@ -1571,7 +1639,7 @@
       gap: 5px;
       min-width: 53px;
       height: 22px;
-      padding: 0 10px 0 5px;
+      padding: 0 8px 0 4px;
       border: 0;
       border-radius: 999px;
       color: #f3f1ea;
@@ -1582,10 +1650,9 @@
         inset 0 0 0 1px rgba(255, 255, 255, 0.18);
       backdrop-filter: blur(12px) saturate(135%);
       -webkit-backdrop-filter: blur(12px) saturate(135%);
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 400;
       font-family: var(--ui-font);
-      letter-spacing: 0.03em;
       line-height: 1;
       white-space: nowrap;
       transition: background-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
@@ -1649,7 +1716,6 @@
       margin-bottom: 8px;
       color: rgba(243, 241, 234, 0.9);
       font-size: 9px;
-      letter-spacing: 0;
       text-transform: uppercase;
     }
     .plain-release-panel__socials {
@@ -1754,7 +1820,6 @@
       border: 1px solid rgba(255, 255, 255, 0.12);
       color: rgba(255, 255, 255, 0.92);
       font-size: 11px;
-      letter-spacing: 0.08em;
       text-transform: uppercase;
       text-align: center;
       backdrop-filter: blur(14px) saturate(140%);
@@ -1784,13 +1849,13 @@
         padding: calc(var(--controls-h, 50px) + 8px) 10px 10px;
       }
       .plain-release-panel__scene {
-        width: min(100%, 210px);
+        width: min(100%, 185px);
       }
       .plain-release-panel__nav--prev {
-        left: calc(50% - min(100%, 210px) / 2 - 54px);
+        left: calc(50% - min(100%, 185px) / 2 - 54px);
       }
       .plain-release-panel__nav--next {
-        left: calc(50% + min(100%, 210px) / 2 + 16px);
+        left: calc(50% + min(100%, 185px) / 2 + 16px);
       }
       .plain-release-panel__morph {
         display: none;
@@ -1807,8 +1872,8 @@
         font-size: 14px;
       }
       .plain-release-panel__close {
-        top: 12px;
-        right: 12px;
+        top: 14px;
+        right: 14px;
       }
       .plain-release-panel__scene::before,
       .plain-release-panel__scene::after {
@@ -1919,11 +1984,15 @@
       transition: filter 220ms ease, transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease;
     }
     .canvas-space--sphere .canvas-tile {
+      border-radius: 999px;
       background: rgba(10, 12, 16, 0.08);
       box-shadow:
         0 8px 18px rgba(0, 0, 0, 0.18),
         0 2px 8px rgba(0, 0, 0, 0.14),
         inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+    .canvas-space--cards .canvas-tile {
+      border-radius: 0;
     }
     .canvas-space--sphere .canvas-tile img {
       opacity: 0.9;
@@ -1953,9 +2022,43 @@
       line-height: 1;
       cursor: pointer;
     }
+    @supports (corner-shape: squircle) {
+      .page-loader__aurora-blob,
+      .control-pill,
+      .control-pill::before,
+      .controls button,
+      .controls button .shuffle-reshuffle,
+      .plain-release-panel__morph,
+      .plain-release-panel__scene,
+      .plain-release-panel__shadow,
+      .plain-release-panel__nav,
+      .plain-release-panel__edge--right,
+      .plain-release-panel__edge--bottom,
+      .plain-release-panel__card,
+      .plain-release-panel__surface,
+      .plain-release-panel__surface::before,
+      .plain-release-panel__surface::after,
+      .plain-release-panel__card::before,
+      .plain-release-panel__card::after,
+      .plain-release-panel__close,
+      .plain-release-panel__close::before,
+      .plain-release-panel__close::after,
+      .plain-release-panel__artwork-frame,
+      .plain-release-panel__actions a,
+      .plain-release-panel__socials a,
+      .plain-release-panel__button-icon,
+      .cloth-release-panel__status,
+      body.is-view-3d .releases a,
+      body.is-view-3d .releases a::after,
+      .canvas-space--sphere .canvas-tile,
+      .canvas-tools button {
+        corner-shape: squircle;
+      }
+    }
     html.canvas-active,
     body.canvas-active {
       overflow: hidden;
+      scrollbar-gutter: auto;
     }
     body.canvas-active {
       height: 100vh;
@@ -1971,6 +2074,7 @@
     <div class="page-loader" id="pageLoader" aria-hidden="false">
       <div class="page-loader__hud" aria-hidden="true"></div>
     </div>
+    <div class="page-noise" id="pageNoise" aria-hidden="true"></div>
 	  <div class="controls is-booting">
 	    <div class="control-cluster compact-switch-cluster" id="compactSectionCluster" aria-hidden="true">
 	      <div class="control-pill" role="radiogroup" aria-label="Controls">
@@ -2470,7 +2574,7 @@
       </section>
     </div>
   </div>
-  <script src="scripts/cloth-release-webgl.js?v=20260313k"></script>
+  <script src="scripts/cloth-release-webgl.js?v=20260315g"></script>
   <script type="module">
     import {
       getAssignedAudioMap,
@@ -2483,6 +2587,7 @@
       const releases = document.querySelector('.releases');
       if (!releases) return;
       const pageLoader = document.getElementById('pageLoader');
+      const pageNoise = document.getElementById('pageNoise');
       const typeShuffleBtn = document.getElementById('typeShuffleBtn');
       const typeNormalBtn = document.getElementById('typeNormalBtn');
       const viewPlainBtn = document.getElementById('viewPlainBtn');
@@ -2536,6 +2641,7 @@
       const controlButtons = Array.from(document.querySelectorAll('.controls button'));
       const controlPills = Array.from(document.querySelectorAll('.control-pill'));
       const sectionClusters = Array.from(document.querySelectorAll('.control-cluster[data-section]'));
+      const sizeCluster = document.querySelector('.control-cluster.size-cluster');
       const initialSearchParams = new URLSearchParams(window.location.search);
       const userAgent = navigator.userAgent || '';
       const coarsePointerMedia = window.matchMedia ? window.matchMedia('(hover: none) and (pointer: coarse)') : null;
@@ -2546,6 +2652,48 @@
       const usePerformanceMode = isTelegramWebView || isCoarsePointer || prefersReducedMotion;
       const enableSceneHover = !isCoarsePointer;
       const enableSceneIdleMotion = !usePerformanceMode;
+
+      function createNoiseTileDataUrl(tileSize, seed) {
+        const resolvedTileSize = Math.max(96, Math.round(tileSize || 170));
+        const canvas = document.createElement('canvas');
+        canvas.width = resolvedTileSize;
+        canvas.height = resolvedTileSize;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) return '';
+
+        const imageData = context.createImageData(resolvedTileSize, resolvedTileSize);
+        const pixels = imageData.data;
+        let state = (seed >>> 0) || 1;
+
+        function nextNoise() {
+          state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+          return state / 4294967295;
+        }
+
+        for (let offset = 0; offset < pixels.length; offset += 4) {
+          const value = Math.max(88, Math.min(168, Math.round(128 + (nextNoise() - 0.5) * 80)));
+          pixels[offset] = value;
+          pixels[offset + 1] = value;
+          pixels[offset + 2] = value;
+          pixels[offset + 3] = 255;
+        }
+
+        context.putImageData(imageData, 0, 0);
+        return canvas.toDataURL('image/png');
+      }
+
+      function initializePageNoise() {
+        if (!pageNoise) return;
+        const noiseTileUrl = createNoiseTileDataUrl(200, 0x4f1bbcdc);
+        if (!noiseTileUrl) {
+          pageNoise.hidden = true;
+          return;
+        }
+        pageNoise.style.backgroundImage = 'url("' + noiseTileUrl + '")';
+      }
+
+      initializePageNoise();
+
       if (clothReleaseClose && clothReleaseClose.parentNode) clothReleaseClose.parentNode.removeChild(clothReleaseClose);
       if (clothReleasePrev && clothReleasePrev.parentNode) clothReleasePrev.parentNode.removeChild(clothReleasePrev);
       if (clothReleaseNext && clothReleaseNext.parentNode) clothReleaseNext.parentNode.removeChild(clothReleaseNext);
@@ -10646,12 +10794,17 @@
       let plainReleaseAnimationToken = 0;
       let plainReleaseRevealTimer = 0;
       let plainReleaseNavigationInFlight = false;
+      let plainReleaseNavigationLayoutRafId = 0;
       let activeClothReleaseIndex = '';
       let clothReleaseAnimationToken = 0;
       let clothReleaseNavigationInFlight = false;
       let clothReleaseExperience = null;
       let clothReleaseWarmupHandle = 0;
       let clothReleaseAutoOpenToken = 0;
+      let grid3dPointerRafId = 0;
+      let grid3dPointerInside = false;
+      let grid3dPointerX = 0;
+      let grid3dPointerY = 0;
 
       if (usePerformanceMode) {
         document.documentElement.classList.add('performance-mode');
@@ -10660,6 +10813,144 @@
       if (isTelegramWebView) {
         document.documentElement.classList.add('telegram-webview');
         document.body.classList.add('telegram-webview');
+      }
+
+      function get3dGridTileMotionState(tile) {
+        if (!tile) return null;
+        if (!tile._grid3dMotionState) {
+          tile._grid3dMotionState = {
+            x: 0,
+            y: 0,
+            z: 0,
+            rotX: 0,
+            rotY: 0,
+            scale: 1
+          };
+        }
+        return tile._grid3dMotionState;
+      }
+
+      function apply3dGridTileMotion(tile, values) {
+        if (!tile) return;
+        const state = get3dGridTileMotionState(tile);
+        if (!state) return;
+        const nextX = Number.isFinite(values && values.x) ? values.x : 0;
+        const nextY = Number.isFinite(values && values.y) ? values.y : 0;
+        const nextZ = Number.isFinite(values && values.z) ? values.z : 0;
+        const nextRotX = Number.isFinite(values && values.rotX) ? values.rotX : 0;
+        const nextRotY = Number.isFinite(values && values.rotY) ? values.rotY : 0;
+        const nextScale = Number.isFinite(values && values.scale) ? values.scale : 1;
+        if (
+          Math.abs(state.x - nextX) < 0.03 &&
+          Math.abs(state.y - nextY) < 0.03 &&
+          Math.abs(state.z - nextZ) < 0.03 &&
+          Math.abs(state.rotX - nextRotX) < 0.03 &&
+          Math.abs(state.rotY - nextRotY) < 0.03 &&
+          Math.abs(state.scale - nextScale) < 0.002
+        ) {
+          return;
+        }
+        state.x = nextX;
+        state.y = nextY;
+        state.z = nextZ;
+        state.rotX = nextRotX;
+        state.rotY = nextRotY;
+        state.scale = nextScale;
+        tile.style.setProperty('--release-reactive-x', nextX.toFixed(2) + 'px');
+        tile.style.setProperty('--release-reactive-y', nextY.toFixed(2) + 'px');
+        tile.style.setProperty('--release-reactive-z', nextZ.toFixed(2) + 'px');
+        tile.style.setProperty('--release-reactive-rot-x', nextRotX.toFixed(2) + 'deg');
+        tile.style.setProperty('--release-reactive-rot-y', nextRotY.toFixed(2) + 'deg');
+        tile.style.setProperty('--release-reactive-scale', nextScale.toFixed(3));
+      }
+
+      function reset3dGridPointerEffect() {
+        if (grid3dPointerRafId) {
+          window.cancelAnimationFrame(grid3dPointerRafId);
+          grid3dPointerRafId = 0;
+        }
+        grid3dPointerInside = false;
+        releases.style.setProperty('--releases-3d-origin-x', '50%');
+        releases.style.setProperty('--releases-3d-origin-y', '50%');
+        for (let i = 0; i < originalTiles.length; i += 1) {
+          apply3dGridTileMotion(originalTiles[i], null);
+        }
+      }
+
+      function update3dGridPointerEffect() {
+        grid3dPointerRafId = 0;
+        const effectEnabled = !isCoarsePointer
+          && viewMode === '3d'
+          && !releases.classList.contains('has-cloth-release-focus');
+        if (!effectEnabled) {
+          releases.style.setProperty('--releases-3d-origin-x', '50%');
+          releases.style.setProperty('--releases-3d-origin-y', '50%');
+          for (let i = 0; i < originalTiles.length; i += 1) {
+            apply3dGridTileMotion(originalTiles[i], null);
+          }
+          return;
+        }
+
+        const releasesRect = releases.getBoundingClientRect();
+        const normalizedPointerX = releasesRect.width > 0
+          ? clamp(((grid3dPointerX - releasesRect.left) / releasesRect.width) * 100, 0, 100)
+          : 50;
+        const normalizedPointerY = releasesRect.height > 0
+          ? clamp(((grid3dPointerY - releasesRect.top) / releasesRect.height) * 100, 0, 100)
+          : 50;
+        releases.style.setProperty('--releases-3d-origin-x', normalizedPointerX.toFixed(2) + '%');
+        releases.style.setProperty('--releases-3d-origin-y', normalizedPointerY.toFixed(2) + '%');
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+
+        for (let i = 0; i < orderedTiles.length; i += 1) {
+          const tile = orderedTiles[i];
+          const tileWidth = tile.offsetWidth;
+          const tileHeight = tile.offsetHeight;
+          if (!tileWidth || !tileHeight) {
+            apply3dGridTileMotion(tile, null);
+            continue;
+          }
+
+          const radius = Math.max(tileWidth, tileHeight) * 1.55 + 24;
+          const centerX = releasesRect.left + tile.offsetLeft + tileWidth * 0.5;
+          const centerY = releasesRect.top + tile.offsetTop + tileHeight * 0.5;
+          const inViewportBand = centerX >= -radius
+            && centerX <= viewportWidth + radius
+            && centerY >= -radius
+            && centerY <= viewportHeight + radius;
+
+          if (!grid3dPointerInside || !inViewportBand) {
+            apply3dGridTileMotion(tile, null);
+            continue;
+          }
+
+          const dx = grid3dPointerX - centerX;
+          const dy = grid3dPointerY - centerY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance >= radius) {
+            apply3dGridTileMotion(tile, null);
+            continue;
+          }
+
+          const safeDistance = distance > 0.001 ? distance : 1;
+          const influence = Math.pow(1 - (distance / radius), 2);
+          const dirX = dx / safeDistance;
+          const dirY = dy / safeDistance;
+          apply3dGridTileMotion(tile, {
+            x: dirX * Math.min(12, tileWidth * 0.085) * influence,
+            y: dirY * Math.min(12, tileHeight * 0.085) * influence,
+            z: Math.min(26, tileWidth * 0.16) * influence,
+            rotX: clamp(-dirY * 10 * influence, -10, 10),
+            rotY: clamp(dirX * 10 * influence, -10, 10),
+            scale: 1 + influence * 0.06
+          });
+        }
+      }
+
+      function schedule3dGridPointerEffect() {
+        if (grid3dPointerRafId) return;
+        grid3dPointerRafId = window.requestAnimationFrame(update3dGridPointerEffect);
       }
 
       function clearPlainReleaseRevealTimer() {
@@ -10674,6 +10965,41 @@
             resolve();
           });
         });
+      }
+
+      function positionPlainReleaseNavigation() {
+        plainReleaseNavigationLayoutRafId = 0;
+        if (!plainReleasePanel || !plainReleaseScene || !plainReleasePrev || !plainReleaseNext) return;
+        if (!plainReleasePanel.classList.contains('is-open') || plainReleasePanel.hidden) return;
+
+        const panelRect = plainReleasePanel.getBoundingClientRect();
+        const sceneRect = plainReleaseScene.getBoundingClientRect();
+        const prevRect = plainReleasePrev.getBoundingClientRect();
+        const nextRect = plainReleaseNext.getBoundingClientRect();
+
+        if (!panelRect.width || !sceneRect.width || !sceneRect.height) return;
+
+        const navGap = window.innerWidth <= COMPACT_CONTROLS_BREAKPOINT ? 10 : 12;
+        const viewportInset = window.innerWidth <= COMPACT_CONTROLS_BREAKPOINT ? 8 : 12;
+        const prevWidth = prevRect.width || 38;
+        const prevHeight = prevRect.height || 38;
+        const nextWidth = nextRect.width || 38;
+        const nextHeight = nextRect.height || 38;
+        const navCenterY = sceneRect.top - panelRect.top + sceneRect.height / 2;
+        const prevTop = Math.max(viewportInset, Math.min(navCenterY - prevHeight / 2, panelRect.height - prevHeight - viewportInset));
+        const nextTop = Math.max(viewportInset, Math.min(navCenterY - nextHeight / 2, panelRect.height - nextHeight - viewportInset));
+        const prevLeft = Math.max(viewportInset, Math.min(sceneRect.left - panelRect.left - prevWidth - navGap, panelRect.width - prevWidth - viewportInset));
+        const nextLeft = Math.max(viewportInset, Math.min(sceneRect.right - panelRect.left + navGap, panelRect.width - nextWidth - viewportInset));
+
+        plainReleasePrev.style.top = prevTop + 'px';
+        plainReleasePrev.style.left = prevLeft + 'px';
+        plainReleaseNext.style.top = nextTop + 'px';
+        plainReleaseNext.style.left = nextLeft + 'px';
+      }
+
+      function schedulePlainReleaseNavigationLayout() {
+        if (plainReleaseNavigationLayoutRafId) return;
+        plainReleaseNavigationLayoutRafId = window.requestAnimationFrame(positionPlainReleaseNavigation);
       }
 
       function clearPlainReleaseSourceTile() {
@@ -10695,6 +11021,7 @@
           activeClothReleaseSourceTile = null;
         }
         releases.classList.remove('has-cloth-release-focus');
+        schedule3dGridPointerEffect();
       }
 
       function setClothReleaseSourceTile(tile) {
@@ -10703,6 +11030,7 @@
         activeClothReleaseSourceTile = tile;
         activeClothReleaseSourceTile.classList.add('is-cloth-release-active');
         releases.classList.add('has-cloth-release-focus');
+        schedule3dGridPointerEffect();
       }
 
       function getPlainReleaseTileByIndex(index) {
@@ -10793,6 +11121,7 @@
       function updatePlainReleaseNavigation() {
         if (plainReleasePrev) plainReleasePrev.disabled = !getPlainReleaseIndexOffset(activePlainReleaseIndex, -1);
         if (plainReleaseNext) plainReleaseNext.disabled = !getPlainReleaseIndexOffset(activePlainReleaseIndex, 1);
+        schedulePlainReleaseNavigationLayout();
       }
 
       function stopPlainReleaseMorph() {
@@ -10826,6 +11155,10 @@
         plainReleaseAnimationToken += 1;
         activePlainReleaseIndex = '';
         plainReleaseNavigationInFlight = false;
+        if (plainReleaseNavigationLayoutRafId) {
+          window.cancelAnimationFrame(plainReleaseNavigationLayoutRafId);
+          plainReleaseNavigationLayoutRafId = 0;
+        }
         resetPlainReleaseTilt();
         stopPlainReleaseMorph();
         clearPlainReleaseSourceTile();
@@ -10836,6 +11169,14 @@
         plainReleasePanel.setAttribute('aria-hidden', 'true');
         plainReleasePanel.hidden = true;
         plainReleasePanel.style.display = 'none';
+        if (plainReleasePrev) {
+          plainReleasePrev.style.top = '';
+          plainReleasePrev.style.left = '';
+        }
+        if (plainReleaseNext) {
+          plainReleaseNext.style.top = '';
+          plainReleaseNext.style.left = '';
+        }
       }
 
       function setPlainReleaseMotion(tiltX, tiltY, shiftX, shiftY, roll) {
@@ -11254,6 +11595,7 @@
         }
         if (plainReleaseSource) plainReleaseSource.hidden = false;
         renderPlainReleaseSocials(detail);
+        schedulePlainReleaseNavigationLayout();
       }
 
       async function animatePlainReleaseSwitch(direction, onBeforeIncoming) {
@@ -11469,6 +11811,7 @@
         await animatePlainReleaseMorph(sourceTile, token);
         if (plainReleaseAnimationToken !== token) return;
         plainReleasePanel.classList.remove('is-morphing');
+        schedulePlainReleaseNavigationLayout();
         stopPlainReleaseMorph();
       }
 
@@ -11771,6 +12114,36 @@
         openPlainReleasePanel(tileIndex, tile);
       });
 
+      releases.addEventListener('pointermove', function (event) {
+        if (viewMode !== '3d' || isCoarsePointer) return;
+        if (releases.classList.contains('has-cloth-release-focus')) return;
+        grid3dPointerInside = true;
+        grid3dPointerX = event.clientX;
+        grid3dPointerY = event.clientY;
+        schedule3dGridPointerEffect();
+      });
+      releases.addEventListener('pointerenter', function (event) {
+        if (viewMode !== '3d' || isCoarsePointer) return;
+        if (releases.classList.contains('has-cloth-release-focus')) return;
+        grid3dPointerInside = true;
+        grid3dPointerX = event.clientX;
+        grid3dPointerY = event.clientY;
+        schedule3dGridPointerEffect();
+      });
+      releases.addEventListener('pointerleave', function () {
+        if (viewMode !== '3d') return;
+        grid3dPointerInside = false;
+        schedule3dGridPointerEffect();
+      });
+      window.addEventListener('scroll', function () {
+        if (viewMode !== '3d' || !grid3dPointerInside) return;
+        schedule3dGridPointerEffect();
+      }, { passive: true });
+      window.addEventListener('resize', function () {
+        if (!activePlainReleaseIndex) return;
+        schedulePlainReleaseNavigationLayout();
+      });
+
       if (plainReleaseClose) plainReleaseClose.addEventListener('click', closePlainReleasePanel);
       if (plainReleasePrev) plainReleasePrev.addEventListener('click', function () {
         navigatePlainRelease(-1);
@@ -11870,6 +12243,7 @@
         }
         pageLoader.classList.add('is-hidden');
         pageLoader.setAttribute('aria-hidden', 'true');
+        document.documentElement.classList.remove('is-page-loading');
         document.body.classList.remove('is-page-loading');
         window.requestAnimationFrame(function () {
           window.requestAnimationFrame(function () {
@@ -11951,6 +12325,39 @@
         if (compactSizeBtn) compactSizeBtn.classList.toggle('is-active', compactSection === 'size');
       }
 
+      function updateSizeControlsVisibility() {
+        const isSphereView = viewMode === 'sphere';
+        if (sizeCluster) {
+          sizeCluster.hidden = false;
+          sizeCluster.setAttribute('aria-hidden', 'false');
+        }
+        if (compactSizeBtn) {
+          compactSizeBtn.hidden = false;
+          compactSizeBtn.setAttribute('aria-hidden', 'false');
+        }
+        if (sizeX4Btn) {
+          sizeX4Btn.hidden = false;
+          sizeX4Btn.classList.remove('is-size-locked');
+          sizeX4Btn.setAttribute('aria-disabled', 'false');
+        }
+        if (sizeX3Btn) {
+          sizeX3Btn.hidden = isSphereView;
+          sizeX3Btn.classList.remove('is-size-locked');
+          sizeX3Btn.setAttribute('aria-disabled', 'false');
+        }
+        if (sizeX2Btn) {
+          sizeX2Btn.hidden = false;
+          sizeX2Btn.classList.remove('is-size-locked');
+          sizeX2Btn.setAttribute('aria-disabled', 'false');
+        }
+        if (sizeX1Btn) {
+          sizeX1Btn.hidden = isSphereView;
+          sizeX1Btn.classList.remove('is-size-locked');
+          sizeX1Btn.setAttribute('aria-disabled', 'false');
+        }
+        updateCompactSectionButtons();
+      }
+
       function applyCompactControlsState(shouldCompact) {
         compactControlsMode = shouldCompact;
         if (controlsRoot) controlsRoot.classList.toggle('is-compact', compactControlsMode);
@@ -11964,14 +12371,18 @@
       }
 
       function controlsNeedCompactMode() {
-        if (!controlsRoot || sectionClusters.length < 2) return false;
+        if (!controlsRoot) return false;
+        const visibleClusters = sectionClusters.filter(function (cluster) {
+          return !!cluster.offsetParent;
+        });
+        if (visibleClusters.length < 2) return false;
         if (document.documentElement.clientWidth > COMPACT_CONTROLS_BREAKPOINT) return false;
         const prevCompactMode = compactControlsMode;
         if (prevCompactMode) applyCompactControlsState(false);
         let wrapped = false;
-        const firstTop = sectionClusters[0].offsetTop;
-        for (let i = 1; i < sectionClusters.length; i += 1) {
-          if (Math.abs(sectionClusters[i].offsetTop - firstTop) > 1) {
+        const firstTop = visibleClusters[0].offsetTop;
+        for (let i = 1; i < visibleClusters.length; i += 1) {
+          if (Math.abs(visibleClusters[i].offsetTop - firstTop) > 1) {
             wrapped = true;
             break;
           }
@@ -12574,17 +12985,7 @@
               motionAmpZ: isDynamic ? Math.min(0.6 + Math.random() * 2.3, motionBudget) : 0,
               hover: 0,
               targetHover: 0,
-              pullX: 0,
-              pullY: 0,
-              targetPullX: 0,
-              targetPullY: 0,
               isPointerOver: false,
-              hasPointerSample: false,
-              lastPointerX: 0,
-              lastPointerY: 0,
-              recoilX: 0,
-              recoilY: 0,
-              recoilLife: 0,
               pointerEnabled: true,
               depthRank: -1,
               screenAlpha: -1
@@ -12592,76 +12993,15 @@
             tileStates.push(state);
 
             if (enableSceneHover) {
-              tile.addEventListener('pointerenter', function (event) {
+              tile.addEventListener('pointerenter', function () {
                 state.targetHover = 1;
                 state.isPointerOver = true;
-                state.recoilLife = 0;
-                state.hasPointerSample = true;
-                state.lastPointerX = event.clientX;
-                state.lastPointerY = event.clientY;
-                const rect = tile.getBoundingClientRect();
-                if (rect.width && rect.height) {
-                  const centerX = rect.left + rect.width * 0.5;
-                  const centerY = rect.top + rect.height * 0.5;
-                  const dx = event.clientX - centerX;
-                  const dy = event.clientY - centerY;
-                  const magnetScale = Math.max(26, Math.min(rect.width, rect.height) * 0.86);
-                  const pullCenterX = clamp(dx / magnetScale, -0.72, 0.72);
-                  const pullCenterY = clamp(dy / magnetScale, -0.72, 0.72);
-                  state.targetPullX = pullCenterX;
-                  state.targetPullY = pullCenterY;
-                  state.pullX = pullCenterX;
-                  state.pullY = pullCenterY;
-                }
                 hoverNeedsRender = true;
                 ensureRender();
               });
-              tile.addEventListener('pointerleave', function (event) {
+              tile.addEventListener('pointerleave', function () {
                 state.targetHover = 0;
                 state.isPointerOver = false;
-                state.hasPointerSample = false;
-                const rect = tile.getBoundingClientRect();
-                if (rect.width && rect.height) {
-                  const centerX = rect.left + rect.width * 0.5;
-                  const centerY = rect.top + rect.height * 0.5;
-                  const dx = event.clientX - centerX;
-                  const dy = event.clientY - centerY;
-                  const recoilScale = Math.max(28, Math.min(rect.width, rect.height) * 0.86);
-                  state.recoilX = clamp(-dx / recoilScale, -0.8, 0.8);
-                  state.recoilY = clamp(-dy / recoilScale, -0.8, 0.8);
-                } else {
-                  state.recoilX = clamp(-(state.pullX * 0.9 + state.targetPullX * 0.24), -0.8, 0.8);
-                  state.recoilY = clamp(-(state.pullY * 0.9 + state.targetPullY * 0.24), -0.8, 0.8);
-                }
-                state.recoilLife = 1;
-                hoverNeedsRender = true;
-                ensureRender();
-              });
-              tile.addEventListener('pointermove', function (event) {
-                const rect = tile.getBoundingClientRect();
-                if (!rect.width || !rect.height) return;
-                const magnetScale = Math.max(26, Math.min(rect.width, rect.height) * 0.86);
-                if (state.hasPointerSample) {
-                  const deltaX = event.clientX - state.lastPointerX;
-                  const deltaY = event.clientY - state.lastPointerY;
-                  state.targetPullX += deltaX / magnetScale;
-                  state.targetPullY += deltaY / magnetScale;
-                }
-                const centerX = rect.left + rect.width * 0.5;
-                const centerY = rect.top + rect.height * 0.5;
-                const dx = event.clientX - centerX;
-                const dy = event.clientY - centerY;
-                const centerPullX = dx / magnetScale;
-                const centerPullY = dy / magnetScale;
-                state.targetPullX += (centerPullX - state.targetPullX) * 0.44;
-                state.targetPullY += (centerPullY - state.targetPullY) * 0.44;
-                state.targetPullX = clamp(state.targetPullX, -0.72, 0.72);
-                state.targetPullY = clamp(state.targetPullY, -0.72, 0.72);
-                state.hasPointerSample = true;
-                state.lastPointerX = event.clientX;
-                state.lastPointerY = event.clientY;
-                state.isPointerOver = true;
-                state.recoilLife = 0;
                 hoverNeedsRender = true;
                 ensureRender();
               });
@@ -12684,49 +13024,24 @@
             if (Math.abs(hoverDelta) > 0.002) hoverAnimating = true;
             const hoverActive = Math.abs(hoverDelta) > 0.002 || t.hover > 0.001;
 
-            if (!t.isPointerOver) {
-              if (t.recoilLife > 0.003) {
-                const recoilEnvelope = t.recoilLife * t.recoilLife;
-                t.targetPullX = t.recoilX * recoilEnvelope;
-                t.targetPullY = t.recoilY * recoilEnvelope;
-                t.recoilLife *= 0.82;
-                hoverAnimating = true;
-              } else {
-                t.recoilLife = 0;
-                t.targetPullX *= 0.74;
-                t.targetPullY *= 0.74;
-                if (Math.abs(t.targetPullX) < 0.001) t.targetPullX = 0;
-                if (Math.abs(t.targetPullY) < 0.001) t.targetPullY = 0;
-              }
-            }
-
-            const pullDeltaX = t.targetPullX - t.pullX;
-            const pullDeltaY = t.targetPullY - t.pullY;
-            t.pullX += pullDeltaX * 0.28;
-            t.pullY += pullDeltaY * 0.28;
-            if (Math.abs(pullDeltaX) > 0.002 || Math.abs(pullDeltaY) > 0.002) hoverAnimating = true;
-
             if (!forceAll && !hoverActive && !t.isDynamic) continue;
 
             let driftX = 0;
             let driftY = 0;
             let driftZ = 0;
-            if (t.isDynamic) {
+            if (t.isDynamic && !t.isPointerOver && t.hover < 0.01 && t.targetHover < 0.01) {
               const p = motionTime * t.motionSpeed + t.motionPhase;
               driftX = Math.cos(p) * t.motionAmpX;
               driftY = Math.sin(p * 1.07) * t.motionAmpY;
               driftZ = Math.sin(p * 0.75) * t.motionAmpZ;
             }
 
-            const pullDistance = tileSize * (0.36 + t.hover * 0.08);
-            const pullX = t.pullX * pullDistance;
-            const pullY = t.pullY * pullDistance;
-            const hoverLift = t.hover * (tileSize * 0.44) + (Math.abs(t.pullX) + Math.abs(t.pullY)) * tileSize * 0.08;
+            const hoverLift = t.hover * (tileSize * 0.34);
             const scale = 1 + t.hover * hoverScaleForCanvas(currentCanvasSizeFactor);
-            const hoverRotX = -t.pullY * 3.2;
-            const hoverRotY = t.pullX * 3.8;
-            const worldX = t.baseX + driftX + pullX;
-            const worldY = t.baseY + driftY + pullY;
+            const hoverRotX = 0;
+            const hoverRotY = 0;
+            const worldX = t.baseX + driftX;
+            const worldY = t.baseY + driftY;
             const worldZ = t.baseZ + driftZ + hoverLift;
             const horizontal = Math.max(0.0001, Math.sqrt(worldX * worldX + worldZ * worldZ));
             const sphereFaceY = Math.atan2(worldX, worldZ) * RAD_TO_DEG;
@@ -13006,7 +13321,7 @@
         const space = document.createElement('div');
         const camera = document.createElement('div');
         const field = document.createElement('div');
-        space.className = 'canvas-space';
+        space.className = 'canvas-space canvas-space--cards';
         camera.className = 'canvas-camera';
         field.className = 'canvas-field';
         camera.appendChild(field);
@@ -13825,6 +14140,11 @@
           floatingSceneType = nextMode;
         }
         if (floatingScene) floatingScene.resize();
+        window.requestAnimationFrame(function () {
+          window.requestAnimationFrame(function () {
+            if (floatingScene && floatingSceneType === nextMode) floatingScene.resize();
+          });
+        });
       }
 
       function leaveCanvasMode() {
@@ -13851,6 +14171,8 @@
         let cols = Math.max(1, Math.ceil(viewportWidth / minTile));
         let cellSize = Math.max(1, viewportWidth / cols);
         const overlap = sizeFactor === 1 ? 0 : OVERLAP;
+        const tileGap = (viewMode === '3d' || viewMode === 'plain') ? (sizeFactor === 1 ? 2 : 4) : 0;
+        const tileInset = tileGap * 0.5;
         let rows = Math.ceil(orderedTiles.length / cols);
 
         if (sizeFactor === 1) {
@@ -13870,11 +14192,12 @@
           const tile = orderedTiles[i];
           const isLastCol = col === cols - 1;
           const isLastRow = row === rows - 1;
-          tile.style.left = col * cellSize + 'px';
-          tile.style.top = row * cellSize + 'px';
-          tile.style.width = cellSize + (isLastCol ? 0 : overlap) + 'px';
-          tile.style.height = cellSize + (isLastRow ? 0 : overlap) + 'px';
+          tile.style.left = col * cellSize + tileInset + 'px';
+          tile.style.top = row * cellSize + tileInset + 'px';
+          tile.style.width = Math.max(1, cellSize + (isLastCol ? 0 : overlap) - tileGap) + 'px';
+          tile.style.height = Math.max(1, cellSize + (isLastRow ? 0 : overlap) - tileGap) + 'px';
         }
+        if (viewMode === '3d') schedule3dGridPointerEffect();
       }
 
       function applyTypeOrder() {
@@ -13897,6 +14220,8 @@
         if (view3dBtn) view3dBtn.classList.toggle('is-active', viewMode === '3d');
         if (viewCardsBtn) viewCardsBtn.classList.toggle('is-active', viewMode === 'cards');
         if (viewSphereBtn) viewSphereBtn.classList.toggle('is-active', viewMode === 'sphere');
+        document.body.classList.toggle('is-view-3d', viewMode === '3d');
+        if (viewMode !== '3d') reset3dGridPointerEffect();
       }
 
       function setTypeMode(nextMode, triggerButton) {
@@ -13949,26 +14274,25 @@
         suppressButtonHoverFill(triggerButton);
         compactSection = 'view';
         clothReleaseAutoOpenToken += 1;
-        const shouldAutoOpenRandomClothRelease = viewMode === 'plain' && nextMode === '3d';
         if (nextMode !== 'plain') closePlainReleasePanel();
         if (nextMode !== '3d') closeClothReleasePanel();
         const wasCanvasMode = viewMode === 'sphere' || viewMode === 'cards';
         const isCanvasMode = nextMode === 'sphere' || nextMode === 'cards';
         if (wasCanvasMode && !isCanvasMode) leaveCanvasMode();
         viewMode = nextMode;
+        if (nextMode === 'sphere' && sizeFactor !== 4 && sizeFactor !== 2) {
+          setSize(4);
+        }
         updateViewButtons();
+        updateSizeControlsVisibility();
         refreshControlsLayout();
         scheduleControlsLayout();
-        if (nextMode === 'sphere' && sizeFactor !== 2) {
-          setSize(2);
-        }
         if (isCanvasMode) {
           enterCanvasMode(viewMode);
           return;
         }
         if (nextMode === '3d') scheduleClothReleaseWarmup();
-        if (wasCanvasMode) renderOrderedGrid();
-        if (shouldAutoOpenRandomClothRelease) scheduleRandomClothReleaseOpen();
+        renderOrderedGrid();
       }
 
       if (typeShuffleBtn) {
@@ -13995,7 +14319,8 @@
 
       function setSize(nextFactor, triggerButton) {
         suppressButtonHoverFill(triggerButton);
-        compactSection = 'size';
+        if (triggerButton) compactSection = 'size';
+        if (viewMode === 'sphere' && nextFactor !== 4 && nextFactor !== 2) return;
         sizeFactor = nextFactor;
         if (sizeX4Btn) sizeX4Btn.classList.toggle('is-active', sizeFactor === 4);
         if (sizeX3Btn) sizeX3Btn.classList.toggle('is-active', sizeFactor === 3);
@@ -14032,6 +14357,7 @@
       applyTypeOrder();
       updateTypeButtons();
       updateViewButtons();
+      updateSizeControlsVisibility();
       refreshControlsLayout();
       scheduleControlsLayout();
       waitForReleaseImages();
