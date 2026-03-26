@@ -13,7 +13,9 @@
   const CLOTH_ITERATIONS = 7;
   const CARD_SWITCH_OUT_MS = 170;
   const CARD_SWITCH_IN_MS = 220;
+  const SQUIRCLE_CONTROL_FACTOR = 0.9;
   let threeLoaderPromise = null;
+  let supportsCornerShapeSquircleValue = null;
 
   function loadThreeScript(src) {
     return new Promise(function (resolve, reject) {
@@ -73,18 +75,75 @@
     return t * t * (3 - 2 * t);
   }
 
+  function pointInTriangle(point, a, b, c) {
+    const abx = b.x - a.x;
+    const aby = b.y - a.y;
+    const acx = c.x - a.x;
+    const acy = c.y - a.y;
+    const apx = point.x - a.x;
+    const apy = point.y - a.y;
+    const d00 = (abx * abx) + (aby * aby);
+    const d01 = (abx * acx) + (aby * acy);
+    const d11 = (acx * acx) + (acy * acy);
+    const d20 = (apx * abx) + (apy * aby);
+    const d21 = (apx * acx) + (apy * acy);
+    const denominator = (d00 * d11) - (d01 * d01);
+    if (Math.abs(denominator) < 1e-6) return false;
+    const v = ((d11 * d20) - (d01 * d21)) / denominator;
+    const w = ((d00 * d21) - (d01 * d20)) / denominator;
+    const u = 1 - v - w;
+    return u >= 0 && v >= 0 && w >= 0;
+  }
+
+  function pointInQuad(point, a, b, c, d) {
+    return pointInTriangle(point, a, b, c) || pointInTriangle(point, a, c, d);
+  }
+
+  function supportsCornerShapeSquircle() {
+    if (supportsCornerShapeSquircleValue != null) return supportsCornerShapeSquircleValue;
+    try {
+      supportsCornerShapeSquircleValue = !!(window.CSS && typeof window.CSS.supports === 'function' && window.CSS.supports('corner-shape', 'squircle'));
+    } catch {
+      supportsCornerShapeSquircleValue = false;
+    }
+    return supportsCornerShapeSquircleValue;
+  }
+
   function roundedRectPath(ctx, x, y, width, height, radius) {
     const r = Math.max(0, Math.min(radius, Math.min(width, height) * 0.5));
     ctx.beginPath();
+    if (!r) {
+      ctx.rect(x, y, width, height);
+      ctx.closePath();
+      return;
+    }
+    const control = r * SQUIRCLE_CONTROL_FACTOR;
+    const inset = r - control;
     ctx.moveTo(x + r, y);
     ctx.lineTo(x + width - r, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+    ctx.bezierCurveTo(
+      x + width - r + control, y,
+      x + width, y + inset,
+      x + width, y + r
+    );
     ctx.lineTo(x + width, y + height - r);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+    ctx.bezierCurveTo(
+      x + width, y + height - r + control,
+      x + width - inset, y + height,
+      x + width - r, y + height
+    );
     ctx.lineTo(x + r, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+    ctx.bezierCurveTo(
+      x + r - control, y + height,
+      x, y + height - inset,
+      x, y + height - r
+    );
     ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.bezierCurveTo(
+      x, y + r - control,
+      x + inset, y,
+      x + r, y
+    );
     ctx.closePath();
   }
 
@@ -105,8 +164,10 @@
     ctx.restore();
   }
 
-  function measureCardChipWidth(ctx, label) {
-    return Math.ceil(ctx.measureText(String(label || '').trim()).width + 86);
+  function measureCardChipWidth(ctx, label, options) {
+    const settings = options || {};
+    const extraPadding = Number.isFinite(settings.extraPadding) ? settings.extraPadding : 86;
+    return Math.ceil(ctx.measureText(String(label || '').trim()).width + extraPadding);
   }
 
   function fitCoverRect(sourceWidth, sourceHeight, targetWidth, targetHeight) {
@@ -256,6 +317,18 @@
     }
   }
 
+  function isSameOriginAudioUrl(url) {
+    if (!url) return false;
+    try {
+      const parsed = new URL(url, window.location.href);
+      if (parsed.protocol === 'data:' || parsed.protocol === 'blob:') return true;
+      if (parsed.protocol === 'file:') return false;
+      return parsed.origin === window.location.origin;
+    } catch {
+      return false;
+    }
+  }
+
   function resolveArtworkImage(cardData) {
     const artworkElement = cardData && cardData.artworkElement;
     const candidateUrls = [];
@@ -358,7 +431,7 @@
   }
 
   function isImmediateAudioHotspotAction(action) {
-    return action === 'audio-toggle' || action === 'audio-volume-toggle';
+    return action === 'audio-toggle' || action === 'audio-volume-toggle' || action === 'close';
   }
 
   async function renderArtworkCanvas(cardData, targetWidth, targetHeight, radius) {
@@ -395,18 +468,21 @@
     return canvas;
   }
 
-  function drawCardChip(ctx, x, y, label, accent) {
+  function drawCardChip(ctx, x, y, label, accent, options) {
+    const settings = options || {};
     const text = String(label || '').trim();
     if (!text) return 0;
+    const height = Number.isFinite(settings.height) ? settings.height : 110;
+    const radiusScale = Number.isFinite(settings.radiusScale) ? settings.radiusScale : 0.5;
+    const extraPadding = Number.isFinite(settings.extraPadding) ? settings.extraPadding : 86;
     ctx.save();
     ctx.font = '500 50px ' + getCanvasUiFontFamily();
-    const width = measureCardChipWidth(ctx, text);
-    const height = 110;
+    const width = measureCardChipWidth(ctx, text, { extraPadding: extraPadding });
     const gradient = ctx.createLinearGradient(x, y, x, y + height);
     gradient.addColorStop(0, accent || 'rgba(255, 255, 255, 0.16)');
     gradient.addColorStop(1, 'rgba(255, 255, 255, 0.08)');
-    fillRoundedRect(ctx, x, y, width, height, height * 0.5, gradient);
-    strokeRoundedRect(ctx, x, y, width, height, height * 0.5, 'rgba(255, 255, 255, 0.18)', 2);
+    fillRoundedRect(ctx, x, y, width, height, height * radiusScale, gradient);
+    strokeRoundedRect(ctx, x, y, width, height, height * radiusScale, 'rgba(255, 255, 255, 0.18)', 2);
     ctx.fillStyle = '#f3f1ea';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, x + width * 0.5 - ctx.measureText(text).width * 0.5, y + height * 0.54);
@@ -415,14 +491,11 @@
   }
 
   function getCanvasUiFontFamily() {
-    if (window.location.protocol === 'file:') {
-      return '"Helvetica Neue", Arial, sans-serif';
-    }
     try {
       const fontFamily = getComputedStyle(document.documentElement).getPropertyValue('--ui-font').trim();
       if (fontFamily) return fontFamily;
     } catch {}
-    return '"Montserrat", sans-serif';
+    return '"Google Sans Flex", sans-serif';
   }
 
   async function ensureCanvasFontsLoaded() {
@@ -430,8 +503,8 @@
     if (!document.fonts || typeof document.fonts.load !== 'function') return uiFontFamily;
     try {
       await Promise.allSettled([
-        document.fonts.load('500 15px ' + uiFontFamily, 'APHEX TWIN'),
-        document.fonts.load('400 12px ' + uiFontFamily, 'Computer Controlled Acoustic Instruments pt2 EP'),
+        document.fonts.load('700 50px ' + uiFontFamily, 'APHEX TWIN'),
+        document.fonts.load('500 15px ' + uiFontFamily, 'Computer Controlled Acoustic Instruments pt2 EP'),
         document.fonts.load('500 10px ' + uiFontFamily, 'Spotify')
       ]);
     } catch {}
@@ -446,9 +519,9 @@
   }
 
   function drawControlPlaySymbol(ctx, cx, cy, size, color) {
-    const iconWidth = size * 0.34;
-    const iconHeight = size * 0.42;
-    const offsetX = size * 0.04;
+    const iconWidth = size * 0.38;
+    const iconHeight = size * 0.46;
+    const offsetX = size * 0.045;
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(cx - iconWidth * 0.44 + offsetX, cy - iconHeight * 0.5);
@@ -461,9 +534,9 @@
   }
 
   function drawControlPauseSymbol(ctx, cx, cy, size, color) {
-    const barWidth = Math.max(1.6, size * 0.09);
-    const barHeight = size * 0.38;
-    const gap = size * 0.08;
+    const barWidth = Math.max(1.6, size * 0.095);
+    const barHeight = size * 0.42;
+    const gap = size * 0.085;
     const totalWidth = barWidth * 2 + gap;
     const leftX = cx - totalWidth * 0.5;
     const topY = cy - barHeight * 0.5;
@@ -476,11 +549,11 @@
 
   function drawControlVolumeSymbol(ctx, cx, cy, size, color, volume) {
     const level = clamp(Number.isFinite(volume) ? volume : DEFAULT_AUDIO_VOLUME, 0, 1);
-    const bodyWidth = size * 0.16;
-    const bodyHeight = size * 0.22;
-    const coneWidth = size * 0.14;
-    const coneHeight = size * 0.3;
-    const leftX = cx - size * 0.16;
+    const bodyWidth = size * 0.19;
+    const bodyHeight = size * 0.3;
+    const coneWidth = size * 0.18;
+    const coneHeight = size * 0.42;
+    const leftX = cx - size * 0.22;
     const bodyTop = cy - bodyHeight * 0.5;
     ctx.save();
     ctx.fillStyle = color;
@@ -494,13 +567,13 @@
     ctx.closePath();
     ctx.fill();
     if (level > 0.04) {
-      const waveBaseX = leftX + bodyWidth + coneWidth + size * 0.02;
+      const waveBaseX = leftX + bodyWidth + coneWidth + size * 0.03;
       const maxWaveCount = level > 0.66 ? 2 : 1;
       ctx.strokeStyle = color;
-      ctx.lineWidth = Math.max(1.4, size * 0.045);
+      ctx.lineWidth = Math.max(1.35, size * 0.042);
       ctx.lineCap = 'round';
       for (let waveIndex = 0; waveIndex < maxWaveCount; waveIndex += 1) {
-        const waveRadius = size * (0.13 + waveIndex * 0.085);
+        const waveRadius = size * (0.15 + waveIndex * 0.095);
         ctx.beginPath();
         ctx.arc(waveBaseX, cy, waveRadius, -0.72, 0.72);
         ctx.stroke();
@@ -548,15 +621,127 @@
       const alpha = enabled ? (isPlaying ? 0.52 + value * 0.42 : 0.26 + value * 0.34) : 0.12;
       ctx.save();
       const fill = ctx.createLinearGradient(drawX, barY, drawX, y + height);
-      fill.addColorStop(0, 'rgba(255, 205, 176, ' + Math.min(1, alpha + 0.1).toFixed(3) + ')');
-      fill.addColorStop(1, 'rgba(109, 174, 255, ' + alpha.toFixed(3) + ')');
-      ctx.shadowColor = isPlaying ? 'rgba(255, 166, 110, 0.34)' : 'rgba(255, 255, 255, 0.16)';
-      ctx.shadowBlur = isPlaying ? 7 : 3;
+      fill.addColorStop(0, 'rgba(248, 248, 248, ' + Math.min(1, alpha + 0.1).toFixed(3) + ')');
+      fill.addColorStop(1, 'rgba(168, 168, 168, ' + alpha.toFixed(3) + ')');
+      ctx.shadowColor = isPlaying ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.16)';
+      ctx.shadowBlur = isPlaying ? 6 : 3;
       ctx.fillStyle = fill;
       fillRoundedRect(ctx, drawX, barY, barWidth, barHeight, Math.min(barWidth * 0.5, 2.5), ctx.fillStyle);
       ctx.restore();
       drawX += barWidth + gap;
     }
+  }
+
+  function drawAudioBlobPanel(ctx, options) {
+    const settings = options || {};
+    const x = settings.x || 0;
+    const y = settings.y || 0;
+    const width = settings.width || settings.size || 0;
+    const height = settings.height || settings.size || 0;
+    const scale = settings.scale || 1;
+    const time = Number.isFinite(settings.time) ? settings.time : 0;
+    const audioLevel = clamp(Number.isFinite(settings.audioLevel) ? settings.audioLevel : 0, 0, 1);
+    const bassLevel = clamp(Number.isFinite(settings.audioBass) ? settings.audioBass : 0, 0, 1);
+    const kickLevel = clamp(Number.isFinite(settings.audioKick) ? settings.audioKick : 0, 0, 1);
+    const pulse = 1 + audioLevel * 0.07 + bassLevel * 0.08 + kickLevel * 0.06;
+    const radius = clamp(Math.min(width, height) * 0.18, 10 * scale, 18 * scale);
+    const screenGradient = ctx.createLinearGradient(x, y, x, y + height);
+    screenGradient.addColorStop(0, 'rgba(255, 255, 255, 0.16)');
+    screenGradient.addColorStop(0.08, 'rgba(81, 90, 108, 0.28)');
+    screenGradient.addColorStop(0.36, 'rgba(16, 18, 25, 0.48)');
+    screenGradient.addColorStop(1, 'rgba(5, 6, 10, 0.72)');
+    fillRoundedRect(ctx, x, y, width, height, radius, screenGradient);
+
+    ctx.save();
+    roundedRectPath(ctx, x, y, width, height, radius);
+    ctx.clip();
+    const glassCore = ctx.createRadialGradient(
+      x + width * 0.5,
+      y + height * 0.46,
+      Math.min(width, height) * 0.04,
+      x + width * 0.5,
+      y + height * 0.5,
+      Math.max(width, height) * 0.58
+    );
+    glassCore.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+    glassCore.addColorStop(0.26, 'rgba(122, 152, 188, 0.07)');
+    glassCore.addColorStop(0.64, 'rgba(34, 44, 60, 0.04)');
+    glassCore.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    fillRoundedRect(ctx, x, y, width, height, radius, glassCore);
+
+    const screenGlow = ctx.createRadialGradient(
+      x + width * 0.5,
+      y + height * 0.52,
+      Math.min(width, height) * 0.02,
+      x + width * 0.5,
+      y + height * 0.52,
+      Math.max(width, height) * 0.68
+    );
+    screenGlow.addColorStop(0, 'rgba(154, 190, 232, 0.22)');
+    screenGlow.addColorStop(0.22, 'rgba(108, 148, 186, 0.10)');
+    screenGlow.addColorStop(0.56, 'rgba(45, 59, 82, 0.05)');
+    screenGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    fillRoundedRect(ctx, x, y, width, height, radius, screenGlow);
+
+    const screenSheen = ctx.createLinearGradient(x, y, x, y + height);
+    screenSheen.addColorStop(0, 'rgba(255, 255, 255, 0.16)');
+    screenSheen.addColorStop(0.16, 'rgba(255, 255, 255, 0.05)');
+    screenSheen.addColorStop(0.44, 'rgba(255, 255, 255, 0.008)');
+    screenSheen.addColorStop(0.6, 'rgba(255, 255, 255, 0)');
+    screenSheen.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    fillRoundedRect(ctx, x, y, width, height, radius, screenSheen);
+
+    const edgeGlow = ctx.createLinearGradient(x, y, x, y + height);
+    edgeGlow.addColorStop(0, 'rgba(255, 255, 255, 0.10)');
+    edgeGlow.addColorStop(0.24, 'rgba(255, 255, 255, 0.016)');
+    edgeGlow.addColorStop(0.72, 'rgba(255, 255, 255, 0.03)');
+    edgeGlow.addColorStop(1, 'rgba(255, 255, 255, 0.12)');
+    fillRoundedRect(ctx, x, y, width, height, radius, edgeGlow);
+
+    const orbRadius = Math.max(8 * scale, Math.min(width, height) * 0.22 * pulse);
+    const orbX = x + width * 0.5 + Math.sin(time * 0.88) * width * (0.022 + bassLevel * 0.014);
+    const orbY = y + height * 0.48 + Math.cos(time * 0.72) * height * (0.02 + kickLevel * 0.02);
+    ctx.save();
+    ctx.shadowColor = 'rgba(255, 255, 255, ' + (0.18 + audioLevel * 0.12).toFixed(3) + ')';
+    ctx.shadowBlur = Math.max(10 * scale, orbRadius * (0.46 + audioLevel * 0.12));
+    ctx.beginPath();
+    ctx.arc(orbX, orbY, orbRadius, 0, Math.PI * 2);
+    const orbFill = ctx.createRadialGradient(
+      orbX - orbRadius * (0.28 + bassLevel * 0.03),
+      orbY - orbRadius * (0.28 + kickLevel * 0.02),
+      Math.max(1, orbRadius * 0.08),
+      orbX,
+      orbY,
+      orbRadius
+    );
+    orbFill.addColorStop(0, 'rgba(255, 255, 255, 0.99)');
+    orbFill.addColorStop(0.44, 'rgba(250, 251, 252, 0.98)');
+    orbFill.addColorStop(0.72, 'rgba(228, 235, 245, 0.92)');
+    orbFill.addColorStop(1, 'rgba(205, 214, 230, 0.7)');
+    ctx.fillStyle = orbFill;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.lineWidth = Math.max(1, scale * 0.4);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(orbX - orbRadius * (0.28 + bassLevel * 0.01), orbY - orbRadius * (0.28 + kickLevel * 0.01), orbRadius * (0.18 + audioLevel * 0.05), 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.fill();
+    ctx.restore();
+
+    ctx.restore();
+
+    strokeRoundedRect(ctx, x, y, width, height, radius, 'rgba(255, 255, 255, 0.1)', Math.max(1.0, scale * 0.26));
+    strokeRoundedRect(ctx, x + scale * 0.6, y + scale * 0.8, width - scale * 1.2, height - scale * 1.6, Math.max(0, radius - scale * 0.7), 'rgba(255, 255, 255, 0.05)', Math.max(0.75, scale * 0.16));
+
+    return {
+      x: x,
+      y: y,
+      width: width,
+      height: height,
+      radius: radius
+    };
   }
 
   function toViewportPoint(vector, rect) {
@@ -577,19 +762,23 @@
 
     ctx.save();
     ctx.globalAlpha = settings.disabled ? 0.32 : 1;
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-    ctx.closePath();
+    roundedRectPath(ctx, left, top, size, size, radius);
     ctx.fillStyle = gradient;
     ctx.fill();
     ctx.strokeStyle = settings.strokeColor || 'rgba(255, 255, 255, 0.22)';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    ctx.beginPath();
-    ctx.arc(cx, cy - size * 0.02, radius * 0.86, Math.PI, 0);
+    roundedRectPath(
+      ctx,
+      left + size * 0.07,
+      top + size * 0.06,
+      size * 0.86,
+      size * 0.42,
+      radius * 0.44
+    );
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = Math.max(1.2, size * 0.045);
     ctx.stroke();
 
     ctx.fillStyle = settings.labelColor || 'rgba(255, 255, 255, 0.96)';
@@ -624,15 +813,31 @@
     for (let i = 0; i < items.length; i += 1) {
       const item = items[i];
       if (!item || !item.label) continue;
+      const providerName = String(item.providerName || '').toLowerCase();
+      const isXChip = providerName === 'x';
+      const chipHeight = isXChip ? 96 : 110;
+      const chipExtraPadding = isXChip ? 58 : 86;
+      const chipRadiusScale = isXChip ? 0.46 : 0.5;
       ctx.save();
       ctx.font = '500 50px "Helvetica Neue", Arial, sans-serif';
-      const chipWidth = measureCardChipWidth(ctx, item.label);
+      const chipWidth = measureCardChipWidth(ctx, item.label, { extraPadding: chipExtraPadding });
       ctx.restore();
       if (maxWidth && x > startX && x + chipWidth > startX + maxWidth) {
         x = startX;
         y += rowHeight + gapY;
       }
-      const drawnWidth = drawCardChip(ctx, x, y, item.label, typeof settings.getAccent === 'function' ? settings.getAccent(item, i) : null);
+      const drawnWidth = drawCardChip(
+        ctx,
+        x,
+        y + (rowHeight - chipHeight) * 0.5,
+        item.label,
+        typeof settings.getAccent === 'function' ? settings.getAccent(item, i) : null,
+        {
+          height: chipHeight,
+          extraPadding: chipExtraPadding,
+          radiusScale: chipRadiusScale
+        }
+      );
       if (hotspots && item.url) {
         hotspots.push({
           x: x,
@@ -661,45 +866,46 @@
     const isPlaying = enabled && !!audioState.isPlaying;
     const volume = clamp(Number.isFinite(audioState.volume) ? audioState.volume : DEFAULT_AUDIO_VOLUME, 0, 1);
     const volumePanelOpen = enabled && !!audioState.volumePanelOpen;
-    const audioBands = Array.isArray(audioState.audioBands) ? audioState.audioBands : [];
     const duration = Number.isFinite(audioState.duration) && audioState.duration > 0 ? audioState.duration : 0;
     const currentTime = clamp(Number.isFinite(audioState.currentTime) ? audioState.currentTime : 0, 0, duration || Number.MAX_SAFE_INTEGER);
     const progress = duration > 0 ? clamp(currentTime / duration, 0, 1) : 0;
     const timeText = enabled ? (formatAudioClock(currentTime) + ' / ' + formatAudioClock(duration)) : 'DIRECT AUDIO IS NOT AVAILABLE';
     const radius = Math.min(height * 0.5, 18 * scale);
     const playerGradient = ctx.createLinearGradient(x, y, x, y + height);
-    playerGradient.addColorStop(0, enabled ? 'rgba(24, 28, 36, 0.86)' : 'rgba(18, 21, 28, 0.7)');
-    playerGradient.addColorStop(1, enabled ? 'rgba(10, 12, 18, 0.92)' : 'rgba(10, 12, 18, 0.84)');
+    playerGradient.addColorStop(0, enabled ? 'rgba(20, 20, 22, 0.88)' : 'rgba(16, 16, 18, 0.74)');
+    playerGradient.addColorStop(1, enabled ? 'rgba(7, 7, 8, 0.94)' : 'rgba(7, 7, 8, 0.86)');
     fillRoundedRect(ctx, x, y, width, height, radius, playerGradient);
     strokeRoundedRect(ctx, x, y, width, height, radius, enabled ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.08)', 2);
 
     const controlCenterY = y + height * 0.5;
     const playControlSize = Math.min(height - 6 * scale, 26 * scale);
     const sideControlSize = playControlSize;
-    const volumeRightInset = 6 * scale;
-    const volumeCenterX = x + width - volumeRightInset - sideControlSize * 0.5;
-    const playCenterX = x + 11 * scale + playControlSize * 0.5;
+    const leftControlInsetX = 0;
+    const rightControlInsetX = 5 * scale;
+    const contentGapX = 7 * scale;
+    const volumeCenterX = x + width - rightControlInsetX - sideControlSize * 0.5;
+    const playCenterX = x + leftControlInsetX + playControlSize * 0.5;
     const playControl = drawCardControl(ctx, playCenterX, controlCenterY, playControlSize, '', {
       disabled: !enabled,
       labelOffsetY: 0,
-      topColor: enabled ? 'rgba(255, 154, 105, 0.34)' : 'rgba(34, 39, 48, 0.68)',
-      bottomColor: enabled ? 'rgba(60, 23, 15, 0.88)' : 'rgba(12, 15, 22, 0.88)',
-      strokeColor: enabled ? 'rgba(255, 207, 185, 0.34)' : 'rgba(255, 255, 255, 0.12)',
+      topColor: enabled ? 'rgba(255, 255, 255, 0.16)' : 'rgba(34, 39, 48, 0.68)',
+      bottomColor: enabled ? 'rgba(20, 20, 22, 0.88)' : 'rgba(12, 15, 22, 0.88)',
+      strokeColor: enabled ? 'rgba(255, 255, 255, 0.22)' : 'rgba(255, 255, 255, 0.12)',
       drawSymbol: isPlaying ? drawControlPauseSymbol : drawControlPlaySymbol
     });
     const volumeControl = drawCardControl(ctx, volumeCenterX, controlCenterY, sideControlSize, '', {
       disabled: !enabled,
-      topColor: enabled ? 'rgba(38, 44, 56, 0.76)' : 'rgba(24, 28, 36, 0.62)',
-      bottomColor: enabled ? 'rgba(10, 12, 18, 0.88)' : 'rgba(10, 12, 18, 0.78)',
-      strokeColor: 'rgba(255, 255, 255, 0.14)',
+      topColor: enabled ? 'rgba(255, 255, 255, 0.12)' : 'rgba(24, 28, 36, 0.62)',
+      bottomColor: enabled ? 'rgba(12, 12, 14, 0.9)' : 'rgba(10, 12, 18, 0.78)',
+      strokeColor: 'rgba(255, 255, 255, 0.16)',
       drawSymbol: function (iconCtx, cx, cy, size, color) {
         drawControlVolumeSymbol(iconCtx, cx, cy, size, color, volume);
       }
     });
 
-    const textX = playControl.x + playControl.width + 10 * scale;
-    const playerRightEdge = volumeControl.x - 10 * scale;
-    const timeFontSize = 6.85 * scale;
+    const textX = playControl.x + playControl.width + contentGapX;
+    const playerRightEdge = volumeControl.x - contentGapX;
+    const timeFontSize = 7.8 * scale;
     ctx.save();
     ctx.font = '400 ' + timeFontSize + 'px ' + uiFontFamily;
     const measuredTimeWidth = ctx.measureText(timeText).width;
@@ -707,52 +913,38 @@
     const timeColumnWidth = volumePanelOpen
       ? 0
       : clamp(
-        measuredTimeWidth + 4 * scale,
-        28 * scale,
-        Math.max(28 * scale, (playerRightEdge - textX) * 0.46)
+        measuredTimeWidth + 3 * scale,
+        34 * scale,
+        Math.max(34 * scale, (playerRightEdge - textX) * 0.38)
       );
-    const meterGap = volumePanelOpen ? 0 : 7 * scale;
+    const meterGap = volumePanelOpen ? 0 : 5 * scale;
     const meterX = volumePanelOpen ? textX : (textX + timeColumnWidth + meterGap);
-    const meterWidth = Math.max(34 * scale, playerRightEdge - meterX);
-    const meterHeight = Math.max(3, 3.2 * scale);
-    const meterY = y + height - 9.5 * scale;
-    const knobRadius = 4.7 * scale;
+    const meterWidth = Math.max(44 * scale, playerRightEdge - meterX);
+    const meterHeight = Math.max(3, 3.55 * scale);
+    const meterY = controlCenterY - meterHeight * 0.5;
+    const knobRadius = 4.95 * scale;
     const knobCenterX = meterX + meterWidth * progress;
     const knobCenterY = meterY + meterHeight * 0.5;
     const volumeSliderX = textX;
-    const volumeSliderWidth = Math.max(28 * scale, volumeControl.x - volumeSliderX - 10 * scale);
-    const volumeSliderHeight = Math.max(3, 3 * scale);
-    const volumeSliderY = y + 18.6 * scale;
-    const volumeKnobRadius = 4.3 * scale;
+    const volumeSliderWidth = Math.max(34 * scale, volumeControl.x - volumeSliderX - contentGapX);
+    const volumeSliderHeight = Math.max(3, 3.35 * scale);
+    const volumeSliderY = controlCenterY - volumeSliderHeight * 0.5;
+    const volumeKnobRadius = 4.55 * scale;
     const volumeKnobCenterX = volumeSliderX + volumeSliderWidth * volume;
     const volumeKnobCenterY = volumeSliderY + volumeSliderHeight * 0.5;
-    const spectrumX = textX;
-    const spectrumY = y + 6.8 * scale;
-    const spectrumWidth = Math.max(28 * scale, volumeControl.x - spectrumX - 10 * scale);
-    const spectrumHeight = Math.max(10.5 * scale, 13.5 * scale);
-
-    drawAudioSpectrum(ctx, {
-      x: spectrumX,
-      y: spectrumY,
-      width: spectrumWidth,
-      height: spectrumHeight,
-      bars: audioBands,
-      enabled: enabled,
-      isPlaying: isPlaying
-    });
 
     ctx.save();
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = enabled ? 'rgba(243, 241, 234, 0.7)' : 'rgba(243, 241, 234, 0.38)';
-    ctx.font = '400 ' + timeFontSize + 'px ' + uiFontFamily;
+    ctx.fillStyle = enabled ? 'rgba(243, 241, 234, 0.82)' : 'rgba(243, 241, 234, 0.42)';
+    ctx.font = '500 ' + timeFontSize + 'px ' + uiFontFamily;
     if (!volumePanelOpen) {
-      ctx.fillText(timeText, textX, knobCenterY - 0.15 * scale);
+      ctx.fillText(timeText, textX, controlCenterY + 0.1 * scale);
     }
     ctx.restore();
 
     if (enabled && volumePanelOpen) {
       fillRoundedRect(ctx, volumeSliderX, volumeSliderY, volumeSliderWidth, volumeSliderHeight, volumeSliderHeight * 0.5, 'rgba(255, 255, 255, 0.18)');
-      fillRoundedRect(ctx, volumeSliderX, volumeSliderY, volumeSliderWidth * volume, volumeSliderHeight, volumeSliderHeight * 0.5, 'rgba(255, 255, 255, 0.96)');
+      fillRoundedRect(ctx, volumeSliderX, volumeSliderY, volumeSliderWidth * volume, volumeSliderHeight, volumeSliderHeight * 0.5, 'rgba(255, 255, 255, 0.92)');
       ctx.save();
       ctx.beginPath();
       ctx.arc(volumeKnobCenterX, volumeKnobCenterY, volumeKnobRadius, 0, Math.PI * 2);
@@ -765,33 +957,36 @@
       ctx.restore();
     }
 
-    fillRoundedRect(ctx, meterX, meterY, meterWidth, meterHeight, meterHeight * 0.5, 'rgba(255, 255, 255, 0.08)');
-    if (enabled) {
-      const meterFill = ctx.createLinearGradient(meterX, meterY, meterX + meterWidth, meterY);
-      meterFill.addColorStop(0, isPlaying ? 'rgba(255, 150, 96, 0.84)' : 'rgba(255, 255, 255, 0.42)');
-      meterFill.addColorStop(1, isPlaying ? 'rgba(109, 174, 255, 0.82)' : 'rgba(109, 174, 255, 0.48)');
-      fillRoundedRect(ctx, meterX, meterY, meterWidth * progress, meterHeight, meterHeight * 0.5, meterFill);
-      ctx.save();
-      const knobGradient = ctx.createLinearGradient(knobCenterX, knobCenterY - knobRadius, knobCenterX, knobCenterY + knobRadius);
-      knobGradient.addColorStop(0, enabled ? 'rgba(255, 205, 176, 0.98)' : 'rgba(247, 247, 247, 0.9)');
-      knobGradient.addColorStop(1, enabled ? 'rgba(194, 93, 49, 0.97)' : 'rgba(173, 193, 255, 0.92)');
-      ctx.beginPath();
-      ctx.arc(knobCenterX, knobCenterY, knobRadius, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.fillStyle = knobGradient;
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(12, 15, 20, 0.42)';
-      ctx.lineWidth = Math.max(1, 1.1 * scale);
-      ctx.stroke();
-      ctx.restore();
+    if (!volumePanelOpen) {
+      fillRoundedRect(ctx, meterX, meterY, meterWidth, meterHeight, meterHeight * 0.5, 'rgba(255, 255, 255, 0.08)');
+      if (enabled) {
+        const meterFill = ctx.createLinearGradient(meterX, meterY, meterX + meterWidth, meterY);
+        meterFill.addColorStop(0, isPlaying ? 'rgba(248, 248, 248, 0.84)' : 'rgba(255, 255, 255, 0.42)');
+        meterFill.addColorStop(1, isPlaying ? 'rgba(150, 150, 150, 0.76)' : 'rgba(180, 180, 180, 0.48)');
+        fillRoundedRect(ctx, meterX, meterY, meterWidth * progress, meterHeight, meterHeight * 0.5, meterFill);
+        ctx.save();
+        const knobGradient = ctx.createLinearGradient(knobCenterX, knobCenterY - knobRadius, knobCenterX, knobCenterY + knobRadius);
+        knobGradient.addColorStop(0, enabled ? 'rgba(255, 255, 255, 0.98)' : 'rgba(247, 247, 247, 0.9)');
+        knobGradient.addColorStop(1, enabled ? 'rgba(148, 148, 148, 0.94)' : 'rgba(173, 193, 255, 0.92)');
+        ctx.beginPath();
+        ctx.arc(knobCenterX, knobCenterY, knobRadius, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.fillStyle = knobGradient;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(12, 15, 20, 0.42)';
+        ctx.lineWidth = Math.max(1, 1.1 * scale);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     if (hotspots && enabled) {
       const hitPadding = 8 * scale;
-      const progressHotspotStartX = meterX - 2 * scale;
+      const progressGuardX = Math.max(12 * scale, sideControlSize * 0.38);
+      const progressHotspotStartX = meterX;
       const progressHotspotEndX = Math.min(
-        meterX + meterWidth + 2 * scale,
-        volumeControl.x - hitPadding - 8 * scale
+        meterX + meterWidth,
+        volumeControl.x - hitPadding - progressGuardX
       );
       hotspots.push({
         x: x + 3 * scale,
@@ -807,15 +1002,17 @@
         height: playControl.height + hitPadding * 2,
         action: 'audio-toggle'
       });
-      if (progressHotspotEndX > progressHotspotStartX) {
+      if (!volumePanelOpen && progressHotspotEndX > progressHotspotStartX) {
         hotspots.push({
           x: progressHotspotStartX,
-          y: meterY - 10 * scale,
+          y: y + 3 * scale,
           width: progressHotspotEndX - progressHotspotStartX,
-          height: Math.max(18 * scale, meterHeight + 20 * scale),
+          height: Math.max(18 * scale, height - 6 * scale),
           action: 'audio-progress-set',
           rangeMinX: meterX,
-          rangeWidth: meterWidth
+          rangeWidth: meterWidth,
+          rangeY: knobCenterY,
+          rangeHalfHeight: Math.max(5.5 * scale, knobRadius + 2 * scale)
         });
       }
       hotspots.push({
@@ -833,7 +1030,9 @@
           height: Math.max(18 * scale, volumeSliderHeight + 20 * scale),
           action: 'audio-volume-set',
           rangeMinX: volumeSliderX,
-          rangeWidth: volumeSliderWidth
+          rangeWidth: volumeSliderWidth,
+          rangeY: volumeKnobCenterY,
+          rangeHalfHeight: Math.max(8 * scale, volumeKnobRadius + 4 * scale)
         });
       }
     }
@@ -873,9 +1072,6 @@
     const padding = 10 * scale;
     const contentInset = 2 * scale;
     const artworkRadius = 14 * scale;
-    const controlSize = 26 * scale;
-    const closeSize = controlSize;
-    const closeInset = 12 * scale;
     const contentWidth = canvas.width - padding * 2;
     const artworkX = padding;
     const artworkY = padding;
@@ -884,23 +1080,15 @@
     const contentX = padding + contentInset;
     const contentTop = artworkY + artworkHeight + 12 * scale;
     const textMaxWidth = contentWidth - 8 * scale;
-    const chipGapX = 6 * scale;
-    const chipGapY = 8 * scale;
-    const metaGapY = 14 * scale;
-    const playerGapY = 12 * scale;
-    const playerHeight = 32 * scale;
     const uiFontFamily = await ensureCanvasFontsLoaded();
-    const artistFontSize = 15 * scale;
+    const artistFontSize = 14 * scale;
     const titleFontSize = 12 * scale;
     const artistLineHeight = artistFontSize * 0.98;
     const titleLineHeight = titleFontSize * 1.16;
-    const metaLabelFontSize = 9 * scale;
     const artistText = String(cardData && cardData.artistName || '').toUpperCase();
-    const releaseLinks = Array.isArray(cardData && cardData.releaseLinks) ? cardData.releaseLinks.slice(0, 4) : [];
-    const socialLinks = Array.isArray(cardData && cardData.socialLinks) ? cardData.socialLinks.slice(0, 4) : [];
     const audioState = cardData && cardData.audioState ? cardData.audioState : null;
     const hasAudio = !!((audioState && audioState.available) || (cardData && cardData.audioUrl));
-    const playerVisible = true;
+    const playerVisible = false;
     const useDomArtworkFallback = shouldUseArtworkDomFallback(cardData);
     const hasArtworkCandidate = !!resolveArtworkOverlayUrl(cardData);
     const artworkCanvas = useDomArtworkFallback ? null : await renderArtworkCanvas(cardData, artworkWidth, artworkHeight, artworkRadius);
@@ -913,32 +1101,9 @@
     const artistBlockHeight = Math.max(artistLineHeight, artistLines.length * artistLineHeight);
     measureCtx.font = '400 ' + titleFontSize + 'px ' + uiFontFamily;
     const titleLines = wrapTextLines(measureCtx, cardData && cardData.releaseTitle || '', textMaxWidth, 5);
-    const titleY = contentTop + artistBlockHeight + 8 * scale;
+    const titleY = contentTop + artistBlockHeight + 6 * scale;
     let contentBottom = titleY + titleLines.length * titleLineHeight;
-    if (releaseLinks.length) {
-      contentBottom = drawWrappedCardChips(measureCtx, releaseLinks, {
-        x: contentX,
-        y: contentBottom + 12 * scale,
-        maxWidth: contentWidth,
-        gapX: chipGapX,
-        gapY: chipGapY
-      });
-    }
-    if (playerVisible) {
-      contentBottom += playerGapY + playerHeight;
-    }
-    if (socialLinks.length) {
-      const dividerY = contentBottom + metaGapY;
-      const metaLabelY = dividerY + 12 * scale;
-      contentBottom = drawWrappedCardChips(measureCtx, socialLinks, {
-        x: contentX,
-        y: metaLabelY + metaLabelFontSize + 8 * scale,
-        maxWidth: contentWidth,
-        gapX: 8 * scale,
-        gapY: chipGapY
-      });
-    }
-    const bottomPadding = 10 * scale;
+    const bottomPadding = 6 * scale;
     canvas.height = Math.min(MAX_TEXTURE_HEIGHT, Math.ceil(contentBottom + bottomPadding));
     const ctx = canvas.getContext('2d');
     const cardX = 0;
@@ -954,7 +1119,6 @@
       height: artworkHeight,
       radius: artworkRadius
     };
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const backgroundGradient = ctx.createLinearGradient(cardX, cardY, cardX, cardY + cardHeight);
@@ -1030,67 +1194,31 @@
 
     strokeRoundedRect(ctx, artworkX, artworkY, artworkWidth, artworkHeight, artworkRadius, 'rgba(255, 255, 255, 0.12)', 2);
 
-    const prevControl = drawCardControl(ctx, artworkX + 22 * scale, artworkY + artworkHeight * 0.56, controlSize, '\u2039', {
-      disabled: !cardData.canGoPrev,
-      fontSize: 17 * scale,
-      labelOffsetY: -0.8 * scale,
-      topColor: 'rgba(22, 26, 34, 0.66)',
-      bottomColor: 'rgba(8, 10, 14, 0.82)',
-      strokeColor: 'rgba(255, 255, 255, 0.18)'
-    });
-    if (cardData.canGoPrev) {
-      const hitPadding = 8 * scale;
-      hotspots.push({
-        x: prevControl.x - hitPadding,
-        y: prevControl.y - hitPadding,
-        width: prevControl.width + hitPadding * 2,
-        height: prevControl.height + hitPadding * 2,
-        action: 'prev'
-      });
-    }
-
-    const nextControl = drawCardControl(ctx, artworkX + artworkWidth - 22 * scale, artworkY + artworkHeight * 0.56, controlSize, '\u203a', {
-      disabled: !cardData.canGoNext,
-      fontSize: 17 * scale,
-      labelOffsetY: -0.8 * scale,
-      topColor: 'rgba(22, 26, 34, 0.66)',
-      bottomColor: 'rgba(8, 10, 14, 0.82)',
-      strokeColor: 'rgba(255, 255, 255, 0.18)'
-    });
-    if (cardData.canGoNext) {
-      const hitPadding = 8 * scale;
-      hotspots.push({
-        x: nextControl.x - hitPadding,
-        y: nextControl.y - hitPadding,
-        width: nextControl.width + hitPadding * 2,
-        height: nextControl.height + hitPadding * 2,
-        action: 'next'
-      });
-    }
-
-    const closeControl = drawCardControl(ctx, cardWidth - closeInset - closeSize * 0.5, closeInset + closeSize * 0.5, closeSize, '\u00d7', {
-      topColor: 'rgba(22, 26, 34, 0.66)',
-      bottomColor: 'rgba(8, 10, 14, 0.82)',
-      fontSize: 12.4 * scale,
-      labelOffsetY: -0.48 * scale,
-      strokeColor: 'rgba(255, 255, 255, 0.18)'
-    });
-    const closeHitPadding = 8 * scale;
-    hotspots.push({
-      x: closeControl.x - closeHitPadding,
-      y: closeControl.y - closeHitPadding,
-      width: closeControl.width + closeHitPadding * 2,
-      height: closeControl.height + closeHitPadding * 2,
-      action: 'close'
-    });
-
     ctx.restore();
 
-    strokeRoundedRect(ctx, cardX + scale * 0.5, cardY + scale * 0.5, cardWidth - scale, cardHeight - scale, cardRadius - scale * 0.6, 'rgba(255, 255, 255, 0.1)', scale * 0.55);
-    strokeRoundedRect(ctx, cardX + scale, cardY + scale, cardWidth - scale * 2, cardHeight - scale * 2, innerRadius, 'rgba(255, 255, 255, 0.04)', scale * 0.35);
+    strokeRoundedRect(
+      ctx,
+      cardX + scale * 0.5,
+      cardY + scale * 0.5,
+      cardWidth - scale,
+      cardHeight - scale,
+      cardRadius - scale * 0.6,
+      'rgba(255, 255, 255, 0.045)',
+      Math.max(0.8, scale * 0.24)
+    );
+    strokeRoundedRect(
+      ctx,
+      cardX + scale,
+      cardY + scale,
+      cardWidth - scale * 2,
+      cardHeight - scale * 2,
+      innerRadius,
+      'rgba(255, 255, 255, 0.016)',
+      Math.max(0.65, scale * 0.16)
+    );
 
     ctx.save();
-    ctx.fillStyle = 'rgba(243, 241, 234, 0.82)';
+    ctx.fillStyle = 'rgba(243, 241, 234, 0.88)';
     ctx.font = '500 ' + artistFontSize + 'px ' + uiFontFamily;
     ctx.textBaseline = 'top';
     for (let artistLineIndex = 0; artistLineIndex < artistLines.length; artistLineIndex += 1) {
@@ -1099,28 +1227,15 @@
 
     ctx.fillStyle = '#f4f1e8';
     ctx.font = '400 ' + titleFontSize + 'px ' + uiFontFamily;
+    ctx.textBaseline = 'top';
     for (let lineIndex = 0; lineIndex < titleLines.length; lineIndex += 1) {
       ctx.fillText(titleLines[lineIndex], contentX, titleY + lineIndex * titleLineHeight);
-    }
-
-    contentBottom = titleY + titleLines.length * titleLineHeight;
-    if (releaseLinks.length) {
-      contentBottom = drawWrappedCardChips(ctx, releaseLinks, {
-        x: contentX,
-        y: contentBottom + 12 * scale,
-        maxWidth: contentWidth,
-        gapX: chipGapX,
-        gapY: chipGapY,
-        getAccent: function (item, index) {
-          return index === 0 ? 'rgba(255, 146, 96, 0.22)' : null;
-        }
-      }, hotspots);
     }
 
     if (playerVisible) {
       contentBottom = drawAudioPlayerRow(ctx, {
         x: contentX,
-        y: contentBottom + playerGapY,
+        y: contentBottom + 14 * scale,
         width: contentWidth,
         height: playerHeight,
         scale: scale,
@@ -1129,34 +1244,10 @@
           available: hasAudio,
           isPlaying: !!(audioState && audioState.isPlaying),
           volume: audioState && typeof audioState.volume === 'number' ? audioState.volume : DEFAULT_AUDIO_VOLUME,
+          volumePanelOpen: !!(audioState && audioState.volumePanelOpen),
+          audioBands: audioState && Array.isArray(audioState.audioBands) ? audioState.audioBands : [],
           currentTime: audioState && typeof audioState.currentTime === 'number' ? audioState.currentTime : 0,
           duration: audioState && typeof audioState.duration === 'number' ? audioState.duration : 0
-        }
-      }, hotspots);
-    }
-
-    if (socialLinks.length) {
-      const dividerY = contentBottom + metaGapY;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.09)';
-      ctx.lineWidth = Math.max(1, scale * 0.4);
-      ctx.beginPath();
-      ctx.moveTo(contentX, dividerY);
-      ctx.lineTo(contentX + contentWidth, dividerY);
-      ctx.stroke();
-
-      ctx.fillStyle = 'rgba(243, 241, 234, 0.9)';
-      ctx.font = '500 ' + metaLabelFontSize + 'px ' + uiFontFamily;
-      const metaLabelY = dividerY + 12 * scale;
-      ctx.fillText('ARTIST LINKS', contentX, metaLabelY);
-
-      drawWrappedCardChips(ctx, socialLinks, {
-        x: contentX,
-        y: metaLabelY + metaLabelFontSize + 8 * scale,
-        maxWidth: contentWidth,
-        gapX: 8 * scale,
-        gapY: chipGapY,
-        getAccent: function () {
-          return 'rgba(109, 174, 255, 0.2)';
         }
       }, hotspots);
     }
@@ -1180,6 +1271,9 @@
     const onClose = options && typeof options.onClose === 'function' ? options.onClose : null;
     const onPrev = options && typeof options.onPrev === 'function' ? options.onPrev : null;
     const onNext = options && typeof options.onNext === 'function' ? options.onNext : null;
+    const footerOrbCanvas = options && options.footerOrbCanvas && typeof options.footerOrbCanvas.getContext === 'function'
+      ? options.footerOrbCanvas
+      : null;
 
     let THREE = null;
     let renderer = null;
@@ -1187,6 +1281,9 @@
     let camera = null;
     let root = null;
     let artworkDomOverlay = null;
+    let audioProgressDomOverlay = null;
+    let audioProgressOverlayPointerId = null;
+    let activeAudioControlHotspot = null;
     let clothMesh = null;
     let artworkMesh = null;
     let audioBlobGroup = null;
@@ -1217,6 +1314,12 @@
     let analyserNode = null;
     let analyserData = null;
     let audioAnalyserSinkNode = null;
+    let audioSourceChangeToken = 0;
+    let footerOrbCtx = null;
+    let footerOrbPixelRatio = 1;
+    let footerOrbCanvasWidth = 0;
+    let footerOrbCanvasHeight = 0;
+    const audioPlaybackUrlCache = new Map();
 
     const pointerNdc = { x: 0, y: 0 };
     const state = {
@@ -1253,6 +1356,7 @@
       frameIdleX: 0.05,
       frameIdleY: 0.04,
       pressHotspot: null,
+      pressHotspotUsesProjection: false,
       pressHotspotConsumed: false,
       volumeDragActive: false,
       movedSincePointerDown: false,
@@ -1264,9 +1368,177 @@
       switchDuration: 0,
       audioLevel: 0,
       audioBass: 0,
+      audioKick: 0,
+      audioTrackProgress: 0,
+      audioBlobPanel: null,
+      audioBlobPanelFrame: null,
       audioBlobBaseScale: 1,
       audioTextureRefreshAt: 0
     };
+
+    function resizeFooterOrbCanvas(canvas, context) {
+      if (!canvas || !context) return false;
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return false;
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+      const canvasWidth = Math.max(1, Math.round(rect.width * pixelRatio));
+      const canvasHeight = Math.max(1, Math.round(rect.height * pixelRatio));
+      if (canvas.width !== canvasWidth) canvas.width = canvasWidth;
+      if (canvas.height !== canvasHeight) canvas.height = canvasHeight;
+      if (footerOrbCanvasWidth !== canvasWidth || footerOrbCanvasHeight !== canvasHeight || footerOrbPixelRatio !== pixelRatio) {
+        footerOrbCanvasWidth = canvasWidth;
+        footerOrbCanvasHeight = canvasHeight;
+        footerOrbPixelRatio = pixelRatio;
+      }
+      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      return true;
+    }
+
+    function drawFooterOrbOnly(ctx, options) {
+      if (!ctx || !options) return;
+      const x = options.x || 0;
+      const y = options.y || 0;
+      const width = options.width || 0;
+      const height = options.height || 0;
+      const time = Number.isFinite(options.time) ? options.time : 0;
+      const audioLevel = clamp(Number.isFinite(options.audioLevel) ? options.audioLevel : 0, 0, 1);
+      const audioBass = clamp(Number.isFinite(options.audioBass) ? options.audioBass : 0, 0, 1);
+      const audioKick = clamp(Number.isFinite(options.audioKick) ? options.audioKick : 0, 0, 1);
+      const pulse = 1 + audioLevel * 0.12 + audioBass * 0.18 + audioKick * 0.08;
+      const radius = Math.min(height * 0.5, 20);
+      const orbRadius = Math.max(14, Math.min(height, width) * 0.46 * pulse);
+      const orbX = x + width * 0.5 + Math.sin(time * 0.84) * Math.min(12, width * 0.02 + audioBass * 6);
+      const orbY = y + height * 0.5 + Math.cos(time * 0.72) * Math.min(8, height * 0.06 + audioKick * 4);
+
+      const panel = ctx.createLinearGradient(x, y, x, y + height);
+      panel.addColorStop(0, 'rgba(15, 16, 18, 0.90)');
+      panel.addColorStop(1, 'rgba(7, 8, 10, 0.96)');
+      fillRoundedRect(ctx, x, y, width, height, radius, panel);
+
+      ctx.save();
+      const glow = ctx.createRadialGradient(
+        orbX,
+        orbY,
+        Math.max(2, orbRadius * 0.12),
+        orbX,
+        orbY,
+        orbRadius * 1.7
+      );
+      glow.addColorStop(0, 'rgba(255, 255, 255, ' + (0.18 + audioLevel * 0.08).toFixed(3) + ')');
+      glow.addColorStop(0.42, 'rgba(228, 228, 228, ' + (0.12 + audioBass * 0.05).toFixed(3) + ')');
+      glow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(orbX, orbY, orbRadius * 1.18, 0, Math.PI * 2);
+      ctx.fill();
+
+      const rotX = -0.52 + Math.sin(time * 0.34) * 0.16 + audioBass * 0.18;
+      const rotY = time * 0.54 + audioLevel * 0.22;
+      const rotZ = Math.sin(time * 0.19) * 0.14 + audioKick * 0.08;
+      const focal = 2.7;
+      const sphereRadius = orbRadius * 0.96;
+      const project = function (point) {
+        let px = point.x;
+        let py = point.y;
+        let pz = point.z;
+        const cosX = Math.cos(rotX);
+        const sinX = Math.sin(rotX);
+        const cosY = Math.cos(rotY);
+        const sinY = Math.sin(rotY);
+        const cosZ = Math.cos(rotZ);
+        const sinZ = Math.sin(rotZ);
+        let y1 = py * cosX - pz * sinX;
+        let z1 = py * sinX + pz * cosX;
+        py = y1;
+        pz = z1;
+        let x2 = px * cosY + pz * sinY;
+        let z2 = -px * sinY + pz * cosY;
+        px = x2;
+        pz = z2;
+        let x3 = px * cosZ - py * sinZ;
+        let y3 = px * sinZ + py * cosZ;
+        px = x3;
+        py = y3;
+        const depth = focal / (focal - pz);
+        return {
+          x: orbX + px * sphereRadius * depth,
+          y: orbY + py * sphereRadius * depth,
+          z: pz,
+          depth: depth
+        };
+      };
+
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.34)';
+      ctx.shadowBlur = 8;
+
+      for (let latIndex = -6; latIndex <= 6; latIndex += 1) {
+        const lat = (latIndex / 6) * (Math.PI * 0.5);
+        const sinLat = Math.sin(lat);
+        const cosLat = Math.cos(lat);
+        ctx.beginPath();
+        for (let step = 0; step <= 64; step += 1) {
+          const theta = (step / 64) * Math.PI * 2;
+          const point = project({
+            x: Math.cos(theta) * cosLat,
+            y: sinLat,
+            z: Math.sin(theta) * cosLat
+          });
+          if (step === 0) ctx.moveTo(point.x, point.y);
+          else ctx.lineTo(point.x, point.y);
+        }
+        ctx.strokeStyle = 'rgba(255, 255, 255, ' + (0.10 + Math.abs(latIndex) * 0.012).toFixed(3) + ')';
+        ctx.lineWidth = latIndex === 0 ? 1.25 : 0.9;
+        ctx.stroke();
+      }
+
+      for (let lonIndex = 0; lonIndex < 10; lonIndex += 1) {
+        const longitude = (lonIndex / 10) * Math.PI * 2;
+        ctx.beginPath();
+        for (let step = -24; step <= 24; step += 1) {
+          const lat = (step / 24) * (Math.PI * 0.5);
+          const sinLat = Math.sin(lat);
+          const cosLat = Math.cos(lat);
+          const point = project({
+            x: Math.cos(longitude) * cosLat,
+            y: sinLat,
+            z: Math.sin(longitude) * cosLat
+          });
+          if (step === -24) ctx.moveTo(point.x, point.y);
+          else ctx.lineTo(point.x, point.y);
+        }
+        ctx.strokeStyle = 'rgba(255, 255, 255, ' + (0.14 + (lonIndex % 3) * 0.02).toFixed(3) + ')';
+        ctx.lineWidth = 0.82;
+        ctx.stroke();
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
+    function renderFooterOrbFrame() {
+      if (!footerOrbCanvas || !footerOrbCanvas.isConnected) return;
+      if (!footerOrbCtx) {
+        const nextContext = footerOrbCanvas.getContext('2d');
+        if (!nextContext) return;
+        footerOrbCtx = nextContext;
+      }
+      if (!resizeFooterOrbCanvas(footerOrbCanvas, footerOrbCtx)) return;
+      const rect = footerOrbCanvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      footerOrbCtx.clearRect(0, 0, rect.width, rect.height);
+      drawFooterOrbOnly(footerOrbCtx, {
+        x: 0,
+        y: 0,
+        width: rect.width,
+        height: rect.height,
+        time: state.time,
+        audioLevel: state.audioLevel,
+        audioBass: state.audioBass,
+        audioKick: state.audioKick
+      });
+    }
 
     let clothGeometry = null;
     let clothMaterial = null;
@@ -1403,6 +1675,9 @@
       const nextOpacity = clamp(opacity, 0, 1);
       if (clothMaterial) clothMaterial.opacity = nextOpacity;
       if (artworkMaterial) artworkMaterial.opacity = nextOpacity;
+      if (audioBlobMaterial && audioBlobMaterial.uniforms && audioBlobMaterial.uniforms.uOpacity) {
+        audioBlobMaterial.uniforms.uOpacity.value = nextOpacity;
+      }
     }
 
     function resetSwitchState() {
@@ -1612,6 +1887,163 @@
       return payload;
     }
 
+    function mapTextureRectToPlaneRect(rect, textureWidth, textureHeight, zOffset) {
+      if (!rect) return null;
+      const resolvedTextureWidth = Math.max(1, textureWidth || TEXTURE_WIDTH);
+      const resolvedTextureHeight = Math.max(1, textureHeight || DEFAULT_TEXTURE_HEIGHT);
+      const uLeft = rect.x / resolvedTextureWidth;
+      const uRight = (rect.x + rect.width) / resolvedTextureWidth;
+      const vTop = rect.y / resolvedTextureHeight;
+      const vBottom = (rect.y + rect.height) / resolvedTextureHeight;
+      const centerX = (rect.x + rect.width * 0.5) / resolvedTextureWidth;
+      const centerY = (rect.y + rect.height * 0.5) / resolvedTextureHeight;
+      return {
+        x: (centerX - 0.5) * PLANE_WIDTH,
+        y: (0.5 - centerY) * PLANE_HEIGHT,
+        z: zOffset || 0,
+        width: PLANE_WIDTH * (rect.width / resolvedTextureWidth),
+        height: PLANE_HEIGHT * (rect.height / resolvedTextureHeight),
+        uLeft: uLeft,
+        uRight: uRight,
+        vTop: vTop,
+        vBottom: vBottom,
+        surfaceOffset: zOffset || 0
+      };
+    }
+
+    function syncAudioBlobBaseScale() {
+      if (state.audioBlobPanel) {
+        const panelSize = Math.min(state.audioBlobPanel.width, state.audioBlobPanel.height);
+        state.audioBlobBaseScale = clamp(panelSize / 2.42, 0.12, 0.34);
+        return;
+      }
+      state.audioBlobBaseScale = 0.18;
+    }
+
+    function buildAudioBlobPanelFrame(panel) {
+      if (!THREE || !panel) return null;
+      const topLeft = getClothLocalPointAtUv(panel.uLeft, panel.vTop, panel.surfaceOffset || 0);
+      const topRight = getClothLocalPointAtUv(panel.uRight, panel.vTop, panel.surfaceOffset || 0);
+      const bottomLeft = getClothLocalPointAtUv(panel.uLeft, panel.vBottom, panel.surfaceOffset || 0);
+      const bottomRight = getClothLocalPointAtUv(panel.uRight, panel.vBottom, panel.surfaceOffset || 0);
+      const center = topLeft.clone()
+        .add(topRight)
+        .add(bottomLeft)
+        .add(bottomRight)
+        .multiplyScalar(0.25);
+      const rightVector = topRight.clone().sub(topLeft).add(bottomRight.clone().sub(bottomLeft)).multiplyScalar(0.5);
+      const downVector = bottomLeft.clone().sub(topLeft).add(bottomRight.clone().sub(topRight)).multiplyScalar(0.5);
+      const width = Math.max(0.0001, rightVector.length());
+      const height = Math.max(0.0001, downVector.length());
+      const right = rightVector.multiplyScalar(1 / width);
+      const down = downVector.multiplyScalar(1 / height);
+      const up = down.clone().negate();
+      const normal = new THREE.Vector3().crossVectors(right, up);
+      if (normal.lengthSq() < 0.000001) {
+        normal.set(0, 0, 1);
+      } else {
+        normal.normalize();
+      }
+      const basis = new THREE.Matrix4().makeBasis(right, up, normal);
+      const quaternion = new THREE.Quaternion().setFromRotationMatrix(basis);
+      return {
+        topLeft: topLeft,
+        topRight: topRight,
+        bottomLeft: bottomLeft,
+        bottomRight: bottomRight,
+        center: center,
+        width: width,
+        height: height,
+        right: right,
+        up: up,
+        down: down,
+        normal: normal,
+        quaternion: quaternion
+      };
+    }
+
+    function getAudioBlobFacingNormal(panelFrame) {
+      if (!THREE || !panelFrame) return null;
+      const facingNormal = panelFrame.normal.clone();
+      if (!root || !camera) return facingNormal;
+      root.updateMatrixWorld(true);
+      camera.updateMatrixWorld(true);
+      const cameraWorldPosition = camera.getWorldPosition(new THREE.Vector3());
+      const cameraLocalPosition = root.worldToLocal(cameraWorldPosition);
+      const toCamera = cameraLocalPosition.sub(panelFrame.center);
+      if (toCamera.dot(facingNormal) < 0) {
+        facingNormal.negate();
+      }
+      return facingNormal.normalize();
+    }
+
+    function syncAudioBlobPanelState(textureResult) {
+      const previousPanel = state.audioBlobPanel;
+      const nextPanel = textureResult && textureResult.audioBlobRect
+        ? mapTextureRectToPlaneRect(
+          textureResult.audioBlobRect,
+          textureResult.textureWidth || TEXTURE_WIDTH,
+          textureResult.textureHeight || DEFAULT_TEXTURE_HEIGHT,
+          0.0035
+        )
+        : null;
+      state.audioBlobPanel = nextPanel;
+      state.audioBlobPanelFrame = null;
+      syncAudioBlobBaseScale();
+      if (audioBlobGroup) audioBlobGroup.visible = !!nextPanel;
+      if (!nextPanel) return;
+      if (!audioBlobGroup) return;
+      const nextPanelFrame = buildAudioBlobPanelFrame(nextPanel);
+      state.audioBlobPanelFrame = nextPanelFrame;
+      const shouldResetPosition = !previousPanel || (
+        Math.abs(previousPanel.x - nextPanel.x) > 0.0001 ||
+        Math.abs(previousPanel.y - nextPanel.y) > 0.0001 ||
+        Math.abs(previousPanel.width - nextPanel.width) > 0.0001 ||
+        Math.abs(previousPanel.height - nextPanel.height) > 0.0001
+      );
+      if (shouldResetPosition && nextPanelFrame) {
+        const resetFacingNormal = getAudioBlobFacingNormal(nextPanelFrame) || nextPanelFrame.normal.clone();
+        audioBlobGroup.position.copy(nextPanelFrame.center).add(resetFacingNormal.multiplyScalar(0.0048));
+        audioBlobGroup.quaternion.copy(nextPanelFrame.quaternion);
+      }
+    }
+
+    function syncAudioBlobClipPlanes() {
+      if (
+        !THREE ||
+        !root ||
+        !audioBlobMaterial ||
+        !state.audioBlobPanel ||
+        !Array.isArray(audioBlobMaterial.clippingPlanes) ||
+        audioBlobMaterial.clippingPlanes.length < 4
+      ) {
+        return;
+      }
+      const panelFrame = state.audioBlobPanelFrame || buildAudioBlobPanelFrame(state.audioBlobPanel);
+      if (!panelFrame) return;
+      state.audioBlobPanelFrame = panelFrame;
+      root.updateMatrixWorld(true);
+      const worldQuaternion = root.getWorldQuaternion(new THREE.Quaternion());
+      const topLeft = root.localToWorld(panelFrame.topLeft.clone());
+      const topRight = root.localToWorld(panelFrame.topRight.clone());
+      const bottomLeft = root.localToWorld(panelFrame.bottomLeft.clone());
+      const bottomRight = root.localToWorld(panelFrame.bottomRight.clone());
+      const worldNormal = panelFrame.normal.clone().applyQuaternion(worldQuaternion).normalize();
+      const leftEdge = bottomLeft.clone().sub(topLeft).normalize();
+      const rightEdge = bottomRight.clone().sub(topRight).normalize();
+      const topEdge = topRight.clone().sub(topLeft).normalize();
+      const bottomEdge = bottomRight.clone().sub(bottomLeft).normalize();
+      const leftNormal = new THREE.Vector3().crossVectors(leftEdge, worldNormal).normalize();
+      const rightNormal = new THREE.Vector3().crossVectors(worldNormal, rightEdge).normalize();
+      const topNormal = new THREE.Vector3().crossVectors(worldNormal, topEdge).normalize();
+      const bottomNormal = new THREE.Vector3().crossVectors(bottomEdge, worldNormal).normalize();
+      const clipPadding = Math.min(panelFrame.width, panelFrame.height) * 0.08;
+      audioBlobMaterial.clippingPlanes[0].setFromNormalAndCoplanarPoint(leftNormal, topLeft.clone().add(leftNormal.clone().multiplyScalar(clipPadding)));
+      audioBlobMaterial.clippingPlanes[1].setFromNormalAndCoplanarPoint(rightNormal, topRight.clone().add(rightNormal.clone().multiplyScalar(clipPadding)));
+      audioBlobMaterial.clippingPlanes[2].setFromNormalAndCoplanarPoint(topNormal, topLeft.clone().add(topNormal.clone().multiplyScalar(clipPadding)));
+      audioBlobMaterial.clippingPlanes[3].setFromNormalAndCoplanarPoint(bottomNormal, bottomLeft.clone().add(bottomNormal.clone().multiplyScalar(clipPadding)));
+    }
+
     function applyTextureResult(textureResult) {
       if (!textureResult || !THREE || !renderer) return;
       const nextTexture = new THREE.CanvasTexture(textureResult.canvas);
@@ -1626,9 +2058,23 @@
       if (cardTexture) cardTexture.dispose();
       cardTexture = nextTexture;
       cardHotspots = Array.isArray(textureResult.hotspots) ? textureResult.hotspots.slice() : [];
+      activeAudioControlHotspot = null;
+      for (let i = 0; i < cardHotspots.length; i += 1) {
+        const hotspot = cardHotspots[i];
+        if (!hotspot) continue;
+        if (hotspot.action !== 'audio-progress-set' && hotspot.action !== 'audio-volume-set') continue;
+        if (
+          !activeAudioControlHotspot ||
+          hotspot.action === 'audio-volume-set' ||
+          (activeAudioControlHotspot.action !== 'audio-volume-set' && hotspot.y > activeAudioControlHotspot.y)
+        ) {
+          activeAudioControlHotspot = hotspot;
+        }
+      }
       state.textureWidth = textureResult.textureWidth || TEXTURE_WIDTH;
       state.textureHeight = textureResult.textureHeight || DEFAULT_TEXTURE_HEIGHT;
       state.cardAspect = textureResult.cardAspect || (state.textureHeight / Math.max(1, state.textureWidth));
+      syncAudioBlobPanelState(textureResult);
       if (clothMaterial) {
         clothMaterial.map = cardTexture;
         clothMaterial.needsUpdate = true;
@@ -1664,6 +2110,36 @@
       audioState.currentTime = Number.isFinite(audioElement.currentTime) ? Math.max(0, audioElement.currentTime) : 0;
       audioState.duration = Number.isFinite(audioElement.duration) && audioElement.duration > 0 ? audioElement.duration : 0;
       scheduleCardTextureRefresh();
+    }
+
+    async function resolveAudioPlaybackUrl(url) {
+      const normalizedUrl = resolveRuntimeUrl(url);
+      if (!normalizedUrl) return '';
+      if (!isSameOriginAudioUrl(normalizedUrl)) return normalizedUrl;
+      try {
+        const parsed = new URL(normalizedUrl, window.location.href);
+        if (parsed.protocol === 'blob:' || parsed.protocol === 'data:' || parsed.protocol === 'file:') {
+          return normalizedUrl;
+        }
+      } catch {
+        return normalizedUrl;
+      }
+      if (audioPlaybackUrlCache.has(normalizedUrl)) {
+        return audioPlaybackUrlCache.get(normalizedUrl) || normalizedUrl;
+      }
+      try {
+        const response = await fetch(normalizedUrl, {
+          credentials: 'same-origin'
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const audioBlob = await response.blob();
+        const objectUrl = URL.createObjectURL(audioBlob);
+        audioPlaybackUrlCache.set(normalizedUrl, objectUrl);
+        return objectUrl;
+      } catch (error) {
+        console.warn('Failed to resolve audio via blob URL.', error);
+        return normalizedUrl;
+      }
     }
 
     function ensureAudioElement() {
@@ -1755,7 +2231,7 @@
         audioSourceNode = audioContext.createMediaElementSource(element);
         analyserNode = audioContext.createAnalyser();
         analyserNode.fftSize = 256;
-        analyserNode.smoothingTimeConstant = 0.84;
+        analyserNode.smoothingTimeConstant = 0.58;
         analyserData = new Uint8Array(analyserNode.frequencyBinCount);
         audioSourceNode.connect(analyserNode);
         analyserNode.connect(audioContext.destination);
@@ -1813,14 +2289,20 @@
         } catch {}
       }
       audioState.isPlaying = false;
+      state.audioLevel = 0;
+      state.audioBass = 0;
+      state.audioKick = 0;
       scheduleCardTextureRefresh();
     }
 
     async function setAudioSource(url, shouldResume) {
       const normalizedUrl = resolveRuntimeUrl(url);
       const element = ensureAudioElement();
+      const sourceChangeToken = audioSourceChangeToken + 1;
+      audioSourceChangeToken = sourceChangeToken;
       const resumePlayback = !!(normalizedUrl && shouldResume);
-      if (audioState.url === normalizedUrl) {
+      const currentElementSrc = String((element && (element.currentSrc || element.src)) || '').trim();
+      if (audioState.url === normalizedUrl && (!normalizedUrl || currentElementSrc)) {
         audioState.available = !!normalizedUrl;
         element.volume = audioState.volume;
         if (normalizedUrl && element.readyState < 1) {
@@ -1838,7 +2320,10 @@
       audioState.currentTime = 0;
       audioState.duration = 0;
       audioState.volumePanelOpen = false;
-      audioState.url = normalizedUrl;
+      state.audioLevel = 0;
+      state.audioBass = 0;
+      state.audioKick = 0;
+      state.audioTrackProgress = 0;
       audioState.available = !!normalizedUrl;
       if (!shouldUseWebAudioForSource(normalizedUrl)) {
         disconnectAudioAnalysisGraph();
@@ -1849,9 +2334,14 @@
         }
         audioContext = null;
       }
+      const playbackUrl = normalizedUrl ? await resolveAudioPlaybackUrl(normalizedUrl) : '';
+      if (audioSourceChangeToken !== sourceChangeToken) {
+        return;
+      }
+      audioState.url = normalizedUrl;
       try {
         try {
-          const parsedUrl = new URL(normalizedUrl, window.location.href);
+          const parsedUrl = new URL(playbackUrl || normalizedUrl, window.location.href);
           const requiresCrossOrigin = /^https?:$/.test(parsedUrl.protocol) && parsedUrl.origin !== window.location.origin;
           if (requiresCrossOrigin) {
             element.crossOrigin = 'anonymous';
@@ -1862,8 +2352,8 @@
           element.removeAttribute('crossorigin');
         }
         element.removeAttribute('src');
-        if (normalizedUrl) {
-          element.src = normalizedUrl;
+        if (playbackUrl) {
+          element.src = playbackUrl;
           element.load();
         } else {
           element.load();
@@ -1904,6 +2394,8 @@
     function toggleAudioVolumePanel() {
       if (!audioState.available) return;
       audioState.volumePanelOpen = !audioState.volumePanelOpen;
+      activeAudioControlHotspot = null;
+      hideAudioProgressDomOverlay();
       scheduleCardTextureRefresh();
     }
 
@@ -1914,6 +2406,88 @@
       const rangeMinX = typeof hotspot.rangeMinX === 'number' ? hotspot.rangeMinX : hotspot.x;
       const rangeWidth = Math.max(1, typeof hotspot.rangeWidth === 'number' ? hotspot.rangeWidth : hotspot.width);
       return clamp((px - rangeMinX) / rangeWidth, 0, 1);
+    }
+
+    function projectTexturePointToViewport(px, py, rect, zOffset) {
+      if (!root || !camera || !scene || !THREE || !rect || !rect.width || !rect.height) return null;
+      const textureWidth = state.textureWidth || TEXTURE_WIDTH;
+      const textureHeight = state.textureHeight || DEFAULT_TEXTURE_HEIGHT;
+      const projected = toViewportPoint(
+        root.localToWorld(getClothLocalPointAtUv(
+          clamp(px / textureWidth, 0, 1),
+          clamp(py / textureHeight, 0, 1),
+          zOffset || 0.012
+        )).project(camera),
+        rect
+      );
+      if (![projected.x, projected.y].every(Number.isFinite)) return null;
+      return projected;
+    }
+
+    function getProjectedControlBand(hotspot, rect, zOffset) {
+      if (!hotspot || (hotspot.action !== 'audio-progress-set' && hotspot.action !== 'audio-volume-set')) return null;
+      const rangeMinX = typeof hotspot.rangeMinX === 'number' ? hotspot.rangeMinX : hotspot.x;
+      const rangeWidth = Math.max(1, typeof hotspot.rangeWidth === 'number' ? hotspot.rangeWidth : hotspot.width);
+      const rangeY = typeof hotspot.rangeY === 'number' ? hotspot.rangeY : (hotspot.y + hotspot.height * 0.5);
+      const rangeHalfHeight = clamp(
+        typeof hotspot.rangeHalfHeight === 'number' ? hotspot.rangeHalfHeight : hotspot.height * 0.5,
+        4,
+        Math.max(4, hotspot.height * 0.5)
+      );
+      const startPoint = projectTexturePointToViewport(rangeMinX, rangeY, rect, zOffset || 0.016);
+      const endPoint = projectTexturePointToViewport(rangeMinX + rangeWidth, rangeY, rect, zOffset || 0.016);
+      const topLeft = projectTexturePointToViewport(rangeMinX, rangeY - rangeHalfHeight, rect, zOffset || 0.012);
+      const topRight = projectTexturePointToViewport(rangeMinX + rangeWidth, rangeY - rangeHalfHeight, rect, zOffset || 0.012);
+      const bottomRight = projectTexturePointToViewport(rangeMinX + rangeWidth, rangeY + rangeHalfHeight, rect, zOffset || 0.012);
+      const bottomLeft = projectTexturePointToViewport(rangeMinX, rangeY + rangeHalfHeight, rect, zOffset || 0.012);
+      if (!startPoint || !endPoint || !topLeft || !topRight || !bottomRight || !bottomLeft) return null;
+      return {
+        startPoint: startPoint,
+        endPoint: endPoint,
+        topLeft: topLeft,
+        topRight: topRight,
+        bottomRight: bottomRight,
+        bottomLeft: bottomLeft
+      };
+    }
+
+    function getProjectedControlMeasurement(hotspot, clientX, clientY) {
+      if (!hotspot || (hotspot.action !== 'audio-progress-set' && hotspot.action !== 'audio-volume-set')) return null;
+      if (!root || !camera || !scene || !THREE) return null;
+      const rect = getViewportRect();
+      if (!rect.width || !rect.height) return null;
+      const localPoint = {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+
+      scene.updateMatrixWorld(true);
+      camera.updateMatrixWorld(true);
+
+      const band = getProjectedControlBand(hotspot, rect, 0.016);
+      if (!band) return null;
+
+      const dx = band.endPoint.x - band.startPoint.x;
+      const dy = band.endPoint.y - band.startPoint.y;
+      const lengthSquared = (dx * dx) + (dy * dy);
+      if (lengthSquared < 1e-6) return null;
+      const alpha = clamp((((localPoint.x - band.startPoint.x) * dx) + ((localPoint.y - band.startPoint.y) * dy)) / lengthSquared, 0, 1);
+      const nearestPoint = {
+        x: band.startPoint.x + dx * alpha,
+        y: band.startPoint.y + dy * alpha
+      };
+      const distanceX = localPoint.x - nearestPoint.x;
+      const distanceY = localPoint.y - nearestPoint.y;
+      return {
+        value: alpha,
+        inside: pointInQuad(localPoint, band.topLeft, band.topRight, band.bottomRight, band.bottomLeft),
+        distanceSquared: (distanceX * distanceX) + (distanceY * distanceY)
+      };
+    }
+
+    function getAudioProgressValueForClientPoint(hotspot, clientX, clientY) {
+      const measurement = getProjectedControlMeasurement(hotspot, clientX, clientY);
+      return measurement ? measurement.value : 0;
     }
 
     function setAudioProgress(nextProgress) {
@@ -1938,6 +2512,27 @@
     function updateVolumeFromHotspot(hotspot, uv) {
       if (!hotspot || hotspot.action !== 'audio-volume-set') return;
       setAudioVolume(getAudioProgressValueForHotspot(hotspot, uv));
+    }
+
+    function updateProgressFromClientPoint(hotspot, clientX, clientY) {
+      if (!hotspot || hotspot.action !== 'audio-progress-set') return;
+      setAudioProgress(getAudioProgressValueForClientPoint(hotspot, clientX, clientY));
+    }
+
+    function updateVolumeFromClientPoint(hotspot, clientX, clientY) {
+      if (!hotspot || hotspot.action !== 'audio-volume-set') return;
+      setAudioVolume(getAudioProgressValueForClientPoint(hotspot, clientX, clientY));
+    }
+
+    function updateAudioControlFromClientPoint(hotspot, clientX, clientY) {
+      if (!hotspot) return;
+      if (hotspot.action === 'audio-volume-set') {
+        updateVolumeFromClientPoint(hotspot, clientX, clientY);
+        return;
+      }
+      if (hotspot.action === 'audio-progress-set') {
+        updateProgressFromClientPoint(hotspot, clientX, clientY);
+      }
     }
 
     function getFallbackAudioPhase() {
@@ -1997,6 +2592,7 @@
     function sampleAudioLevel(delta) {
       let nextLevel = 0;
       let nextBass = 0;
+      const previousBass = state.audioBass;
       if (audioState.isPlaying && analyserNode && analyserData) {
         try {
           analyserNode.getByteFrequencyData(analyserData);
@@ -2044,31 +2640,53 @@
       }
       state.audioLevel += (nextLevel - state.audioLevel) * Math.min(1, delta * 7.5);
       state.audioBass += (nextBass - state.audioBass) * Math.min(1, delta * 9.2);
+      const bassRise = Math.max(0, nextBass - previousBass);
+      const kickExcite = audioState.isPlaying
+        ? clamp(Math.max(0, bassRise - 0.03) * 7.8 + nextBass * 0.16, 0, 1)
+        : 0;
+      state.audioKick = Math.max(kickExcite, state.audioKick * Math.exp(-delta * 10.8));
+      state.audioTrackProgress = audioState.isPlaying && audioState.duration > 0
+        ? clamp(audioState.currentTime / audioState.duration, 0, 1)
+        : 0;
       return state.audioLevel;
     }
 
     function createAudioBlob() {
       if (!THREE || !root || audioBlobGroup) return;
       audioBlobGroup = new THREE.Group();
-      audioBlobGroup.position.set(0, 0.08, -0.74);
+      audioBlobGroup.position.set(0, 0, 0.002);
       audioBlobGroup.scale.setScalar(state.audioBlobBaseScale || 1);
+      audioBlobGroup.visible = false;
 
       audioBlobMaterial = new THREE.ShaderMaterial({
         transparent: true,
         wireframe: true,
+        clipping: true,
         depthWrite: false,
+        depthTest: true,
         toneMapped: false,
-        blending: THREE.AdditiveBlending,
-        uniforms: {
-          uTime: { value: 0 },
-          uAudio: { value: 0 },
-          uBass: { value: 0 },
-          uColor: { value: new THREE.Color('#f4f5f7') }
-        },
+        blending: THREE.NormalBlending,
+        clippingPlanes: [
+          new THREE.Plane(),
+          new THREE.Plane(),
+          new THREE.Plane(),
+          new THREE.Plane()
+        ],
+          uniforms: {
+            uTime: { value: 0 },
+            uAudio: { value: 0 },
+            uBass: { value: 0 },
+            uKick: { value: 0 },
+            uProgress: { value: 0 },
+            uOpacity: { value: 1 },
+            uColor: { value: new THREE.Color('#ffffff') }
+          },
         vertexShader: [
           'uniform float uTime;',
           'uniform float uAudio;',
           'uniform float uBass;',
+          'uniform float uKick;',
+          'uniform float uProgress;',
           'varying float vAudio;',
           'float hash(vec3 p) {',
           '  return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);',
@@ -2106,71 +2724,107 @@
           'void main() {',
           '  vec3 displaced = position;',
           '  vec3 n = normalize(normal);',
-          '  float time = uTime * (0.07 + uAudio * 0.18 + uBass * 0.24);',
-          '  float coarse = fbm(position * (1.28 + uBass * 0.58) + vec3(time * 0.46, -time * 0.18, time * 0.24));',
-          '  float ridged = 1.0 - abs(fbm(position.yzx * 2.05 + vec3(-time * 0.22, time * 0.48, time * 0.11)) * 2.0 - 1.0);',
-          '  float swirl = noise3d(position.zxy * 3.1 + vec3(time * 0.62, -time * 0.34, time * 0.16));',
-          '  vec3 warpedNormal = normalize(n + vec3((coarse - 0.5) * 0.7, (ridged - 0.5) * 0.94, (swirl - 0.5) * 0.66));',
-          '  float ripple = sin(position.y * 3.2 + time * 1.28 + position.x * 1.4) * 0.5 + 0.5;',
-          '  float distortion = ((coarse - 0.5) * 0.84) + ((ridged - 0.5) * 1.12) + ((swirl - 0.5) * 0.58) + (ripple - 0.5) * (0.28 + uBass * 0.42);',
-          '  float amplitude = 0.026 + uAudio * 0.09 + uBass * 0.16;',
+          '  float weirdness = 0.06 + uBass * 0.08 + uKick * 0.06;',
+          '  float time = uTime * (0.08 + uAudio * 0.22 + uBass * 0.28 + weirdness * 0.2 + uKick * 0.18);',
+          '  float coarse = fbm(position * (1.34 + uBass * 0.62 + weirdness * 0.72) + vec3(time * 0.46, -time * 0.18, time * 0.24));',
+          '  float ridged = 1.0 - abs(fbm(position.yzx * (2.05 + weirdness * 1.08) + vec3(-time * 0.22, time * 0.48, time * 0.11)) * 2.0 - 1.0);',
+          '  float swirl = noise3d(position.zxy * (3.1 + weirdness * 1.2) + vec3(time * 0.62, -time * 0.34, time * 0.16));',
+          '  float fracture = fbm(position.xzy * (2.46 + weirdness * 1.64) + vec3(-time * 0.26, time * 0.38, time * 0.54));',
+          '  float kink = sin((position.x - position.y * 0.82 + position.z * 1.24) * (4.0 + weirdness * 3.8) + time * (1.3 + uKick * 2.2)) * 0.5 + 0.5;',
+          '  vec3 warpedNormal = normalize(n + vec3((coarse - 0.5) * 0.76 + (fracture - 0.5) * (0.48 + weirdness * 0.42), (ridged - 0.5) * 0.94 + (kink - 0.5) * (0.34 + weirdness * 0.48), (swirl - 0.5) * 0.74 + (fracture - 0.5) * 0.3));',
+          '  float ripple = sin(position.y * (3.2 + weirdness * 2.4) + time * 1.28 + position.x * 1.4) * 0.5 + 0.5;',
+          '  float distortion = ((coarse - 0.5) * 0.84) + ((ridged - 0.5) * 1.16) + ((swirl - 0.5) * 0.62) + ((fracture - 0.5) * (0.52 + weirdness * 0.92)) + (ripple - 0.5) * (0.28 + uBass * 0.42 + weirdness * 0.58) + (kink - 0.5) * (0.34 + weirdness * 0.72);',
+          '  float amplitude = 0.03 + uAudio * 0.08 + uBass * 0.14 + weirdness * 0.1 + uKick * 0.11;',
           '  displaced += warpedNormal * distortion * amplitude;',
-          '  displaced.xy *= 1.0 + vec2(0.03 + uBass * 0.1, 0.06 + uAudio * 0.05) * vec2(sin(time * 0.92 + position.z * 1.7), cos(time * 0.88 + position.x * 1.4));',
-          '  displaced.z *= 0.98 + (ridged * 0.08) + uBass * 0.04;',
-          '  vAudio = clamp(uAudio * 0.68 + uBass * 0.58, 0.0, 1.0);',
+          '  displaced.xy *= 1.0 + vec2(0.03 + uBass * 0.08 + weirdness * 0.12, 0.04 + uAudio * 0.06 + weirdness * 0.18) * vec2(sin(time * 0.92 + position.z * 1.7), cos(time * 0.88 + position.x * 1.4));',
+          '  displaced.z *= 0.96 + (ridged * 0.08) + uBass * 0.04 + weirdness * 0.12 + uKick * 0.08;',
+          '  vAudio = clamp(uAudio * 0.42 + uBass * 0.42 + weirdness * 0.24 + uKick * 0.34, 0.0, 1.0);',
           '  gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);',
           '}'
         ].join('\n'),
         fragmentShader: [
           'uniform vec3 uColor;',
-          'varying float vAudio;',
-          'void main() {',
-          '  float alpha = 0.12 + vAudio * 0.46;',
-          '  gl_FragColor = vec4(uColor, alpha);',
+        'uniform float uOpacity;',
+        'varying float vAudio;',
+        'void main() {',
+          '  float alpha = (0.05 + vAudio * 0.1) * uOpacity;',
+          '  vec3 color = mix(uColor * 0.8, uColor, vAudio * 0.24);',
+          '  gl_FragColor = vec4(color, alpha);',
           '}'
         ].join('\n')
       });
 
-      audioBlobMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.98, 2), audioBlobMaterial);
-      audioBlobMesh.rotation.set(0.24, 0.2, -0.12);
-      audioBlobMesh.scale.set(1.24, 1.56, 0.82);
-      audioBlobMesh.renderOrder = 0;
+      audioBlobMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(1.02, 3), audioBlobMaterial);
+      audioBlobMesh.rotation.set(0.14, -0.06, 0.08);
+      audioBlobMesh.scale.set(1.18, 1.08, 0.78);
+      audioBlobMesh.renderOrder = 3;
       audioBlobGroup.add(audioBlobMesh);
 
       root.add(audioBlobGroup);
     }
 
     function updateAudioBlob(delta, audioLevel) {
-      if (!audioBlobGroup) return;
+      if (!audioBlobGroup || !state.audioBlobPanel) return;
       const reactiveLevel = audioState.isPlaying && audioState.duration > 0 ? audioLevel : 0;
       const bassLevel = audioState.isPlaying && audioState.duration > 0 ? state.audioBass : 0;
+      const kickLevel = audioState.isPlaying && audioState.duration > 0 ? state.audioKick : 0;
+      const trackProgress = audioState.duration > 0
+        ? clamp(audioState.currentTime / audioState.duration, 0, 1)
+        : 0;
+      const weirdness = 0.06 + bassLevel * 0.08 + kickLevel * 0.06;
       const idleDrift = reactiveLevel > 0.01 ? 1 : 0.14;
-      const pulse = Math.sin(state.time * 0.82 + bassLevel * 1.6);
-      const sway = Math.sin(state.time * 0.46 + 0.7);
-      const targetX = Math.sin(state.time * 0.28) * (0.01 * idleDrift + reactiveLevel * 0.022 + bassLevel * 0.034) - state.posX * (0.024 + reactiveLevel * 0.03);
-      const targetY = 0.08 + Math.cos(state.time * 0.31) * (0.012 * idleDrift + reactiveLevel * 0.018) + state.posY * (0.016 + reactiveLevel * 0.026) + pulse * bassLevel * 0.015;
-      const targetZ = -0.72 - reactiveLevel * 0.05 - bassLevel * 0.08;
-      audioBlobGroup.position.x += (targetX - audioBlobGroup.position.x) * Math.min(1, delta * 2.6);
-      audioBlobGroup.position.y += (targetY - audioBlobGroup.position.y) * Math.min(1, delta * 2.6);
-      audioBlobGroup.position.z += (targetZ - audioBlobGroup.position.z) * Math.min(1, delta * 2.8);
-      const targetRotX = 0.24 + sway * 0.12 + reactiveLevel * 0.12 + bassLevel * 0.18;
-      const targetRotY = 0.18 + Math.sin(state.time * 0.38 + 1.2) * 0.16 - reactiveLevel * 0.08 + bassLevel * 0.22;
-      const targetRotZ = -0.14 + Math.sin(state.time * 0.26 - 0.4) * 0.08 + bassLevel * 0.09;
-      audioBlobGroup.rotation.x += (targetRotX - audioBlobGroup.rotation.x) * Math.min(1, delta * 2.2);
-      audioBlobGroup.rotation.y += (targetRotY - audioBlobGroup.rotation.y) * Math.min(1, delta * 2.2);
-      audioBlobGroup.rotation.z += (targetRotZ - audioBlobGroup.rotation.z) * Math.min(1, delta * 2.1);
-      const blobScale = (state.audioBlobBaseScale || 1) * (1.04 + reactiveLevel * 0.12 + bassLevel * 0.18 + pulse * (0.018 + bassLevel * 0.03));
-      const rootScaleX = root && root.scale ? root.scale.x : 1;
-      const rootScaleY = root && root.scale ? root.scale.y : 1;
-      const yScaleCompensation = rootScaleX / Math.max(rootScaleY, 0.001);
-      const scaleX = blobScale * (1.18 + bassLevel * 0.12 + sway * 0.05);
-      const scaleY = blobScale * yScaleCompensation * (1.44 + bassLevel * 0.1 + Math.cos(state.time * 0.52) * 0.04);
-      const scaleZ = blobScale * (0.82 + bassLevel * 0.08 - sway * 0.03);
+      const pulse = Math.sin(state.time * (0.82 + weirdness * 0.7) + bassLevel * (1.6 + weirdness * 1.1));
+      const sway = Math.sin(state.time * (0.46 + weirdness * 0.52) + 0.7);
+      const fracture = Math.sin(state.time * (1.28 + weirdness * 1.84) + 1.1);
+      const kickJerk = kickLevel * (0.04 + weirdness * 0.1);
+      const panel = state.audioBlobPanel;
+      const panelFrame = buildAudioBlobPanelFrame(panel);
+      if (!panelFrame) return;
+      state.audioBlobPanelFrame = panelFrame;
+      const facingNormal = getAudioBlobFacingNormal(panelFrame) || panelFrame.normal.clone();
+      const xRange = Math.max(0.0025, panelFrame.width * 0.022);
+      const yRange = Math.max(0.003, panelFrame.height * 0.028);
+      const localOffsetX =
+        Math.sin(state.time * (0.28 + weirdness * 0.18)) * (xRange * (0.16 * idleDrift + reactiveLevel * 0.22 + bassLevel * 0.14 + weirdness * 0.08)) -
+        state.posX * (panelFrame.width * (0.0022 + reactiveLevel * 0.0042)) +
+        fracture * kickJerk * panelFrame.width * 0.01;
+      const localOffsetY =
+        Math.cos(state.time * (0.31 + weirdness * 0.2)) * (yRange * (0.18 * idleDrift + reactiveLevel * 0.2 + weirdness * 0.08)) +
+        state.posY * (panelFrame.height * (0.0028 + reactiveLevel * 0.0048)) +
+        pulse * bassLevel * (panelFrame.height * (0.014 + weirdness * 0.008)) +
+        kickLevel * (panelFrame.height * (0.01 + weirdness * 0.006));
+      const maxOffsetX = panelFrame.width * 0.034;
+      const maxOffsetY = panelFrame.height * 0.032;
+      const clampedOffsetX = clamp(localOffsetX, -maxOffsetX, maxOffsetX);
+      const clampedOffsetY = clamp(localOffsetY, -maxOffsetY, maxOffsetY);
+      const targetPosition = panelFrame.center.clone()
+        .add(panelFrame.right.clone().multiplyScalar(clampedOffsetX))
+        .add(panelFrame.up.clone().multiplyScalar(clampedOffsetY))
+        .add(facingNormal.multiplyScalar(0.0018 + reactiveLevel * 0.0024 + bassLevel * 0.0028 + kickLevel * 0.0022));
+      const followAlpha = state.dragActive ? 1 : Math.min(1, delta * 4.4);
+      audioBlobGroup.position.lerp(targetPosition, followAlpha);
+      const wobbleEuler = new THREE.Euler(
+        sway * (0.045 + weirdness * 0.02) + reactiveLevel * 0.03 + bassLevel * 0.04 + kickLevel * 0.035,
+        Math.sin(state.time * (0.38 + weirdness * 0.22) + 1.2) * (0.055 + weirdness * 0.02) - reactiveLevel * 0.02 + bassLevel * 0.04 - kickLevel * 0.03,
+        Math.sin(state.time * (0.26 + weirdness * 0.32) - 0.4) * (0.03 + weirdness * 0.012) + bassLevel * 0.018 + fracture * kickLevel * 0.03,
+        'XYZ'
+      );
+      const targetQuaternion = panelFrame.quaternion.clone().multiply(new THREE.Quaternion().setFromEuler(wobbleEuler));
+      const rotationAlpha = state.dragActive ? 1 : Math.min(1, delta * 3.8);
+      audioBlobGroup.quaternion.slerp(targetQuaternion, rotationAlpha);
+      const blobScale = (state.audioBlobBaseScale || 1) * (0.98 + reactiveLevel * 0.06 + bassLevel * 0.06 + weirdness * 0.018 + kickLevel * 0.045 + pulse * (0.01 + bassLevel * 0.012));
+      const widthStretch = panelFrame.width / Math.max(panel.width, 0.001);
+      const heightStretch = panelFrame.height / Math.max(panel.height, 0.001);
+      const scaleX = blobScale * widthStretch * (1.01 + weirdness * 0.03 + bassLevel * 0.04 + sway * 0.02 + kickLevel * 0.025);
+      const scaleY = blobScale * heightStretch * (1.0 + weirdness * 0.04 + bassLevel * 0.035 + Math.cos(state.time * (0.52 + weirdness * 0.26)) * 0.025 - kickLevel * 0.015);
+      const scaleZ = blobScale * (0.7 + weirdness * 0.03 + bassLevel * 0.03 - sway * 0.015 + fracture * 0.015 + kickLevel * 0.02);
       audioBlobGroup.scale.set(scaleX, scaleY, scaleZ);
       if (audioBlobMaterial) {
         audioBlobMaterial.uniforms.uTime.value = state.time;
         audioBlobMaterial.uniforms.uAudio.value = reactiveLevel;
         audioBlobMaterial.uniforms.uBass.value = bassLevel;
+        audioBlobMaterial.uniforms.uKick.value = kickLevel;
+        audioBlobMaterial.uniforms.uProgress.value = trackProgress;
       }
     }
 
@@ -2228,6 +2882,103 @@
       if (viewport.style.cursor !== nextCursor) viewport.style.cursor = nextCursor;
     }
 
+    function ensureAudioProgressDomOverlay() {
+      if (audioProgressDomOverlay) return audioProgressDomOverlay;
+      audioProgressDomOverlay = document.createElement('div');
+      audioProgressDomOverlay.setAttribute('aria-hidden', 'true');
+      audioProgressDomOverlay.style.position = 'absolute';
+      audioProgressDomOverlay.style.left = '0';
+      audioProgressDomOverlay.style.top = '0';
+      audioProgressDomOverlay.style.width = '1px';
+      audioProgressDomOverlay.style.height = '1px';
+      audioProgressDomOverlay.style.display = 'none';
+      audioProgressDomOverlay.style.opacity = '0';
+      audioProgressDomOverlay.style.background = 'transparent';
+      audioProgressDomOverlay.style.pointerEvents = 'auto';
+      audioProgressDomOverlay.style.touchAction = 'none';
+      audioProgressDomOverlay.style.cursor = 'pointer';
+      audioProgressDomOverlay.style.transformOrigin = '0 0';
+      audioProgressDomOverlay.style.willChange = 'transform';
+      audioProgressDomOverlay.style.zIndex = '2';
+
+      const releaseOverlayPointer = function (event) {
+        if (audioProgressOverlayPointerId == null) return;
+        if (event && event.pointerId != null && audioProgressOverlayPointerId !== event.pointerId) return;
+        if (audioProgressDomOverlay && audioProgressDomOverlay.releasePointerCapture && audioProgressOverlayPointerId != null) {
+          try {
+            audioProgressDomOverlay.releasePointerCapture(audioProgressOverlayPointerId);
+          } catch {}
+        }
+        audioProgressOverlayPointerId = null;
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      };
+
+      audioProgressDomOverlay.addEventListener('pointerdown', function (event) {
+        const hotspot = activeAudioControlHotspot;
+        if (!hotspot || !audioState.available) return;
+        audioProgressOverlayPointerId = event.pointerId;
+        updateAudioControlFromClientPoint(hotspot, event.clientX, event.clientY);
+        if (audioProgressDomOverlay && audioProgressDomOverlay.setPointerCapture) {
+          try {
+            audioProgressDomOverlay.setPointerCapture(event.pointerId);
+          } catch {}
+        }
+        event.preventDefault();
+        event.stopPropagation();
+      });
+      audioProgressDomOverlay.addEventListener('pointermove', function (event) {
+        const hotspot = activeAudioControlHotspot;
+        if (audioProgressOverlayPointerId !== event.pointerId || !hotspot || !audioState.available) return;
+        updateAudioControlFromClientPoint(hotspot, event.clientX, event.clientY);
+        event.preventDefault();
+        event.stopPropagation();
+      });
+      audioProgressDomOverlay.addEventListener('pointerup', releaseOverlayPointer);
+      audioProgressDomOverlay.addEventListener('pointercancel', releaseOverlayPointer);
+      audioProgressDomOverlay.addEventListener('lostpointercapture', releaseOverlayPointer);
+      viewport.appendChild(audioProgressDomOverlay);
+      return audioProgressDomOverlay;
+    }
+
+    function hideAudioProgressDomOverlay() {
+      audioProgressOverlayPointerId = null;
+      if (!audioProgressDomOverlay) return;
+      audioProgressDomOverlay.style.display = 'none';
+    }
+
+    function syncAudioProgressDomOverlayTransform() {
+      if (!audioState.available || !activeAudioControlHotspot || !root || !camera || !scene || !THREE) {
+        hideAudioProgressDomOverlay();
+        return;
+      }
+      const rect = getViewportRect();
+      if (!rect.width || !rect.height) {
+        hideAudioProgressDomOverlay();
+        return;
+      }
+      scene.updateMatrixWorld(true);
+      camera.updateMatrixWorld(true);
+      const band = getProjectedControlBand(activeAudioControlHotspot, rect, 0.02);
+      if (!band) {
+        hideAudioProgressDomOverlay();
+        return;
+      }
+      const overlay = ensureAudioProgressDomOverlay();
+      const a = band.topRight.x - band.topLeft.x;
+      const b = band.topRight.y - band.topLeft.y;
+      const c = band.bottomLeft.x - band.topLeft.x;
+      const d = band.bottomLeft.y - band.topLeft.y;
+      if (![a, b, c, d, band.topLeft.x, band.topLeft.y].every(Number.isFinite)) {
+        hideAudioProgressDomOverlay();
+        return;
+      }
+      overlay.style.display = 'block';
+      overlay.style.transform = 'matrix(' + a + ',' + b + ',' + c + ',' + d + ',' + band.topLeft.x + ',' + band.topLeft.y + ')';
+    }
+
     function ensureArtworkDomOverlay() {
       if (artworkDomOverlay) return artworkDomOverlay;
       artworkDomOverlay = document.createElement('img');
@@ -2276,8 +3027,15 @@
       overlay.style.display = 'block';
       overlay.style.opacity = '0.98';
       const radiusPercent = clamp(((artRect.radius || 0) / Math.max(1, Math.min(artRect.width, artRect.height))) * 100, 0, 50);
-      overlay.style.borderRadius = radiusPercent.toFixed(3) + '%';
-      overlay.style.clipPath = 'inset(0 round ' + radiusPercent.toFixed(3) + '%)';
+      const radiusValue = radiusPercent.toFixed(3) + '%';
+      overlay.style.borderRadius = radiusValue;
+      if (supportsCornerShapeSquircle()) {
+        overlay.style.setProperty('corner-shape', 'squircle');
+        overlay.style.clipPath = '';
+      } else {
+        overlay.style.removeProperty('corner-shape');
+        overlay.style.clipPath = 'inset(0 round ' + radiusValue + ')';
+      }
       syncArtworkDomOverlayTransform();
     }
 
@@ -2444,24 +3202,42 @@
       renderer.render(scene, camera);
     }
 
-    function findHotspotAtUv(uv) {
-      if (!uv || !cardHotspots.length) return null;
+    function getCanvasPointFromUv(uv) {
       const textureWidth = state.textureWidth || TEXTURE_WIDTH;
       const textureHeight = state.textureHeight || DEFAULT_TEXTURE_HEIGHT;
-      const px = clamp(uv.x, 0, 1) * textureWidth;
-      const topDownY = clamp(uv.y, 0, 1) * textureHeight;
-      const bottomUpY = (1 - clamp(uv.y, 0, 1)) * textureHeight;
-      let mirroredMatch = null;
+      const normalizedX = typeof (uv && uv.x) === 'number' ? uv.x : 0;
+      const normalizedY = typeof (uv && uv.y) === 'number' ? uv.y : 0;
+      return {
+        x: clamp(normalizedX, 0, 1) * textureWidth,
+        y: (1 - clamp(normalizedY, 0, 1)) * textureHeight
+      };
+    }
+
+    function findProjectedAudioControlHotspot(clientX, clientY) {
+      if (!cardHotspots.length) return null;
       for (let i = cardHotspots.length - 1; i >= 0; i -= 1) {
         const hotspot = cardHotspots[i];
-        const withinX = px >= hotspot.x && px <= hotspot.x + hotspot.width;
-        const withinTopDown = topDownY >= hotspot.y && topDownY <= hotspot.y + hotspot.height;
-        const withinBottomUp = bottomUpY >= hotspot.y && bottomUpY <= hotspot.y + hotspot.height;
-        if (!withinX) continue;
-        if (withinTopDown) return hotspot;
-        if (!mirroredMatch && withinBottomUp) mirroredMatch = hotspot;
+        if (!hotspot || (hotspot.action !== 'audio-progress-set' && hotspot.action !== 'audio-volume-set')) continue;
+        const measurement = getProjectedControlMeasurement(hotspot, clientX, clientY);
+        if (!measurement) continue;
+        const maxDistance = hotspot.action === 'audio-volume-set' ? 22 : 12;
+        if (measurement.inside || measurement.distanceSquared <= maxDistance * maxDistance) {
+          return hotspot;
+        }
       }
-      return mirroredMatch;
+      return null;
+    }
+
+    function findHotspotAtUv(uv) {
+      if (!uv || !cardHotspots.length) return null;
+      const point = getCanvasPointFromUv(uv);
+      for (let i = cardHotspots.length - 1; i >= 0; i -= 1) {
+        const hotspot = cardHotspots[i];
+        const withinX = point.x >= hotspot.x && point.x <= hotspot.x + hotspot.width;
+        const withinY = point.y >= hotspot.y && point.y <= hotspot.y + hotspot.height;
+        if (withinX && withinY) return hotspot;
+      }
+      return null;
     }
 
     function updatePointerHit(clientX, clientY) {
@@ -2482,7 +3258,13 @@
       state.pointerLocalX = localPoint.x;
       state.pointerLocalY = localPoint.y;
       state.pointerLocalZ = localPoint.z;
-      hoveredHotspot = findHotspotAtUv(intersections[0].uv);
+      const uvHotspot = findHotspotAtUv(intersections[0].uv);
+      const projectedAudioHotspot = findProjectedAudioControlHotspot(clientX, clientY);
+      if (uvHotspot && isImmediateAudioHotspotAction(uvHotspot.action)) {
+        hoveredHotspot = uvHotspot;
+      } else {
+        hoveredHotspot = projectedAudioHotspot || uvHotspot;
+      }
       state.pointerTargetInfluence = (hoveredHotspot || state.pressHotspot) && !state.dragActive ? 0 : 1;
       syncViewportCursor(hoveredHotspot);
       return true;
@@ -2490,11 +3272,17 @@
 
     function onPointerDown(event) {
       if (!isActive || event.button !== 0) return;
-      if (!updatePointerHit(event.clientX, event.clientY)) return;
-      state.pressHotspot = findHotspotAtUv({
+      const projectedAudioHotspot = findProjectedAudioControlHotspot(event.clientX, event.clientY);
+      const pointerHit = updatePointerHit(event.clientX, event.clientY);
+      const uvHotspot = pointerHit ? findHotspotAtUv({
         x: state.pointerTargetUvX,
         y: state.pointerTargetUvY
-      });
+      }) : null;
+      if (!pointerHit && !projectedAudioHotspot) return;
+      state.pressHotspot = (uvHotspot && isImmediateAudioHotspotAction(uvHotspot.action))
+        ? uvHotspot
+        : (projectedAudioHotspot || uvHotspot);
+      state.pressHotspotUsesProjection = !!(projectedAudioHotspot && state.pressHotspot === projectedAudioHotspot);
       const pressAction = state.pressHotspot && state.pressHotspot.action;
       state.pressHotspotConsumed = false;
       state.volumeDragActive = !!(pressAction === 'audio-progress-set' || pressAction === 'audio-volume-set');
@@ -2507,7 +3295,13 @@
       state.movedSincePointerDown = false;
       state.pointerTargetInfluence = state.dragActive ? 1.18 : 0;
       if (state.volumeDragActive) {
-        if (pressAction === 'audio-volume-set') {
+        if (state.pressHotspotUsesProjection) {
+          if (pressAction === 'audio-volume-set') {
+            updateVolumeFromClientPoint(state.pressHotspot, event.clientX, event.clientY);
+          } else {
+            updateProgressFromClientPoint(state.pressHotspot, event.clientX, event.clientY);
+          }
+        } else if (pressAction === 'audio-volume-set') {
           updateVolumeFromHotspot(state.pressHotspot, {
             x: state.pointerTargetUvX,
             y: state.pointerTargetUvY
@@ -2526,7 +3320,7 @@
       if (state.pressHotspot) {
         event.preventDefault();
       }
-      if (state.dragActive) {
+      if (state.dragActive && pointerHit) {
         const gridX = clamp(Math.round(((state.pointerLocalX + (PLANE_WIDTH * 0.5)) / PLANE_WIDTH) * CLOTH_SEGMENTS_X), 0, CLOTH_SEGMENTS_X);
         const gridY = clamp(Math.round((((PLANE_HEIGHT * 0.5) - state.pointerLocalY) / PLANE_HEIGHT) * CLOTH_SEGMENTS_Y), 0, CLOTH_SEGMENTS_Y);
         dragPointIndex = pointIndex(gridX, gridY);
@@ -2548,7 +3342,14 @@
     function onPointerMove(event) {
       if (!isActive) return;
       if (state.dragPointerId === event.pointerId && state.volumeDragActive) {
-        if (updatePointerHit(event.clientX, event.clientY)) {
+        const pointerHit = updatePointerHit(event.clientX, event.clientY);
+        if (state.pressHotspotUsesProjection) {
+          if (state.pressHotspot && state.pressHotspot.action === 'audio-volume-set') {
+            updateVolumeFromClientPoint(state.pressHotspot, event.clientX, event.clientY);
+          } else {
+            updateProgressFromClientPoint(state.pressHotspot, event.clientX, event.clientY);
+          }
+        } else if (pointerHit) {
           if (state.pressHotspot && state.pressHotspot.action === 'audio-volume-set') {
             updateVolumeFromHotspot(state.pressHotspot, {
               x: state.pointerTargetUvX,
@@ -2626,6 +3427,7 @@
       state.targetPosY = 0;
       state.pointerTargetInfluence = 0;
       state.pressHotspot = null;
+      state.pressHotspotUsesProjection = false;
       state.pressHotspotConsumed = false;
       state.volumeDragActive = false;
       state.movedSincePointerDown = false;
@@ -2654,6 +3456,7 @@
           antialias: true,
           powerPreference: 'high-performance'
         });
+        renderer.localClippingEnabled = true;
         renderer.setClearColor(0x000000, 0);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
         if ('outputColorSpace' in renderer) {
@@ -2725,7 +3528,7 @@
         keyLight.position.set(1.45, 1.8, 2.6);
         scene.add(keyLight);
 
-        const fillLight = new THREE.DirectionalLight(0x8ab7ff, 0.34);
+        const fillLight = new THREE.DirectionalLight(0xe5e7eb, 0.28);
         fillLight.position.set(-1.3, 0.7, 1.8);
         scene.add(fillLight);
 
@@ -2781,13 +3584,13 @@
       state.frameIdleY = isCompact ? 0.014 : 0.011;
       state.shadowBaseY = isCompact ? -1.18 : -1.26;
       applyRootScale(1);
-      const desiredBlobLocalWidth = PLANE_WIDTH * (isCompact ? 1.52 : 1.66);
-      state.audioBlobBaseScale = clamp(desiredBlobLocalWidth / 1.96, 0.96, 1.18);
+      syncAudioBlobBaseScale();
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
       renderer.setSize(rect.width, rect.height, false);
       camera.aspect = aspect;
       camera.updateProjectionMatrix();
       syncArtworkDomOverlayTransform();
+      renderFooterOrbFrame();
       renderOnce();
     }
 
@@ -2845,7 +3648,7 @@
       state.posY += state.velY * delta;
 
       const audioLevel = sampleAudioLevel(delta);
-      if (audioState.isPlaying && now - state.audioTextureRefreshAt > 72) {
+      if (audioState.isPlaying && now - state.audioTextureRefreshAt > 42) {
         state.audioTextureRefreshAt = now;
         scheduleCardTextureRefresh();
       }
@@ -2894,6 +3697,7 @@
       root.position.z += ((Math.sin(state.time * 0.42) * 0.012 + state.openProgress * 0.012 + switchDepth) - root.position.z) * Math.min(1, delta * 3.2);
       applyRootScale(lerp(0.94, 1, smoothstep(0, 1, state.openProgress)) * switchScale);
       syncArtworkDomOverlayTransform();
+      syncAudioProgressDomOverlayTransform();
       setSurfaceOpacity(switchOpacity);
 
       shadowMesh.position.x = root.position.x * 0.28;
@@ -2901,7 +3705,13 @@
       shadowMesh.scale.x = 1 + clothMetrics.bottomDepth * 0.22 + Math.abs(state.posX) * 0.08;
       shadowMesh.scale.y = 1 + clothMetrics.bottomDrop * 0.1 + clothMetrics.bottomDepth * 0.08;
       shadowMesh.material.opacity = clamp((0.18 + clothMetrics.bottomDepth * 0.18 + (state.dragActive ? 0.08 : 0)) * (0.72 + switchOpacity * 0.28), 0.1, 0.42);
-      updateAudioBlob(delta, audioLevel);
+      try {
+        updateAudioBlob(delta, audioLevel);
+        syncAudioBlobClipPlanes();
+        renderFooterOrbFrame();
+      } catch (error) {
+        console.error(error);
+      }
 
       renderSceneWithFallback();
       if (completedSwitchPhase) {
@@ -2969,6 +3779,7 @@
         viewport.classList.remove('is-dragging');
         viewport.style.cursor = 'grab';
         hideArtworkDomOverlay();
+        hideAudioProgressDomOverlay();
         return;
       }
 
@@ -3007,6 +3818,13 @@
           audioContext.close();
         } catch {}
       }
+      audioPlaybackUrlCache.forEach(function (objectUrl) {
+        if (!objectUrl) return;
+        try {
+          URL.revokeObjectURL(objectUrl);
+        } catch {}
+      });
+      audioPlaybackUrlCache.clear();
       audioElement = null;
       audioContext = null;
       if (cardTexture) cardTexture.dispose();
@@ -3042,6 +3860,20 @@
       if (artworkDomOverlay && artworkDomOverlay.parentNode) {
         artworkDomOverlay.parentNode.removeChild(artworkDomOverlay);
       }
+      if (audioProgressDomOverlay && audioProgressDomOverlay.parentNode) {
+        audioProgressDomOverlay.parentNode.removeChild(audioProgressDomOverlay);
+      }
+    }
+
+    function getAudioSnapshot() {
+      return {
+        available: !!audioState.available,
+        isPlaying: !!audioState.isPlaying,
+        volume: Number.isFinite(audioState.volume) ? audioState.volume : DEFAULT_AUDIO_VOLUME,
+        volumePanelOpen: !!audioState.volumePanelOpen,
+        currentTime: Number.isFinite(audioState.currentTime) ? audioState.currentTime : 0,
+        duration: Number.isFinite(audioState.duration) ? audioState.duration : 0
+      };
     }
 
     return {
@@ -3049,6 +3881,11 @@
       setCard: setCard,
       setActive: setActive,
       resize: resize,
+      toggleAudioPlayback: toggleAudioPlayback,
+      toggleAudioVolumePanel: toggleAudioVolumePanel,
+      setAudioVolume: setAudioVolume,
+      setAudioProgress: setAudioProgress,
+      getAudioSnapshot: getAudioSnapshot,
       destroy: destroy
     };
   }

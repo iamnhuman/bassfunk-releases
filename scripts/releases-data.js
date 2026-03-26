@@ -292,6 +292,7 @@ export function renderReleaseTiles(container, items) {
     anchor.target = '_blank';
     anchor.rel = 'noreferrer';
 
+    image.className = 'release-card__image';
     image.src = item.imageUrl;
     image.alt = item.artistName && item.releaseTitle
       ? item.artistName + ' - ' + item.releaseTitle

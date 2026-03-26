@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-03-15T22:32:10.776Z",
+  "updatedAt": "2026-03-22T10:20:39.494Z",
   "items": [
     {
       "index": "1",
@@ -5441,36 +5441,6 @@
     },
     {
       "index": "156",
-      "imageUrl": "img/5877169fe77a01160091f12c-asset.gif",
-      "audioUrl": "",
-      "artistName": "LORN & DOLOR",
-      "releaseTitle": "DRUGS",
-      "releaseUrl": "https://wednesdaysound.bandcamp.com/album/lorn-dolor-drugs",
-      "sourceUrl": "https://wednesdaysound.bandcamp.com/album/lorn-dolor-drugs",
-      "sourceLabel": "Bandcamp",
-      "provider": "bandcamp",
-      "releaseLinks": [
-        {
-          "label": "Bandcamp",
-          "providerName": "bandcamp",
-          "url": "https://wednesdaysound.bandcamp.com/album/lorn-dolor-drugs"
-        }
-      ],
-      "socialLinks": [
-        {
-          "label": "Bandcamp",
-          "providerName": "bandcamp",
-          "url": "https://wednesdaysound.bandcamp.com/"
-        },
-        {
-          "label": "Youtube",
-          "providerName": "youtube",
-          "url": "https://www.youtube.com/@wednesdaysound"
-        }
-      ]
-    },
-    {
-      "index": "157",
       "imageUrl": "img/5880d8d07b1bd9160086b73f-asset.jpg",
       "audioUrl": "",
       "artistName": "Emptyset",
@@ -5515,7 +5485,7 @@
       ]
     },
     {
-      "index": "158",
+      "index": "157",
       "imageUrl": "img/586791e9e77a01160091e2af-asset.jpg",
       "audioUrl": "",
       "artistName": "LORN",
@@ -5534,7 +5504,7 @@
       "socialLinks": []
     },
     {
-      "index": "159",
+      "index": "158",
       "imageUrl": "img/587f6cdfe77a01160091f365-asset.jpg",
       "audioUrl": "",
       "artistName": "Woolymammoth",
@@ -5564,7 +5534,7 @@
       ]
     },
     {
-      "index": "160",
+      "index": "159",
       "imageUrl": "img/5870c12ce77a01160091ee10-55.jpg",
       "audioUrl": "",
       "artistName": "Happa & Pete Martell",
@@ -5583,7 +5553,7 @@
       "socialLinks": []
     },
     {
-      "index": "161",
+      "index": "160",
       "imageUrl": "img/5888f719d4cd0b1000cf395a-Untitled-2.jpg",
       "audioUrl": "",
       "artistName": "Ssaliva",
@@ -5602,7 +5572,7 @@
       "socialLinks": []
     },
     {
-      "index": "162",
+      "index": "161",
       "imageUrl": "img/5897dd9426785310009c023f-a0472710707_10.jpg",
       "audioUrl": "",
       "artistName": "Future Vessel",
@@ -5632,7 +5602,7 @@
       ]
     },
     {
-      "index": "163",
+      "index": "162",
       "imageUrl": "img/5866e427e77a01160091e002-Untitled-20.jpg",
       "audioUrl": "",
       "artistName": "Alon Mor",
@@ -5668,6 +5638,36 @@
           "label": "Instagram",
           "providerName": "instagram",
           "url": "https://www.instagram.com/alonmor/"
+        }
+      ]
+    },
+    {
+      "index": "163",
+      "imageUrl": "img/lorn-dolor-drugs-156.avif",
+      "audioUrl": "",
+      "artistName": "LORN & DOLOR",
+      "releaseTitle": "DRUGS",
+      "releaseUrl": "https://wednesdaysound.bandcamp.com/album/lorn-dolor-drugs",
+      "sourceUrl": "https://wednesdaysound.bandcamp.com/album/lorn-dolor-drugs",
+      "sourceLabel": "Bandcamp",
+      "provider": "bandcamp",
+      "releaseLinks": [
+        {
+          "label": "Bandcamp",
+          "providerName": "bandcamp",
+          "url": "https://wednesdaysound.bandcamp.com/album/lorn-dolor-drugs"
+        }
+      ],
+      "socialLinks": [
+        {
+          "label": "Bandcamp",
+          "providerName": "bandcamp",
+          "url": "https://wednesdaysound.bandcamp.com/"
+        },
+        {
+          "label": "Youtube",
+          "providerName": "youtube",
+          "url": "https://www.youtube.com/@wednesdaysound"
         }
       ]
     },
@@ -8040,6 +8040,36 @@
     },
     {
       "index": "241",
+      "imageUrl": "img/5866e779e77a01160091e034-Untitled-25.jpg",
+      "audioUrl": "",
+      "artistName": "VROMM",
+      "releaseTitle": "BINARY008",
+      "releaseUrl": "https://soundcloud.com/critical-music/sets/critical-presents-binary-vol-8",
+      "sourceUrl": "https://soundcloud.com/critical-music/sets/critical-presents-binary-vol-8",
+      "sourceLabel": "SoundCloud",
+      "provider": "soundcloud",
+      "releaseLinks": [
+        {
+          "label": "SoundCloud",
+          "providerName": "soundcloud",
+          "url": "https://soundcloud.com/critical-music/sets/critical-presents-binary-vol-8"
+        }
+      ],
+      "socialLinks": [
+        {
+          "label": "Bandcamp",
+          "providerName": "bandcamp",
+          "url": "https://vromm.bandcamp.com/"
+        },
+        {
+          "label": "Instagram",
+          "providerName": "instagram",
+          "url": "https://www.instagram.com/vromm/"
+        }
+      ]
+    },
+    {
+      "index": "242",
       "imageUrl": "img/5866e391e77a01160091dff8-600.jpg",
       "audioUrl": "",
       "artistName": "Kije",
@@ -8074,7 +8104,7 @@
       ]
     },
     {
-      "index": "242",
+      "index": "243",
       "imageUrl": "img/5872b122e77a01160091eeec-Untitled-4.jpg",
       "audioUrl": "",
       "artistName": "Helm",
@@ -8091,36 +8121,6 @@
         }
       ],
       "socialLinks": []
-    },
-    {
-      "index": "243",
-      "imageUrl": "img/5866e779e77a01160091e034-Untitled-25.jpg",
-      "audioUrl": "",
-      "artistName": "VROMM",
-      "releaseTitle": "BINARY008",
-      "releaseUrl": "https://soundcloud.com/critical-music/sets/critical-presents-binary-vol-8",
-      "sourceUrl": "https://soundcloud.com/critical-music/sets/critical-presents-binary-vol-8",
-      "sourceLabel": "SoundCloud",
-      "provider": "soundcloud",
-      "releaseLinks": [
-        {
-          "label": "SoundCloud",
-          "providerName": "soundcloud",
-          "url": "https://soundcloud.com/critical-music/sets/critical-presents-binary-vol-8"
-        }
-      ],
-      "socialLinks": [
-        {
-          "label": "Bandcamp",
-          "providerName": "bandcamp",
-          "url": "https://vromm.bandcamp.com/"
-        },
-        {
-          "label": "Instagram",
-          "providerName": "instagram",
-          "url": "https://www.instagram.com/vromm/"
-        }
-      ]
     },
     {
       "index": "244",
@@ -8468,31 +8468,6 @@
     },
     {
       "index": "256",
-      "imageUrl": "img/588641449fcfed10002e07ed-asset.jpg",
-      "audioUrl": "",
-      "artistName": "W3C",
-      "releaseTitle": "The Atmospheric Entry",
-      "releaseUrl": "https://soundcloud.com/cold-recordings/sets/coldr008-w3c",
-      "sourceUrl": "https://soundcloud.com/cold-recordings/sets/coldr008-w3c",
-      "sourceLabel": "SoundCloud",
-      "provider": "soundcloud",
-      "releaseLinks": [
-        {
-          "label": "SoundCloud",
-          "providerName": "soundcloud",
-          "url": "https://soundcloud.com/cold-recordings/sets/coldr008-w3c"
-        }
-      ],
-      "socialLinks": [
-        {
-          "label": "Instagram",
-          "providerName": "instagram",
-          "url": "https://www.instagram.com/w3c/"
-        }
-      ]
-    },
-    {
-      "index": "257",
       "imageUrl": "img/5872c199e77a01160091ef05-Untitled-3.jpg",
       "audioUrl": "",
       "artistName": "Stray",
@@ -8518,6 +8493,31 @@
           "label": "SoundCloud",
           "providerName": "soundcloud",
           "url": "https://soundcloud.com/stray42628"
+        }
+      ]
+    },
+    {
+      "index": "257",
+      "imageUrl": "img/588641449fcfed10002e07ed-asset.jpg",
+      "audioUrl": "",
+      "artistName": "W3C",
+      "releaseTitle": "The Atmospheric Entry",
+      "releaseUrl": "https://soundcloud.com/cold-recordings/sets/coldr008-w3c",
+      "sourceUrl": "https://soundcloud.com/cold-recordings/sets/coldr008-w3c",
+      "sourceLabel": "SoundCloud",
+      "provider": "soundcloud",
+      "releaseLinks": [
+        {
+          "label": "SoundCloud",
+          "providerName": "soundcloud",
+          "url": "https://soundcloud.com/cold-recordings/sets/coldr008-w3c"
+        }
+      ],
+      "socialLinks": [
+        {
+          "label": "Instagram",
+          "providerName": "instagram",
+          "url": "https://www.instagram.com/w3c/"
         }
       ]
     },
