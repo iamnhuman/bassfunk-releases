@@ -14,6 +14,7 @@
       --canvas-3d-card-width: clamp(148px, 10.8vw, 176px);
       --canvas-3d-card-gap: clamp(14px, 1vw, 18px);
       --canvas-3d-card-height-offset: 32px;
+      --release-card-radius: 22px;
     }
     @property --release-drift-x {
       syntax: "<length>";
@@ -1100,7 +1101,7 @@
       will-change: transform, filter;
     }
     body.is-view-plain .releases a {
-      overflow: visible;
+      overflow: hidden;
       isolation: isolate;
       border-radius: 4px;
       --plain-hover-shift-x: 0px;
@@ -2239,17 +2240,13 @@
       position: relative;
       overflow: visible;
       box-sizing: border-box;
-      transform: scale(var(--canvas-3d-card-scale, 1));
-      transform-origin: top left;
       will-change: transform;
     }
     body[data-cards-size="2"] .canvas-mode__release-item {
       gap: 14px;
-      --canvas-3d-card-scale: 0.92;
     }
     body[data-cards-size="1"] .canvas-mode__release-item {
-      gap: 10px;
-      --canvas-3d-card-scale: 0.66;
+      gap: 8px;
     }
     .canvas-mode__release-item:focus,
     .canvas-mode__release-item:focus-visible {
@@ -2258,7 +2255,7 @@
     .canvas-mode__release-thumb {
       position: relative;
       overflow: hidden;
-      border-radius: 22px;
+      border-radius: var(--release-card-radius);
       background: transparent;
       aspect-ratio: 1 / 1;
       box-shadow: none;
@@ -2295,7 +2292,7 @@
       transform: translateY(-1px);
       filter: saturate(1.04) brightness(1.03);
       box-shadow: none;
-      border-radius: 22px;
+      border-radius: var(--release-card-radius);
     }
     .canvas-mode__release-item:hover .canvas-mode__release-thumb img,
     .canvas-mode__release-item.is-active .canvas-mode__release-thumb img {
@@ -2306,7 +2303,7 @@
       z-index: 2;
       transform: translateY(-2px) scale(1.01);
       filter: saturate(1.08) brightness(1.08);
-      border-radius: 22px;
+      border-radius: var(--release-card-radius);
       box-shadow:
         0 0 24px rgba(255, 255, 255, 0.24),
         0 0 56px rgba(108, 174, 255, 0.22),
@@ -11711,7 +11708,7 @@
         );
       }
       const BASE_MIN_TILE = 180;
-      const X1_TILE_SIZE = 40;
+      const X1_TILE_SIZE = 84;
       const DRAG_START_THRESHOLD = 6;
       const COMPACT_CONTROLS_BREAKPOINT = 800;
       const SCENE_RESIZE_WIDTH_REBUILD_THRESHOLD = usePerformanceMode ? 12 : 1;
@@ -12200,14 +12197,13 @@
           const pageGap = layout.itemGap;
           const minItemWidth = Math.max(1, layout.minItemWidth || 1);
           const maxItemWidth = Math.max(minItemWidth, layout.maxItemWidth || minItemWidth);
-          const forceXsColumns = (currentSizeFactor || 3) === 1 && layoutWidth >= 900;
-          columnsPerPage = forceXsColumns ? 3 : Math.max(1, Math.ceil((layoutWidth + pageGap) / (maxItemWidth + pageGap)));
+          columnsPerPage = Math.max(1, Math.ceil((layoutWidth + pageGap) / (maxItemWidth + pageGap)));
           let itemWidth = Math.floor((layoutWidth - pageGap * (columnsPerPage - 1)) / columnsPerPage);
-          while (!forceXsColumns && columnsPerPage > 1 && itemWidth < minItemWidth) {
+          while (columnsPerPage > 1 && itemWidth < minItemWidth) {
             columnsPerPage -= 1;
             itemWidth = Math.floor((layoutWidth - pageGap * (columnsPerPage - 1)) / columnsPerPage);
           }
-          while (!forceXsColumns && Math.floor((layoutWidth - pageGap * columnsPerPage) / (columnsPerPage + 1)) >= minItemWidth && Math.floor((layoutWidth - pageGap * columnsPerPage) / (columnsPerPage + 1)) <= maxItemWidth) {
+          while (Math.floor((layoutWidth - pageGap * columnsPerPage) / (columnsPerPage + 1)) >= minItemWidth && Math.floor((layoutWidth - pageGap * columnsPerPage) / (columnsPerPage + 1)) <= maxItemWidth) {
             columnsPerPage += 1;
             itemWidth = Math.floor((layoutWidth - pageGap * (columnsPerPage - 1)) / columnsPerPage);
           }
@@ -12381,7 +12377,7 @@
           const estimatedRowHeight = Math.max(1, Math.ceil(contentHeight / renderedRows));
           const spareHeight = viewportHeight - contentHeight;
 
-          if (spareHeight < estimatedRowHeight * 0.75) return false;
+          if (spareHeight < estimatedRowHeight * 0.5) return false;
 
           rowsPerPage += 1;
           pageSize = Math.max(1, columnsPerPage * rowsPerPage);
@@ -14060,12 +14056,8 @@
       }
 
       function updateSizeControlsVisibility() {
-        const viewportWidth = document.documentElement.clientWidth || window.innerWidth || 0;
-        const rootStyles = window.getComputedStyle(document.documentElement);
-        const sidebarWidth = Math.max(0, parseFloat(rootStyles.getPropertyValue('--canvas-3d-sidebar-width')) || 0);
-        const available3dWidth = Math.max(0, viewportWidth - sidebarWidth - 76);
         const isSphereView = viewMode === 'sphere';
-        const isCompact3dMobile = viewMode === '3d' && available3dWidth <= 1180;
+        const hideLgOnMobile = viewMode === '3d' && isCoarsePointer;
         if (sizeCluster) {
           sizeCluster.hidden = false;
           sizeCluster.setAttribute('aria-hidden', 'false');
@@ -14075,9 +14067,9 @@
           compactSizeBtn.setAttribute('aria-hidden', 'false');
         }
         if (sizeX4Btn) {
-          sizeX4Btn.hidden = isCompact3dMobile;
+          sizeX4Btn.hidden = hideLgOnMobile;
           sizeX4Btn.classList.remove('is-size-locked');
-          sizeX4Btn.setAttribute('aria-disabled', isCompact3dMobile ? 'true' : 'false');
+          sizeX4Btn.setAttribute('aria-disabled', hideLgOnMobile ? 'true' : 'false');
         }
         if (sizeX3Btn) {
           sizeX3Btn.hidden = isSphereView;
@@ -14094,7 +14086,7 @@
           sizeX1Btn.classList.remove('is-size-locked');
           sizeX1Btn.setAttribute('aria-disabled', 'false');
         }
-        if (isCompact3dMobile && sizeFactor === 4) {
+        if (hideLgOnMobile && sizeFactor === 4) {
           setSize(3, sizeX3Btn || null);
           return;
         }
@@ -16091,7 +16083,7 @@
           const sidebarWidth = Math.max(0, parseFloat(rootStyles.getPropertyValue('--canvas-3d-sidebar-width')) || 0);
           const availableWidth = Math.max(0, viewportWidth - sidebarWidth - 76);
           const releaseLayout = sizeFactor === 1
-            ? { min: 82, max: 98, gap: 8 }
+            ? { min: 82, max: 98, gap: 2 }
             : sizeFactor === 2
               ? { min: 96, max: 126, gap: 10 }
               : sizeFactor === 3
@@ -16116,16 +16108,8 @@
         const minTile = sizeFactor === 1 ? X1_TILE_SIZE : Math.max(48, Math.floor(BASE_MIN_TILE * effectiveFactor));
         let cols = Math.max(1, Math.ceil(viewportWidth / minTile));
         let cellSize = Math.max(1, viewportWidth / cols);
-        const tileGap = sizeFactor === 1 ? 2 : 4;
+        const tileGap = sizeFactor === 1 ? 2 : sizeFactor === 4 ? 4 : 3;
         let rows = Math.ceil(orderedTiles.length / cols);
-
-        if (sizeFactor === 1) {
-          while (cols > 1 && rows * cellSize < viewportHeight) {
-            cols -= 1;
-            cellSize = Math.max(1, viewportWidth / cols);
-            rows = Math.ceil(orderedTiles.length / cols);
-          }
-        }
 
         updateReleasesLayoutStyles(cols, rows, cellSize, tileGap);
         if (viewMode === '3d' || viewMode === 'plain') schedule3dGridPointerEffect();
@@ -16267,6 +16251,7 @@
       function setSize(nextFactor, triggerButton) {
         suppressButtonHoverFill(triggerButton);
         if (triggerButton) compactSection = 'size';
+        if (viewMode === '3d' && isCoarsePointer && nextFactor === 4) nextFactor = 3;
         if (viewMode === 'sphere' && nextFactor !== 4 && nextFactor !== 2) return;
         sizeFactor = nextFactor;
         document.body.setAttribute('data-cards-size', String(sizeFactor));

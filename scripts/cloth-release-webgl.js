@@ -1103,7 +1103,7 @@
     const titleLines = wrapTextLines(measureCtx, cardData && cardData.releaseTitle || '', textMaxWidth, 5);
     const titleY = contentTop + artistBlockHeight + 6 * scale;
     let contentBottom = titleY + titleLines.length * titleLineHeight;
-    const bottomPadding = 6 * scale;
+    const bottomPadding = 14 * scale;
     canvas.height = Math.min(MAX_TEXTURE_HEIGHT, Math.ceil(contentBottom + bottomPadding));
     const ctx = canvas.getContext('2d');
     const cardX = 0;
