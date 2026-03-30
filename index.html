@@ -2263,11 +2263,6 @@
       transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
       box-sizing: border-box;
     }
-    @supports (corner-shape: squircle) {
-      .canvas-mode__release-thumb {
-        corner-shape: squircle;
-      }
-    }
     .canvas-mode__release-thumb::before {
       content: "";
       position: absolute;
@@ -2292,7 +2287,6 @@
       transform: translateY(-1px);
       filter: saturate(1.04) brightness(1.03);
       box-shadow: none;
-      border-radius: var(--release-card-radius);
     }
     .canvas-mode__release-item:hover .canvas-mode__release-thumb img,
     .canvas-mode__release-item.is-active .canvas-mode__release-thumb img {
@@ -2303,7 +2297,6 @@
       z-index: 2;
       transform: translateY(-2px) scale(1.01);
       filter: saturate(1.08) brightness(1.08);
-      border-radius: var(--release-card-radius);
       box-shadow:
         0 0 24px rgba(255, 255, 255, 0.24),
         0 0 56px rgba(108, 174, 255, 0.22),
@@ -14057,7 +14050,7 @@
 
       function updateSizeControlsVisibility() {
         const isSphereView = viewMode === 'sphere';
-        const hideLgOnMobile = viewMode === '3d' && isCoarsePointer;
+        const hideLgIn3dView = viewMode === '3d';
         if (sizeCluster) {
           sizeCluster.hidden = false;
           sizeCluster.setAttribute('aria-hidden', 'false');
@@ -14067,9 +14060,9 @@
           compactSizeBtn.setAttribute('aria-hidden', 'false');
         }
         if (sizeX4Btn) {
-          sizeX4Btn.hidden = hideLgOnMobile;
+          sizeX4Btn.hidden = hideLgIn3dView;
           sizeX4Btn.classList.remove('is-size-locked');
-          sizeX4Btn.setAttribute('aria-disabled', hideLgOnMobile ? 'true' : 'false');
+          sizeX4Btn.setAttribute('aria-disabled', hideLgIn3dView ? 'true' : 'false');
         }
         if (sizeX3Btn) {
           sizeX3Btn.hidden = isSphereView;
@@ -14086,7 +14079,7 @@
           sizeX1Btn.classList.remove('is-size-locked');
           sizeX1Btn.setAttribute('aria-disabled', 'false');
         }
-        if (hideLgOnMobile && sizeFactor === 4) {
+        if (hideLgIn3dView && sizeFactor === 4) {
           setSize(3, sizeX3Btn || null);
           return;
         }
@@ -16251,7 +16244,7 @@
       function setSize(nextFactor, triggerButton) {
         suppressButtonHoverFill(triggerButton);
         if (triggerButton) compactSection = 'size';
-        if (viewMode === '3d' && isCoarsePointer && nextFactor === 4) nextFactor = 3;
+        if (viewMode === '3d' && nextFactor === 4) nextFactor = 3;
         if (viewMode === 'sphere' && nextFactor !== 4 && nextFactor !== 2) return;
         sizeFactor = nextFactor;
         document.body.setAttribute('data-cards-size', String(sizeFactor));
