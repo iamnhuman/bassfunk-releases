@@ -14050,7 +14050,7 @@
 
       function updateSizeControlsVisibility() {
         const isSphereView = viewMode === 'sphere';
-        const hideLgIn3dView = viewMode === '3d';
+        const hideLgInCompact3dView = viewMode === '3d' && compactControlsMode;
         if (sizeCluster) {
           sizeCluster.hidden = false;
           sizeCluster.setAttribute('aria-hidden', 'false');
@@ -14060,9 +14060,9 @@
           compactSizeBtn.setAttribute('aria-hidden', 'false');
         }
         if (sizeX4Btn) {
-          sizeX4Btn.hidden = hideLgIn3dView;
+          sizeX4Btn.hidden = hideLgInCompact3dView;
           sizeX4Btn.classList.remove('is-size-locked');
-          sizeX4Btn.setAttribute('aria-disabled', hideLgIn3dView ? 'true' : 'false');
+          sizeX4Btn.setAttribute('aria-disabled', hideLgInCompact3dView ? 'true' : 'false');
         }
         if (sizeX3Btn) {
           sizeX3Btn.hidden = isSphereView;
@@ -14079,7 +14079,7 @@
           sizeX1Btn.classList.remove('is-size-locked');
           sizeX1Btn.setAttribute('aria-disabled', 'false');
         }
-        if (hideLgIn3dView && sizeFactor === 4) {
+        if (hideLgInCompact3dView && sizeFactor === 4) {
           setSize(3, sizeX3Btn || null);
           return;
         }
@@ -14105,6 +14105,7 @@
 
       function updateControlsCompactMode() {
         applyCompactControlsState(controlsNeedCompactMode());
+        updateSizeControlsVisibility();
       }
 
       function setCompactSection(nextSection, triggerButton) {
@@ -16244,7 +16245,7 @@
       function setSize(nextFactor, triggerButton) {
         suppressButtonHoverFill(triggerButton);
         if (triggerButton) compactSection = 'size';
-        if (viewMode === '3d' && nextFactor === 4) nextFactor = 3;
+        if (viewMode === '3d' && compactControlsMode && nextFactor === 4) nextFactor = 3;
         if (viewMode === 'sphere' && nextFactor !== 4 && nextFactor !== 2) return;
         sizeFactor = nextFactor;
         document.body.setAttribute('data-cards-size', String(sizeFactor));
