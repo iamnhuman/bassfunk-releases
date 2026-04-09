@@ -8,6 +8,8 @@
   const PLANE_WIDTH = 1.38;
   const PLANE_HEIGHT = PLANE_WIDTH * BASE_CARD_ASPECT;
   const DEFAULT_AUDIO_VOLUME = 0.72;
+  const FOOTER_VIDEO_URL = 'video/2016-seekable.mp4?v=20260408a';
+  const DANCER_SCRIPT_URL = 'https://unpkg.com/dancer@0.4.0/dancer.min.js';
   const CLOTH_SEGMENTS_X = 26;
   const CLOTH_SEGMENTS_Y = 38;
   const CLOTH_ITERATIONS = 7;
@@ -15,6 +17,7 @@
   const CARD_SWITCH_IN_MS = 220;
   const SQUIRCLE_CONTROL_FACTOR = 0.9;
   let threeLoaderPromise = null;
+  let dancerLoaderPromise = null;
   let supportsCornerShapeSquircleValue = null;
 
   function loadThreeScript(src) {
@@ -61,6 +64,46 @@
     return threeLoaderPromise;
   }
 
+  function loadDancerScript() {
+    return new Promise(function (resolve, reject) {
+      const script = document.createElement('script');
+      script.src = DANCER_SCRIPT_URL;
+      script.async = true;
+      script.dataset.dancerRuntime = 'true';
+      script.onload = function () {
+        if (window.Dancer) resolve(window.Dancer);
+        else reject(new Error('Dancer is unavailable'));
+      };
+      script.onerror = function () {
+        if (script.parentNode) script.parentNode.removeChild(script);
+        reject(new Error('Failed to load Dancer from ' + DANCER_SCRIPT_URL));
+      };
+      document.head.appendChild(script);
+    });
+  }
+
+  function ensureDancer() {
+    if (window.Dancer) return Promise.resolve(window.Dancer);
+    if (dancerLoaderPromise) return dancerLoaderPromise;
+
+    dancerLoaderPromise = new Promise(function (resolve, reject) {
+      const existingScript = document.querySelector('script[data-dancer-runtime="true"]');
+      if (existingScript) {
+        existingScript.addEventListener('load', function () {
+          if (window.Dancer) resolve(window.Dancer);
+          else reject(new Error('Dancer is unavailable'));
+        }, { once: true });
+        existingScript.addEventListener('error', function () {
+          reject(new Error('Failed to load Dancer'));
+        }, { once: true });
+        return;
+      }
+      loadDancerScript().then(resolve, reject);
+    });
+
+    return dancerLoaderPromise;
+  }
+
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
   }
@@ -93,10 +136,6 @@
     const w = ((d00 * d21) - (d01 * d20)) / denominator;
     const u = 1 - v - w;
     return u >= 0 && v >= 0 && w >= 0;
-  }
-
-  function pointInQuad(point, a, b, c, d) {
-    return pointInTriangle(point, a, b, c) || pointInTriangle(point, a, c, d);
   }
 
   function supportsCornerShapeSquircle() {
@@ -405,17 +444,6 @@
     }
   }
 
-  function shouldUseWebAudioForSource(url) {
-    try {
-      if (window.location && window.location.protocol === 'file:') return false;
-    } catch {}
-    try {
-      const parsedUrl = new URL(String(url || ''), window.location.href);
-      if (parsedUrl.protocol === 'file:') return false;
-    } catch {}
-    return true;
-  }
-
   function shouldUseArtworkDomFallback(cardData) {
     try {
       if (window.location && window.location.protocol === 'file:') return true;
@@ -428,10 +456,6 @@
     } catch {
       return false;
     }
-  }
-
-  function isImmediateAudioHotspotAction(action) {
-    return action === 'audio-toggle' || action === 'audio-volume-toggle' || action === 'close';
   }
 
   async function renderArtworkCanvas(cardData, targetWidth, targetHeight, radius) {
@@ -495,7 +519,7 @@
       const fontFamily = getComputedStyle(document.documentElement).getPropertyValue('--ui-font').trim();
       if (fontFamily) return fontFamily;
     } catch {}
-    return '"Google Sans Flex", sans-serif';
+    return '"Saira", sans-serif';
   }
 
   async function ensureCanvasFontsLoaded() {
@@ -516,120 +540,6 @@
     const ascent = metrics.actualBoundingBoxAscent || fallbackFontSize * 0.82;
     const descent = metrics.actualBoundingBoxDescent || fallbackFontSize * 0.22;
     return Math.max(fallbackFontSize, ascent + descent);
-  }
-
-  function drawControlPlaySymbol(ctx, cx, cy, size, color) {
-    const iconWidth = size * 0.38;
-    const iconHeight = size * 0.46;
-    const offsetX = size * 0.045;
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(cx - iconWidth * 0.44 + offsetX, cy - iconHeight * 0.5);
-    ctx.lineTo(cx - iconWidth * 0.44 + offsetX, cy + iconHeight * 0.5);
-    ctx.lineTo(cx + iconWidth * 0.56 + offsetX, cy);
-    ctx.closePath();
-    ctx.fillStyle = color;
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawControlPauseSymbol(ctx, cx, cy, size, color) {
-    const barWidth = Math.max(1.6, size * 0.095);
-    const barHeight = size * 0.42;
-    const gap = size * 0.085;
-    const totalWidth = barWidth * 2 + gap;
-    const leftX = cx - totalWidth * 0.5;
-    const topY = cy - barHeight * 0.5;
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.fillRect(leftX, topY, barWidth, barHeight);
-    ctx.fillRect(leftX + barWidth + gap, topY, barWidth, barHeight);
-    ctx.restore();
-  }
-
-  function drawControlVolumeSymbol(ctx, cx, cy, size, color, volume) {
-    const level = clamp(Number.isFinite(volume) ? volume : DEFAULT_AUDIO_VOLUME, 0, 1);
-    const bodyWidth = size * 0.19;
-    const bodyHeight = size * 0.3;
-    const coneWidth = size * 0.18;
-    const coneHeight = size * 0.42;
-    const leftX = cx - size * 0.22;
-    const bodyTop = cy - bodyHeight * 0.5;
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(leftX, bodyTop);
-    ctx.lineTo(leftX + bodyWidth, bodyTop);
-    ctx.lineTo(leftX + bodyWidth + coneWidth, cy - coneHeight * 0.5);
-    ctx.lineTo(leftX + bodyWidth + coneWidth, cy + coneHeight * 0.5);
-    ctx.lineTo(leftX + bodyWidth, cy + bodyHeight * 0.5);
-    ctx.lineTo(leftX, cy + bodyHeight * 0.5);
-    ctx.closePath();
-    ctx.fill();
-    if (level > 0.04) {
-      const waveBaseX = leftX + bodyWidth + coneWidth + size * 0.03;
-      const maxWaveCount = level > 0.66 ? 2 : 1;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = Math.max(1.35, size * 0.042);
-      ctx.lineCap = 'round';
-      for (let waveIndex = 0; waveIndex < maxWaveCount; waveIndex += 1) {
-        const waveRadius = size * (0.15 + waveIndex * 0.095);
-        ctx.beginPath();
-        ctx.arc(waveBaseX, cy, waveRadius, -0.72, 0.72);
-        ctx.stroke();
-      }
-    } else {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = Math.max(1.6, size * 0.05);
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(leftX + bodyWidth + size * 0.03, cy - size * 0.12);
-      ctx.lineTo(leftX + bodyWidth + size * 0.19, cy + size * 0.12);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  function formatAudioClock(seconds) {
-    if (!Number.isFinite(seconds) || seconds < 0) return '--:--';
-    const totalSeconds = Math.max(0, Math.floor(seconds));
-    const minutes = Math.floor(totalSeconds / 60);
-    const remainderSeconds = totalSeconds % 60;
-    return String(minutes) + ':' + String(remainderSeconds).padStart(2, '0');
-  }
-
-  function drawAudioSpectrum(ctx, options) {
-    const settings = options || {};
-    const x = settings.x || 0;
-    const y = settings.y || 0;
-    const width = settings.width || 0;
-    const height = settings.height || 0;
-    const bars = Array.isArray(settings.bars) ? settings.bars : [];
-    const enabled = !!settings.enabled;
-    const isPlaying = !!settings.isPlaying;
-    const barCount = Math.max(10, bars.length || 12);
-    const gap = Math.max(2, Math.round(width * 0.012));
-    const barWidth = Math.max(2, (width - gap * (barCount - 1)) / barCount);
-    fillRoundedRect(ctx, x, y + height * 0.72, width, Math.max(1.5, height * 0.18), Math.max(1, height * 0.09), 'rgba(255, 255, 255, 0.08)');
-    let drawX = x;
-    for (let index = 0; index < barCount; index += 1) {
-      const value = bars.length ? clamp(bars[index] || 0, 0, 1) : 0;
-      const barHeight = enabled
-        ? Math.max(height * 0.22, height * (0.22 + value * (isPlaying ? 1.08 : 0.5)))
-        : height * 0.14;
-      const barY = y + (height - barHeight);
-      const alpha = enabled ? (isPlaying ? 0.52 + value * 0.42 : 0.26 + value * 0.34) : 0.12;
-      ctx.save();
-      const fill = ctx.createLinearGradient(drawX, barY, drawX, y + height);
-      fill.addColorStop(0, 'rgba(248, 248, 248, ' + Math.min(1, alpha + 0.1).toFixed(3) + ')');
-      fill.addColorStop(1, 'rgba(168, 168, 168, ' + alpha.toFixed(3) + ')');
-      ctx.shadowColor = isPlaying ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.16)';
-      ctx.shadowBlur = isPlaying ? 6 : 3;
-      ctx.fillStyle = fill;
-      fillRoundedRect(ctx, drawX, barY, barWidth, barHeight, Math.min(barWidth * 0.5, 2.5), ctx.fillStyle);
-      ctx.restore();
-      drawX += barWidth + gap;
-    }
   }
 
   function drawAudioBlobPanel(ctx, options) {
@@ -751,295 +661,6 @@
     };
   }
 
-  function drawCardControl(ctx, cx, cy, size, label, options) {
-    const settings = options || {};
-    const radius = size * 0.5;
-    const left = cx - radius;
-    const top = cy - radius;
-    const gradient = ctx.createLinearGradient(left, top, left, top + size);
-    gradient.addColorStop(0, settings.topColor || 'rgba(52, 58, 70, 0.68)');
-    gradient.addColorStop(1, settings.bottomColor || 'rgba(16, 20, 28, 0.84)');
-
-    ctx.save();
-    ctx.globalAlpha = settings.disabled ? 0.32 : 1;
-    roundedRectPath(ctx, left, top, size, size, radius);
-    ctx.fillStyle = gradient;
-    ctx.fill();
-    ctx.strokeStyle = settings.strokeColor || 'rgba(255, 255, 255, 0.22)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    roundedRectPath(
-      ctx,
-      left + size * 0.07,
-      top + size * 0.06,
-      size * 0.86,
-      size * 0.42,
-      radius * 0.44
-    );
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.lineWidth = Math.max(1.2, size * 0.045);
-    ctx.stroke();
-
-    ctx.fillStyle = settings.labelColor || 'rgba(255, 255, 255, 0.96)';
-    if (typeof settings.drawSymbol === 'function') {
-      settings.drawSymbol(ctx, cx, cy + (settings.labelOffsetY || 1), size, ctx.fillStyle);
-    } else {
-      ctx.font = '600 ' + (settings.fontSize || 46) + 'px "Helvetica Neue", Arial, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(label, cx, cy + (settings.labelOffsetY || 1));
-    }
-    ctx.restore();
-
-    return {
-      x: left,
-      y: top,
-      width: size,
-      height: size
-    };
-  }
-
-  function drawWrappedCardChips(ctx, items, options, hotspots) {
-    const settings = options || {};
-    const maxWidth = settings.maxWidth || 0;
-    const gapX = settings.gapX || 0;
-    const gapY = settings.gapY || gapX;
-    const startX = settings.x || 0;
-    let x = startX;
-    let y = settings.y || 0;
-    let rowHeight = 110;
-
-    for (let i = 0; i < items.length; i += 1) {
-      const item = items[i];
-      if (!item || !item.label) continue;
-      const providerName = String(item.providerName || '').toLowerCase();
-      const isXChip = providerName === 'x';
-      const chipHeight = isXChip ? 96 : 110;
-      const chipExtraPadding = isXChip ? 58 : 86;
-      const chipRadiusScale = isXChip ? 0.46 : 0.5;
-      ctx.save();
-      ctx.font = '500 50px "Helvetica Neue", Arial, sans-serif';
-      const chipWidth = measureCardChipWidth(ctx, item.label, { extraPadding: chipExtraPadding });
-      ctx.restore();
-      if (maxWidth && x > startX && x + chipWidth > startX + maxWidth) {
-        x = startX;
-        y += rowHeight + gapY;
-      }
-      const drawnWidth = drawCardChip(
-        ctx,
-        x,
-        y + (rowHeight - chipHeight) * 0.5,
-        item.label,
-        typeof settings.getAccent === 'function' ? settings.getAccent(item, i) : null,
-        {
-          height: chipHeight,
-          extraPadding: chipExtraPadding,
-          radiusScale: chipRadiusScale
-        }
-      );
-      if (hotspots && item.url) {
-        hotspots.push({
-          x: x,
-          y: y,
-          width: drawnWidth,
-          height: rowHeight,
-          url: item.url
-        });
-      }
-      x += drawnWidth + gapX;
-    }
-
-    return y + rowHeight;
-  }
-
-  function drawAudioPlayerRow(ctx, options, hotspots) {
-    const settings = options || {};
-    const audioState = settings.audioState || {};
-    const x = settings.x || 0;
-    const y = settings.y || 0;
-    const width = settings.width || 0;
-    const height = settings.height || 0;
-    const scale = settings.scale || 1;
-    const uiFontFamily = settings.uiFontFamily || getCanvasUiFontFamily();
-    const enabled = !!audioState.available;
-    const isPlaying = enabled && !!audioState.isPlaying;
-    const volume = clamp(Number.isFinite(audioState.volume) ? audioState.volume : DEFAULT_AUDIO_VOLUME, 0, 1);
-    const volumePanelOpen = enabled && !!audioState.volumePanelOpen;
-    const duration = Number.isFinite(audioState.duration) && audioState.duration > 0 ? audioState.duration : 0;
-    const currentTime = clamp(Number.isFinite(audioState.currentTime) ? audioState.currentTime : 0, 0, duration || Number.MAX_SAFE_INTEGER);
-    const progress = duration > 0 ? clamp(currentTime / duration, 0, 1) : 0;
-    const timeText = enabled ? (formatAudioClock(currentTime) + ' / ' + formatAudioClock(duration)) : 'DIRECT AUDIO IS NOT AVAILABLE';
-    const radius = Math.min(height * 0.5, 18 * scale);
-    const playerGradient = ctx.createLinearGradient(x, y, x, y + height);
-    playerGradient.addColorStop(0, enabled ? 'rgba(20, 20, 22, 0.88)' : 'rgba(16, 16, 18, 0.74)');
-    playerGradient.addColorStop(1, enabled ? 'rgba(7, 7, 8, 0.94)' : 'rgba(7, 7, 8, 0.86)');
-    fillRoundedRect(ctx, x, y, width, height, radius, playerGradient);
-    strokeRoundedRect(ctx, x, y, width, height, radius, enabled ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.08)', 2);
-
-    const controlCenterY = y + height * 0.5;
-    const playControlSize = Math.min(height - 6 * scale, 26 * scale);
-    const sideControlSize = playControlSize;
-    const leftControlInsetX = 0;
-    const rightControlInsetX = 5 * scale;
-    const contentGapX = 7 * scale;
-    const volumeCenterX = x + width - rightControlInsetX - sideControlSize * 0.5;
-    const playCenterX = x + leftControlInsetX + playControlSize * 0.5;
-    const playControl = drawCardControl(ctx, playCenterX, controlCenterY, playControlSize, '', {
-      disabled: !enabled,
-      labelOffsetY: 0,
-      topColor: enabled ? 'rgba(255, 255, 255, 0.16)' : 'rgba(34, 39, 48, 0.68)',
-      bottomColor: enabled ? 'rgba(20, 20, 22, 0.88)' : 'rgba(12, 15, 22, 0.88)',
-      strokeColor: enabled ? 'rgba(255, 255, 255, 0.22)' : 'rgba(255, 255, 255, 0.12)',
-      drawSymbol: isPlaying ? drawControlPauseSymbol : drawControlPlaySymbol
-    });
-    const volumeControl = drawCardControl(ctx, volumeCenterX, controlCenterY, sideControlSize, '', {
-      disabled: !enabled,
-      topColor: enabled ? 'rgba(255, 255, 255, 0.12)' : 'rgba(24, 28, 36, 0.62)',
-      bottomColor: enabled ? 'rgba(12, 12, 14, 0.9)' : 'rgba(10, 12, 18, 0.78)',
-      strokeColor: 'rgba(255, 255, 255, 0.16)',
-      drawSymbol: function (iconCtx, cx, cy, size, color) {
-        drawControlVolumeSymbol(iconCtx, cx, cy, size, color, volume);
-      }
-    });
-
-    const textX = playControl.x + playControl.width + contentGapX;
-    const playerRightEdge = volumeControl.x - contentGapX;
-    const timeFontSize = 7.8 * scale;
-    ctx.save();
-    ctx.font = '400 ' + timeFontSize + 'px ' + uiFontFamily;
-    const measuredTimeWidth = ctx.measureText(timeText).width;
-    ctx.restore();
-    const timeColumnWidth = volumePanelOpen
-      ? 0
-      : clamp(
-        measuredTimeWidth + 3 * scale,
-        34 * scale,
-        Math.max(34 * scale, (playerRightEdge - textX) * 0.38)
-      );
-    const meterGap = volumePanelOpen ? 0 : 5 * scale;
-    const meterX = volumePanelOpen ? textX : (textX + timeColumnWidth + meterGap);
-    const meterWidth = Math.max(44 * scale, playerRightEdge - meterX);
-    const meterHeight = Math.max(3, 3.55 * scale);
-    const meterY = controlCenterY - meterHeight * 0.5;
-    const knobRadius = 4.95 * scale;
-    const knobCenterX = meterX + meterWidth * progress;
-    const knobCenterY = meterY + meterHeight * 0.5;
-    const volumeSliderX = textX;
-    const volumeSliderWidth = Math.max(34 * scale, volumeControl.x - volumeSliderX - contentGapX);
-    const volumeSliderHeight = Math.max(3, 3.35 * scale);
-    const volumeSliderY = controlCenterY - volumeSliderHeight * 0.5;
-    const volumeKnobRadius = 4.55 * scale;
-    const volumeKnobCenterX = volumeSliderX + volumeSliderWidth * volume;
-    const volumeKnobCenterY = volumeSliderY + volumeSliderHeight * 0.5;
-
-    ctx.save();
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = enabled ? 'rgba(243, 241, 234, 0.82)' : 'rgba(243, 241, 234, 0.42)';
-    ctx.font = '500 ' + timeFontSize + 'px ' + uiFontFamily;
-    if (!volumePanelOpen) {
-      ctx.fillText(timeText, textX, controlCenterY + 0.1 * scale);
-    }
-    ctx.restore();
-
-    if (enabled && volumePanelOpen) {
-      fillRoundedRect(ctx, volumeSliderX, volumeSliderY, volumeSliderWidth, volumeSliderHeight, volumeSliderHeight * 0.5, 'rgba(255, 255, 255, 0.18)');
-      fillRoundedRect(ctx, volumeSliderX, volumeSliderY, volumeSliderWidth * volume, volumeSliderHeight, volumeSliderHeight * 0.5, 'rgba(255, 255, 255, 0.92)');
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(volumeKnobCenterX, volumeKnobCenterY, volumeKnobRadius, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(10, 12, 18, 0.42)';
-      ctx.lineWidth = Math.max(1, 1.05 * scale);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    if (!volumePanelOpen) {
-      fillRoundedRect(ctx, meterX, meterY, meterWidth, meterHeight, meterHeight * 0.5, 'rgba(255, 255, 255, 0.08)');
-      if (enabled) {
-        const meterFill = ctx.createLinearGradient(meterX, meterY, meterX + meterWidth, meterY);
-        meterFill.addColorStop(0, isPlaying ? 'rgba(248, 248, 248, 0.84)' : 'rgba(255, 255, 255, 0.42)');
-        meterFill.addColorStop(1, isPlaying ? 'rgba(150, 150, 150, 0.76)' : 'rgba(180, 180, 180, 0.48)');
-        fillRoundedRect(ctx, meterX, meterY, meterWidth * progress, meterHeight, meterHeight * 0.5, meterFill);
-        ctx.save();
-        const knobGradient = ctx.createLinearGradient(knobCenterX, knobCenterY - knobRadius, knobCenterX, knobCenterY + knobRadius);
-        knobGradient.addColorStop(0, enabled ? 'rgba(255, 255, 255, 0.98)' : 'rgba(247, 247, 247, 0.9)');
-        knobGradient.addColorStop(1, enabled ? 'rgba(148, 148, 148, 0.94)' : 'rgba(173, 193, 255, 0.92)');
-        ctx.beginPath();
-        ctx.arc(knobCenterX, knobCenterY, knobRadius, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.fillStyle = knobGradient;
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(12, 15, 20, 0.42)';
-        ctx.lineWidth = Math.max(1, 1.1 * scale);
-        ctx.stroke();
-        ctx.restore();
-      }
-    }
-
-    if (hotspots && enabled) {
-      const hitPadding = 8 * scale;
-      const progressGuardX = Math.max(12 * scale, sideControlSize * 0.38);
-      const progressHotspotStartX = meterX;
-      const progressHotspotEndX = Math.min(
-        meterX + meterWidth,
-        volumeControl.x - hitPadding - progressGuardX
-      );
-      hotspots.push({
-        x: x + 3 * scale,
-        y: y + 3 * scale,
-        width: width - 6 * scale,
-        height: height - 6 * scale,
-        action: 'ui-block'
-      });
-      hotspots.push({
-        x: playControl.x - hitPadding,
-        y: playControl.y - hitPadding,
-        width: playControl.width + hitPadding * 2,
-        height: playControl.height + hitPadding * 2,
-        action: 'audio-toggle'
-      });
-      if (!volumePanelOpen && progressHotspotEndX > progressHotspotStartX) {
-        hotspots.push({
-          x: progressHotspotStartX,
-          y: y + 3 * scale,
-          width: progressHotspotEndX - progressHotspotStartX,
-          height: Math.max(18 * scale, height - 6 * scale),
-          action: 'audio-progress-set',
-          rangeMinX: meterX,
-          rangeWidth: meterWidth,
-          rangeY: knobCenterY,
-          rangeHalfHeight: Math.max(5.5 * scale, knobRadius + 2 * scale)
-        });
-      }
-      hotspots.push({
-        x: volumeControl.x - hitPadding,
-        y: volumeControl.y - hitPadding,
-        width: volumeControl.width + hitPadding * 2,
-        height: volumeControl.height + hitPadding * 2,
-        action: 'audio-volume-toggle'
-      });
-      if (volumePanelOpen) {
-        hotspots.push({
-          x: volumeSliderX - 6 * scale,
-          y: volumeSliderY - 10 * scale,
-          width: volumeSliderWidth + 12 * scale,
-          height: Math.max(18 * scale, volumeSliderHeight + 20 * scale),
-          action: 'audio-volume-set',
-          rangeMinX: volumeSliderX,
-          rangeWidth: volumeSliderWidth,
-          rangeY: volumeKnobCenterY,
-          rangeHalfHeight: Math.max(8 * scale, volumeKnobRadius + 4 * scale)
-        });
-      }
-    }
-
-    return y + height;
-  }
-
   function createShadowCanvas() {
     const canvas = document.createElement('canvas');
     canvas.width = 384;
@@ -1086,9 +707,6 @@
     const artistLineHeight = artistFontSize * 0.98;
     const titleLineHeight = titleFontSize * 1.16;
     const artistText = String(cardData && cardData.artistName || '').toUpperCase();
-    const audioState = cardData && cardData.audioState ? cardData.audioState : null;
-    const hasAudio = !!((audioState && audioState.available) || (cardData && cardData.audioUrl));
-    const playerVisible = false;
     const useDomArtworkFallback = shouldUseArtworkDomFallback(cardData);
     const hasArtworkCandidate = !!resolveArtworkOverlayUrl(cardData);
     const artworkCanvas = useDomArtworkFallback ? null : await renderArtworkCanvas(cardData, artworkWidth, artworkHeight, artworkRadius);
@@ -1232,25 +850,6 @@
       ctx.fillText(titleLines[lineIndex], contentX, titleY + lineIndex * titleLineHeight);
     }
 
-    if (playerVisible) {
-      contentBottom = drawAudioPlayerRow(ctx, {
-        x: contentX,
-        y: contentBottom + 14 * scale,
-        width: contentWidth,
-        height: playerHeight,
-        scale: scale,
-        uiFontFamily: uiFontFamily,
-        audioState: {
-          available: hasAudio,
-          isPlaying: !!(audioState && audioState.isPlaying),
-          volume: audioState && typeof audioState.volume === 'number' ? audioState.volume : DEFAULT_AUDIO_VOLUME,
-          volumePanelOpen: !!(audioState && audioState.volumePanelOpen),
-          audioBands: audioState && Array.isArray(audioState.audioBands) ? audioState.audioBands : [],
-          currentTime: audioState && typeof audioState.currentTime === 'number' ? audioState.currentTime : 0,
-          duration: audioState && typeof audioState.duration === 'number' ? audioState.duration : 0
-        }
-      }, hotspots);
-    }
     ctx.restore();
 
     return {
@@ -1265,6 +864,27 @@
     };
   }
 
+  function createWebGLRendererWithFallback(THREE) {
+    const attempts = [
+      { alpha: true, antialias: true, powerPreference: 'high-performance' },
+      { alpha: true, antialias: false, powerPreference: 'default' },
+      { alpha: true, antialias: false, powerPreference: 'low-power' }
+    ];
+    let lastError = null;
+
+    for (let index = 0; index < attempts.length; index += 1) {
+      const options = attempts[index];
+      try {
+        return new THREE.WebGLRenderer(options);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (lastError) throw lastError;
+    throw new Error('Unable to create WebGL renderer');
+  }
+
   function createRuntime(options) {
     const viewport = options && options.viewport;
     if (!viewport) throw new Error('Viewport is required');
@@ -1274,6 +894,12 @@
     const footerOrbCanvas = options && options.footerOrbCanvas && typeof options.footerOrbCanvas.getContext === 'function'
       ? options.footerOrbCanvas
       : null;
+    const footerSyncNote = options && options.footerSyncNote && typeof options.footerSyncNote.textContent === 'string'
+      ? options.footerSyncNote
+      : null;
+    const footerRetryButton = options && options.footerRetryButton && typeof options.footerRetryButton.hidden === 'boolean'
+      ? options.footerRetryButton
+      : null;
 
     let THREE = null;
     let renderer = null;
@@ -1281,9 +907,6 @@
     let camera = null;
     let root = null;
     let artworkDomOverlay = null;
-    let audioProgressDomOverlay = null;
-    let audioProgressOverlayPointerId = null;
-    let activeAudioControlHotspot = null;
     let clothMesh = null;
     let artworkMesh = null;
     let audioBlobGroup = null;
@@ -1307,18 +930,32 @@
     let hoveredHotspot = null;
     let currentCardData = null;
     let currentCardSetToken = 0;
-    let textureRefreshRafId = 0;
     let audioElement = null;
-    let audioContext = null;
-    let audioSourceNode = null;
-    let analyserNode = null;
-    let analyserData = null;
-    let audioAnalyserSinkNode = null;
+    let dancerInstance = null;
+    let kickDetector = null;
+    let dancerReady = false;
+    let dancerSpectrumReady = false;
     let audioSourceChangeToken = 0;
+    let audioContext = null;
+    let audioAnalyser = null;
+    let audioAnalyserSource = null;
+    let audioAnalyserBins = null;
+    let audioAnalyserReady = false;
     let footerOrbCtx = null;
     let footerOrbPixelRatio = 1;
     let footerOrbCanvasWidth = 0;
     let footerOrbCanvasHeight = 0;
+    let footerVideoElement = null;
+    let footerVideoReady = false;
+    let footerVideoLastJumpAt = 0;
+    let footerVideoRandomState = Math.random() * 997.13;
+    let footerVideoPrimed = false;
+    let footerVideoPendingTime = -1;
+    let footerVideoFlushAfterSeek = false;
+    let footerVideoPendingBurstMs = 0;
+    let footerVideoBurstTimeoutId = 0;
+    let flatCardFallbackElement = null;
+    let rendererUnavailable = false;
     const audioPlaybackUrlCache = new Map();
 
     const pointerNdc = { x: 0, y: 0 };
@@ -1356,9 +993,7 @@
       frameIdleX: 0.05,
       frameIdleY: 0.04,
       pressHotspot: null,
-      pressHotspotUsesProjection: false,
       pressHotspotConsumed: false,
-      volumeDragActive: false,
       movedSincePointerDown: false,
       shadowBaseY: -1.44,
       switchPhase: 'idle',
@@ -1369,12 +1004,23 @@
       audioLevel: 0,
       audioBass: 0,
       audioKick: 0,
-      audioTrackProgress: 0,
+      audioKickPulse: 0,
+      audioLastSpectrumKickAt: 0,
       audioBlobPanel: null,
       audioBlobPanelFrame: null,
-      audioBlobBaseScale: 1,
-      audioTextureRefreshAt: 0
+      audioBlobBaseScale: 1
     };
+
+    function setFooterSyncMessage(message, tone, showRetry) {
+      if (footerSyncNote) {
+        footerSyncNote.textContent = String(message || '');
+        if (tone) footerSyncNote.dataset.tone = tone;
+        else delete footerSyncNote.dataset.tone;
+      }
+      if (footerRetryButton) {
+        footerRetryButton.hidden = !showRetry;
+      }
+    }
 
     function resizeFooterOrbCanvas(canvas, context) {
       if (!canvas || !context) return false;
@@ -1519,6 +1165,7 @@
 
     function renderFooterOrbFrame() {
       if (!footerOrbCanvas || !footerOrbCanvas.isConnected) return;
+      if (footerVideoElement && footerVideoReady) return;
       if (!footerOrbCtx) {
         const nextContext = footerOrbCanvas.getContext('2d');
         if (!nextContext) return;
@@ -1540,6 +1187,175 @@
       });
     }
 
+    function ensureFooterVideoElement() {
+      if (!footerOrbCanvas || !footerOrbCanvas.parentNode) return null;
+      if (footerVideoElement) return footerVideoElement;
+      const video = document.createElement('video');
+      video.className = 'cloth-release-footer__orb-video';
+      video.preload = 'auto';
+      video.muted = true;
+      video.defaultMuted = true;
+      video.playsInline = true;
+      video.loop = false;
+      video.autoplay = false;
+      video.playbackRate = 1;
+      video.controls = false;
+      video.setAttribute('aria-hidden', 'true');
+      video.setAttribute('tabindex', '-1');
+      video.src = resolveRuntimeUrl(FOOTER_VIDEO_URL);
+      video.addEventListener('loadedmetadata', function () {
+        footerVideoReady = Number.isFinite(video.duration) && video.duration > 0;
+        if (footerOrbCanvas) footerOrbCanvas.style.display = footerVideoReady ? 'none' : '';
+      });
+      video.addEventListener('canplay', function () {
+        footerVideoReady = Number.isFinite(video.duration) && video.duration > 0;
+        if (footerOrbCanvas) footerOrbCanvas.style.display = footerVideoReady ? 'none' : '';
+        syncFooterVideoPlaybackState();
+      });
+      video.addEventListener('seeked', function () {
+        if (footerVideoPendingTime >= 0) {
+          const nextPendingTime = footerVideoPendingTime;
+          footerVideoPendingTime = -1;
+          seekFooterVideoFrame(nextPendingTime);
+          return;
+        }
+        if (footerVideoFlushAfterSeek) {
+          const burstMs = footerVideoPendingBurstMs || 72;
+          footerVideoFlushAfterSeek = false;
+          footerVideoPendingBurstMs = 0;
+          startFooterVideoBurst(burstMs);
+          return;
+        }
+        footerVideoFlushAfterSeek = false;
+        syncFooterVideoPlaybackState();
+      });
+      video.addEventListener('error', function () {
+        footerVideoReady = false;
+        if (footerOrbCanvas) footerOrbCanvas.style.display = '';
+      });
+      footerVideoElement = video;
+      footerOrbCanvas.insertAdjacentElement('afterend', video);
+      return footerVideoElement;
+    }
+
+    function clearFooterVideoBurstTimeout() {
+      if (!footerVideoBurstTimeoutId) return;
+      window.clearTimeout(footerVideoBurstTimeoutId);
+      footerVideoBurstTimeoutId = 0;
+    }
+
+    function startFooterVideoBurst(durationMs) {
+      clearFooterVideoBurstTimeout();
+      const video = ensureFooterVideoElement();
+      if (!video || !footerVideoReady) return;
+      const burstMs = Math.max(40, Math.min(220, Math.round(durationMs || 96)));
+      try {
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+          playPromise.catch(function () {});
+        }
+      } catch {}
+      footerVideoBurstTimeoutId = window.setTimeout(function () {
+        footerVideoBurstTimeoutId = 0;
+        try {
+          video.pause();
+        } catch {}
+      }, burstMs);
+    }
+
+    function playFooterVideo() {
+      const video = ensureFooterVideoElement();
+      if (!video || !footerVideoReady) return;
+      try {
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+          playPromise.catch(function () {});
+        }
+      } catch {}
+    }
+
+    function flushFooterVideoFrame() {
+      startFooterVideoBurst(54);
+    }
+
+    function syncFooterVideoPlaybackState() {
+      const video = ensureFooterVideoElement();
+      if (!video || !footerVideoReady) return;
+      clearFooterVideoBurstTimeout();
+      if (!audioState.isPlaying || !isActive) {
+        footerVideoPrimed = false;
+        footerVideoPendingTime = -1;
+        footerVideoPendingBurstMs = 0;
+        footerVideoFlushAfterSeek = false;
+        try {
+          video.pause();
+        } catch {}
+        return;
+      }
+
+      const duration = Number.isFinite(video.duration) ? video.duration : 0;
+      if (!(duration > 0.2)) return;
+      if (!footerVideoPrimed) {
+        footerVideoPrimed = true;
+        seekFooterVideoFrame(pickTimelineFooterVideoTime());
+        return;
+      }
+      try {
+        video.pause();
+      } catch {}
+    }
+
+    function nextFooterVideoRandom() {
+      footerVideoRandomState = (footerVideoRandomState * 9301.0 + 49297.0 + 233.0) % 233280.0;
+      return footerVideoRandomState / 233280.0;
+    }
+
+    function randomizeFooterVideoMilliseconds(duration) {
+      const safeDuration = Math.max(0, Number(duration) || 0);
+      if (!(safeDuration > 0.2)) return 0;
+      const durationMs = Math.max(1, Math.floor(safeDuration * 1000));
+      return Math.floor(nextFooterVideoRandom() * durationMs);
+    }
+
+    function pickRandomFooterVideoTime(duration) {
+      const safeDuration = Math.max(0, Number(duration) || 0);
+      if (!(safeDuration > 0.2)) return 0;
+      const randomMs = randomizeFooterVideoMilliseconds(safeDuration);
+      return clamp(randomMs / 1000, 0, Math.max(0, safeDuration - 0.001));
+    }
+
+    function pickTimelineFooterVideoTime() {
+      const video = ensureFooterVideoElement();
+      if (!video || !footerVideoReady) return 0;
+      const videoDuration = Number.isFinite(video.duration) ? video.duration : 0;
+      if (!(videoDuration > 0.2)) return 0;
+      const audioDuration = Number.isFinite(audioState.duration) ? audioState.duration : 0;
+      const audioCurrentTime = Number.isFinite(audioState.currentTime) ? audioState.currentTime : 0;
+      if (!(audioDuration > 0.2)) {
+        return pickRandomFooterVideoTime(videoDuration);
+      }
+      const progress = clamp(audioCurrentTime / audioDuration, 0, 0.9995);
+      return clamp(progress * videoDuration, 0.02, Math.max(0.02, videoDuration - 0.08));
+    }
+
+    function seekFooterVideoFrame(targetTime) {
+      const video = ensureFooterVideoElement();
+      if (!video || !footerVideoReady) return;
+      const duration = Number.isFinite(video.duration) ? video.duration : 0;
+      if (!(duration > 0.2)) return;
+      const safeTargetTime = clamp(targetTime, 0.02, Math.max(0.02, duration - 0.08));
+      if (video.seeking) {
+        footerVideoPendingTime = safeTargetTime;
+        return;
+      }
+      footerVideoPendingTime = -1;
+      footerVideoPrimed = true;
+      try {
+        video.pause();
+        video.currentTime = safeTargetTime;
+      } catch {}
+    }
+
     let clothGeometry = null;
     let clothMaterial = null;
     let artworkMaterial = null;
@@ -1554,6 +1370,7 @@
       volumePanelOpen: false,
       isPlaying: false,
       available: false,
+      autoplayBlocked: false,
       currentTime: 0,
       duration: 0
     };
@@ -1871,16 +1688,11 @@
 
     function buildTextureCardData(cardData) {
       const payload = Object.assign({}, cardData || {});
-      let audioBands = sampleAudioBands();
-      if (audioState.isPlaying && (!audioBands.length || audioBands.every(function (value) { return value < 0.015; }))) {
-        audioBands = sampleFallbackAudioBands();
-      }
       payload.audioState = {
-        available: !!(payload.audioUrl),
+        available: !!payload.audioUrl,
         isPlaying: !!audioState.isPlaying,
         volume: audioState.volume,
         volumePanelOpen: !!audioState.volumePanelOpen,
-        audioBands: audioBands,
         currentTime: audioState.currentTime,
         duration: audioState.duration
       };
@@ -2045,7 +1857,14 @@
     }
 
     function applyTextureResult(textureResult) {
-      if (!textureResult || !THREE || !renderer) return;
+      if (!textureResult) return;
+      cardHotspots = Array.isArray(textureResult.hotspots) ? textureResult.hotspots.slice() : [];
+      state.textureWidth = textureResult.textureWidth || TEXTURE_WIDTH;
+      state.textureHeight = textureResult.textureHeight || DEFAULT_TEXTURE_HEIGHT;
+      state.cardAspect = textureResult.cardAspect || (state.textureHeight / Math.max(1, state.textureWidth));
+      syncAudioBlobPanelState(textureResult);
+      updateFlatCardFallback(textureResult);
+      if (!THREE || !renderer) return;
       const nextTexture = new THREE.CanvasTexture(textureResult.canvas);
       if ('colorSpace' in nextTexture) {
         nextTexture.colorSpace = THREE.SRGBColorSpace;
@@ -2057,59 +1876,67 @@
 
       if (cardTexture) cardTexture.dispose();
       cardTexture = nextTexture;
-      cardHotspots = Array.isArray(textureResult.hotspots) ? textureResult.hotspots.slice() : [];
-      activeAudioControlHotspot = null;
-      for (let i = 0; i < cardHotspots.length; i += 1) {
-        const hotspot = cardHotspots[i];
-        if (!hotspot) continue;
-        if (hotspot.action !== 'audio-progress-set' && hotspot.action !== 'audio-volume-set') continue;
-        if (
-          !activeAudioControlHotspot ||
-          hotspot.action === 'audio-volume-set' ||
-          (activeAudioControlHotspot.action !== 'audio-volume-set' && hotspot.y > activeAudioControlHotspot.y)
-        ) {
-          activeAudioControlHotspot = hotspot;
-        }
-      }
-      state.textureWidth = textureResult.textureWidth || TEXTURE_WIDTH;
-      state.textureHeight = textureResult.textureHeight || DEFAULT_TEXTURE_HEIGHT;
-      state.cardAspect = textureResult.cardAspect || (state.textureHeight / Math.max(1, state.textureWidth));
-      syncAudioBlobPanelState(textureResult);
       if (clothMaterial) {
         clothMaterial.map = cardTexture;
         clothMaterial.needsUpdate = true;
       }
     }
 
-    async function refreshCardTexture() {
-      if (!currentCardData || !renderer || !THREE) return;
-      const textureResult = await buildCardTextureCanvas(buildTextureCardData(currentCardData));
-      applyTextureResult(textureResult);
-      await syncArtworkFallbackLayer(textureResult, currentCardData);
-      resize();
-      renderOnce();
-    }
-
-    function scheduleCardTextureRefresh() {
-      if (!currentCardData || textureRefreshRafId) return;
-      textureRefreshRafId = window.requestAnimationFrame(function () {
-        textureRefreshRafId = 0;
-        refreshCardTexture().catch(function (error) {
-          console.error(error);
-        });
-      });
-    }
-
     function syncAudioPlaybackState() {
       audioState.isPlaying = !!(audioElement && !audioElement.paused && !audioElement.ended);
-      scheduleCardTextureRefresh();
+      syncFooterVideoPlaybackState();
     }
 
     function syncAudioTimelineState() {
       if (!audioElement) return;
       audioState.currentTime = Number.isFinite(audioElement.currentTime) ? Math.max(0, audioElement.currentTime) : 0;
       audioState.duration = Number.isFinite(audioElement.duration) && audioElement.duration > 0 ? audioElement.duration : 0;
-      scheduleCardTextureRefresh();
+      if (audioState.isPlaying && isActive) {
+        syncFooterVideoToAudioTimeline(false);
+      }
+    }
+
+    async function ensureAudioAnalyser() {
+      if (!audioElement) return false;
+      const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+      if (typeof AudioContextCtor !== 'function') return false;
+      try {
+        if (!audioContext) {
+          audioContext = new AudioContextCtor();
+        }
+        if (!audioAnalyser) {
+          audioAnalyser = audioContext.createAnalyser();
+          audioAnalyser.fftSize = 512;
+          audioAnalyser.smoothingTimeConstant = 0.76;
+        }
+        if (!audioAnalyserSource) {
+          audioAnalyserSource = audioContext.createMediaElementSource(audioElement);
+          audioAnalyserSource.connect(audioAnalyser);
+          audioAnalyser.connect(audioContext.destination);
+        }
+        if (!audioAnalyserBins || audioAnalyserBins.length !== audioAnalyser.frequencyBinCount) {
+          audioAnalyserBins = new Uint8Array(audioAnalyser.frequencyBinCount);
+        }
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
+        audioAnalyserReady = true;
+        return true;
+      } catch (error) {
+        audioAnalyserReady = false;
+        console.warn('Web Audio analyser is unavailable.', error);
+        return false;
+      }
+    }
+
+    function readAudioAnalyserSpectrum() {
+      if (!audioAnalyserReady || !audioAnalyser || !audioAnalyserBins || !audioState.isPlaying) return null;
+      try {
+        audioAnalyser.getByteFrequencyData(audioAnalyserBins);
+        return audioAnalyserBins;
+      } catch {
+        return null;
+      }
     }
 
     async function resolveAudioPlaybackUrl(url) {
@@ -2170,129 +1997,157 @@
       audioElement.addEventListener('volumechange', function () {
         if (!audioElement) return;
         audioState.volume = clamp(audioElement.volume, 0, 1);
-        scheduleCardTextureRefresh();
       });
       audioElement.addEventListener('error', function () {
         audioState.isPlaying = false;
+        audioState.autoplayBlocked = false;
         audioState.currentTime = 0;
         audioState.duration = 0;
-        scheduleCardTextureRefresh();
+        resetAudioReactiveState();
+        setFooterSyncMessage('The audio file could not be loaded for this release.', 'error', false);
       });
       return audioElement;
     }
 
-    function disconnectAudioAnalysisGraph() {
-      if (audioAnalyserSinkNode) {
-        try {
-          audioAnalyserSinkNode.disconnect();
-        } catch {}
-        audioAnalyserSinkNode = null;
-      }
-      if (analyserNode) {
-        try {
-          analyserNode.disconnect();
-        } catch {}
-        analyserNode = null;
-      }
-      if (audioSourceNode) {
-        try {
-          audioSourceNode.disconnect();
-        } catch {}
-        audioSourceNode = null;
-      }
-      analyserData = null;
+    function resetAudioReactiveState() {
+      state.audioLevel = 0;
+      state.audioBass = 0;
+      state.audioKick = 0;
+      state.audioKickPulse = 0;
+      state.audioLastSpectrumKickAt = 0;
     }
 
-    function ensureAudioContext() {
-      if (!shouldUseWebAudioForSource(audioState.url)) return null;
-      if (audioContext) return audioContext;
-      const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContextCtor) return null;
-      try {
-        audioContext = new AudioContextCtor();
-      } catch (error) {
-        console.warn('Audio context is unavailable.', error);
-        audioContext = null;
-        return null;
-      }
-      return audioContext;
+    function handleDetectedKick(magnitude) {
+      const now = (window.performance && typeof window.performance.now === 'function')
+        ? window.performance.now()
+        : Date.now();
+      const kickStrength = clamp(Number.isFinite(magnitude) ? magnitude : 0.4, 0.18, 1);
+      state.audioKickPulse = Math.max(state.audioKickPulse, kickStrength);
+      if (!audioState.isPlaying || !isActive) return;
+      const video = ensureFooterVideoElement();
+      if (!video || !footerVideoReady) return;
+      if (now - footerVideoLastJumpAt < 72) return;
+      const duration = Number.isFinite(video.duration) ? video.duration : 0;
+      if (!(duration > 1.2)) return;
+      const baseTime = pickTimelineFooterVideoTime();
+      const jumpWindow = Math.max(0.08, Math.min(0.42, duration * 0.16));
+      footerVideoRandomState += kickStrength * 37.1 + audioState.currentTime * 0.91 + now * 0.0001;
+      const kickOffset = (nextFooterVideoRandom() - 0.5) * jumpWindow * (0.55 + kickStrength * 0.85);
+      footerVideoPendingBurstMs = Math.round(72 + kickStrength * 72);
+      footerVideoFlushAfterSeek = true;
+      seekFooterVideoFrame(clamp(baseTime + kickOffset, 0.02, Math.max(0.02, duration - 0.08)));
+      footerVideoLastJumpAt = now;
     }
 
-    function ensureAudioAnalyserGraph() {
-      if (!shouldUseWebAudioForSource(audioState.url)) {
-        disconnectAudioAnalysisGraph();
-        return false;
-      }
-      if (!audioContext) return false;
-      if (audioSourceNode && analyserNode && analyserData) return true;
-      disconnectAudioAnalysisGraph();
-      const element = ensureAudioElement();
+    function syncFooterVideoToAudioTimeline(forceBurst) {
+      const video = ensureFooterVideoElement();
+      if (!video || !footerVideoReady || !audioState.available) return;
+      const duration = Number.isFinite(video.duration) ? video.duration : 0;
+      if (!(duration > 0.2)) return;
+      const targetTime = pickTimelineFooterVideoTime();
+      const currentVideoTime = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+      if (!forceBurst && Math.abs(currentVideoTime - targetTime) < 0.045) return;
+      footerVideoPendingBurstMs = forceBurst ? 72 : 0;
+      footerVideoFlushAfterSeek = !!forceBurst;
+      seekFooterVideoFrame(targetTime);
+    }
+
+    async function ensureKickDetector() {
+      if (!audioElement || !audioState.available) return false;
       try {
-        audioSourceNode = audioContext.createMediaElementSource(element);
-        analyserNode = audioContext.createAnalyser();
-        analyserNode.fftSize = 256;
-        analyserNode.smoothingTimeConstant = 0.58;
-        analyserData = new Uint8Array(analyserNode.frequencyBinCount);
-        audioSourceNode.connect(analyserNode);
-        analyserNode.connect(audioContext.destination);
+        const DancerCtor = await ensureDancer();
+        if (!DancerCtor || typeof DancerCtor !== 'function') {
+          setFooterSyncMessage('Track loaded, but Dancer.js is unavailable.', 'muted', false);
+          return false;
+        }
+        if (typeof DancerCtor.isSupported === 'function' && !DancerCtor.isSupported()) {
+          setFooterSyncMessage('Track plays, but this browser cannot run Dancer.js kick detection.', 'muted', false);
+          return false;
+        }
+        if (!dancerInstance) {
+          dancerInstance = new DancerCtor();
+          dancerInstance.load(audioElement);
+        }
+        dancerSpectrumReady = true;
+        if (!kickDetector && typeof dancerInstance.createKick === 'function') {
+          kickDetector = dancerInstance.createKick({
+            frequency: [0, 12],
+            threshold: 0.18,
+            decay: 0.025,
+            onKick: function (mag) {
+              handleDetectedKick(mag);
+            }
+          });
+        }
+        if (kickDetector && typeof kickDetector.on === 'function') {
+          kickDetector.on();
+        }
+        if (audioState.isPlaying && typeof dancerInstance.play === 'function') {
+          try {
+            dancerInstance.play();
+          } catch {}
+        }
+        dancerReady = true;
+        setFooterSyncMessage('Dancer.js kick sync is active.', '', false);
         return true;
       } catch (error) {
-        console.warn('Audio analyser is unavailable.', error);
-        disconnectAudioAnalysisGraph();
+        console.warn('Dancer.js kick detection is unavailable.', error);
+        dancerReady = false;
+        setFooterSyncMessage('Track plays, but kick detection could not start.', 'error', false);
         return false;
+      }
+    }
+
+    function readDancerSpectrum() {
+      if (!dancerSpectrumReady || !dancerInstance || !audioState.isPlaying) return null;
+      try {
+        const spectrum = dancerInstance.getSpectrum();
+        return spectrum && typeof spectrum.length === 'number' && spectrum.length ? spectrum : null;
+      } catch {
+        return null;
       }
     }
 
     async function startAudioPlayback() {
       if (!audioState.url) return;
       const element = ensureAudioElement();
-      const canUseWebAudio = shouldUseWebAudioForSource(audioState.url);
-      const context = canUseWebAudio ? ensureAudioContext() : null;
-      let resumePromise = null;
       if (element.readyState < 1) {
         try {
           element.load();
         } catch {}
       }
-      if (context && context.state !== 'running' && typeof context.resume === 'function') {
-        resumePromise = context.resume().catch(function (error) {
-          console.warn('Failed to resume audio context.', error);
-        });
-      }
       element.volume = audioState.volume;
+      setFooterSyncMessage('Loading track...', 'muted', false);
+      await ensureAudioAnalyser();
       try {
         const playPromise = element.play();
         if (playPromise && typeof playPromise.then === 'function') {
           await playPromise;
         }
-        if (resumePromise) {
-          await resumePromise;
-        }
-        if (canUseWebAudio && context && context.state === 'running') {
-          ensureAudioAnalyserGraph();
-        } else if (!canUseWebAudio) {
-          disconnectAudioAnalysisGraph();
-        }
+        audioState.autoplayBlocked = false;
         syncAudioPlaybackState();
         syncAudioTimelineState();
+        ensureKickDetector().catch(function (error) {
+          console.warn(error);
+        });
       } catch (error) {
         audioState.isPlaying = false;
-        scheduleCardTextureRefresh();
+        audioState.autoplayBlocked = true;
+        setFooterSyncMessage('Browser blocked autoplay. Tap Start Sync to retry.', 'error', true);
         throw error;
       }
     }
 
     function pauseAudioPlayback() {
+      clearFooterVideoBurstTimeout();
       if (audioElement) {
         try {
           audioElement.pause();
         } catch {}
       }
       audioState.isPlaying = false;
-      state.audioLevel = 0;
-      state.audioBass = 0;
-      state.audioKick = 0;
-      scheduleCardTextureRefresh();
+      resetAudioReactiveState();
+      syncFooterVideoPlaybackState();
     }
 
     async function setAudioSource(url, shouldResume) {
@@ -2300,7 +2155,7 @@
       const element = ensureAudioElement();
       const sourceChangeToken = audioSourceChangeToken + 1;
       audioSourceChangeToken = sourceChangeToken;
-      const resumePlayback = !!(normalizedUrl && shouldResume);
+      const resumePlayback = !!(normalizedUrl && shouldResume !== false);
       const currentElementSrc = String((element && (element.currentSrc || element.src)) || '').trim();
       if (audioState.url === normalizedUrl && (!normalizedUrl || currentElementSrc)) {
         audioState.available = !!normalizedUrl;
@@ -2310,7 +2165,15 @@
             element.load();
           } catch {}
         }
-        scheduleCardTextureRefresh();
+        if (!normalizedUrl) {
+          setFooterSyncMessage('No direct audio file is attached to this release.', 'muted', false);
+        } else if (resumePlayback) {
+          try {
+            await startAudioPlayback();
+          } catch (error) {
+            console.warn('Failed to start audio playback.', error);
+          }
+        }
         return;
       }
       try {
@@ -2319,21 +2182,15 @@
       audioState.isPlaying = false;
       audioState.currentTime = 0;
       audioState.duration = 0;
-      audioState.volumePanelOpen = false;
-      state.audioLevel = 0;
-      state.audioBass = 0;
-      state.audioKick = 0;
-      state.audioTrackProgress = 0;
+      audioState.autoplayBlocked = false;
+      resetAudioReactiveState();
+      footerVideoLastJumpAt = 0;
+      footerVideoPrimed = false;
+      footerVideoPendingTime = -1;
+      footerVideoFlushAfterSeek = false;
+      footerVideoPendingBurstMs = 0;
+      clearFooterVideoBurstTimeout();
       audioState.available = !!normalizedUrl;
-      if (!shouldUseWebAudioForSource(normalizedUrl)) {
-        disconnectAudioAnalysisGraph();
-        if (audioContext && typeof audioContext.close === 'function') {
-          try {
-            audioContext.close();
-          } catch {}
-        }
-        audioContext = null;
-      }
       const playbackUrl = normalizedUrl ? await resolveAudioPlaybackUrl(normalizedUrl) : '';
       if (audioSourceChangeToken !== sourceChangeToken) {
         return;
@@ -2362,7 +2219,12 @@
         console.warn('Failed to update audio source.', error);
       }
       element.volume = audioState.volume;
-      scheduleCardTextureRefresh();
+      syncFooterVideoPlaybackState();
+      if (!normalizedUrl) {
+        setFooterSyncMessage('No direct audio file is attached to this release.', 'muted', false);
+      } else {
+        setFooterSyncMessage('Preparing kick sync...', 'muted', false);
+      }
       if (!resumePlayback) return;
       try {
         await startAudioPlayback();
@@ -2388,106 +2250,11 @@
       const volume = clamp(nextVolume, 0, 1);
       audioState.volume = volume;
       if (audioElement) audioElement.volume = volume;
-      scheduleCardTextureRefresh();
     }
 
     function toggleAudioVolumePanel() {
       if (!audioState.available) return;
       audioState.volumePanelOpen = !audioState.volumePanelOpen;
-      activeAudioControlHotspot = null;
-      hideAudioProgressDomOverlay();
-      scheduleCardTextureRefresh();
-    }
-
-    function getAudioProgressValueForHotspot(hotspot, uv) {
-      if (!hotspot || (hotspot.action !== 'audio-progress-set' && hotspot.action !== 'audio-volume-set') || !uv) return 0;
-      const textureWidth = state.textureWidth || TEXTURE_WIDTH;
-      const px = clamp(uv.x, 0, 1) * textureWidth;
-      const rangeMinX = typeof hotspot.rangeMinX === 'number' ? hotspot.rangeMinX : hotspot.x;
-      const rangeWidth = Math.max(1, typeof hotspot.rangeWidth === 'number' ? hotspot.rangeWidth : hotspot.width);
-      return clamp((px - rangeMinX) / rangeWidth, 0, 1);
-    }
-
-    function projectTexturePointToViewport(px, py, rect, zOffset) {
-      if (!root || !camera || !scene || !THREE || !rect || !rect.width || !rect.height) return null;
-      const textureWidth = state.textureWidth || TEXTURE_WIDTH;
-      const textureHeight = state.textureHeight || DEFAULT_TEXTURE_HEIGHT;
-      const projected = toViewportPoint(
-        root.localToWorld(getClothLocalPointAtUv(
-          clamp(px / textureWidth, 0, 1),
-          clamp(py / textureHeight, 0, 1),
-          zOffset || 0.012
-        )).project(camera),
-        rect
-      );
-      if (![projected.x, projected.y].every(Number.isFinite)) return null;
-      return projected;
-    }
-
-    function getProjectedControlBand(hotspot, rect, zOffset) {
-      if (!hotspot || (hotspot.action !== 'audio-progress-set' && hotspot.action !== 'audio-volume-set')) return null;
-      const rangeMinX = typeof hotspot.rangeMinX === 'number' ? hotspot.rangeMinX : hotspot.x;
-      const rangeWidth = Math.max(1, typeof hotspot.rangeWidth === 'number' ? hotspot.rangeWidth : hotspot.width);
-      const rangeY = typeof hotspot.rangeY === 'number' ? hotspot.rangeY : (hotspot.y + hotspot.height * 0.5);
-      const rangeHalfHeight = clamp(
-        typeof hotspot.rangeHalfHeight === 'number' ? hotspot.rangeHalfHeight : hotspot.height * 0.5,
-        4,
-        Math.max(4, hotspot.height * 0.5)
-      );
-      const startPoint = projectTexturePointToViewport(rangeMinX, rangeY, rect, zOffset || 0.016);
-      const endPoint = projectTexturePointToViewport(rangeMinX + rangeWidth, rangeY, rect, zOffset || 0.016);
-      const topLeft = projectTexturePointToViewport(rangeMinX, rangeY - rangeHalfHeight, rect, zOffset || 0.012);
-      const topRight = projectTexturePointToViewport(rangeMinX + rangeWidth, rangeY - rangeHalfHeight, rect, zOffset || 0.012);
-      const bottomRight = projectTexturePointToViewport(rangeMinX + rangeWidth, rangeY + rangeHalfHeight, rect, zOffset || 0.012);
-      const bottomLeft = projectTexturePointToViewport(rangeMinX, rangeY + rangeHalfHeight, rect, zOffset || 0.012);
-      if (!startPoint || !endPoint || !topLeft || !topRight || !bottomRight || !bottomLeft) return null;
-      return {
-        startPoint: startPoint,
-        endPoint: endPoint,
-        topLeft: topLeft,
-        topRight: topRight,
-        bottomRight: bottomRight,
-        bottomLeft: bottomLeft
-      };
-    }
-
-    function getProjectedControlMeasurement(hotspot, clientX, clientY) {
-      if (!hotspot || (hotspot.action !== 'audio-progress-set' && hotspot.action !== 'audio-volume-set')) return null;
-      if (!root || !camera || !scene || !THREE) return null;
-      const rect = getViewportRect();
-      if (!rect.width || !rect.height) return null;
-      const localPoint = {
-        x: clientX - rect.left,
-        y: clientY - rect.top
-      };
-
-      scene.updateMatrixWorld(true);
-      camera.updateMatrixWorld(true);
-
-      const band = getProjectedControlBand(hotspot, rect, 0.016);
-      if (!band) return null;
-
-      const dx = band.endPoint.x - band.startPoint.x;
-      const dy = band.endPoint.y - band.startPoint.y;
-      const lengthSquared = (dx * dx) + (dy * dy);
-      if (lengthSquared < 1e-6) return null;
-      const alpha = clamp((((localPoint.x - band.startPoint.x) * dx) + ((localPoint.y - band.startPoint.y) * dy)) / lengthSquared, 0, 1);
-      const nearestPoint = {
-        x: band.startPoint.x + dx * alpha,
-        y: band.startPoint.y + dy * alpha
-      };
-      const distanceX = localPoint.x - nearestPoint.x;
-      const distanceY = localPoint.y - nearestPoint.y;
-      return {
-        value: alpha,
-        inside: pointInQuad(localPoint, band.topLeft, band.topRight, band.bottomRight, band.bottomLeft),
-        distanceSquared: (distanceX * distanceX) + (distanceY * distanceY)
-      };
-    }
-
-    function getAudioProgressValueForClientPoint(hotspot, clientX, clientY) {
-      const measurement = getProjectedControlMeasurement(hotspot, clientX, clientY);
-      return measurement ? measurement.value : 0;
     }
 
     function setAudioProgress(nextProgress) {
@@ -2501,37 +2268,8 @@
       } catch {}
       audioState.currentTime = nextTime;
       audioState.duration = duration;
-      scheduleCardTextureRefresh();
-    }
-
-    function updateProgressFromHotspot(hotspot, uv) {
-      if (!hotspot || hotspot.action !== 'audio-progress-set') return;
-      setAudioProgress(getAudioProgressValueForHotspot(hotspot, uv));
-    }
-
-    function updateVolumeFromHotspot(hotspot, uv) {
-      if (!hotspot || hotspot.action !== 'audio-volume-set') return;
-      setAudioVolume(getAudioProgressValueForHotspot(hotspot, uv));
-    }
-
-    function updateProgressFromClientPoint(hotspot, clientX, clientY) {
-      if (!hotspot || hotspot.action !== 'audio-progress-set') return;
-      setAudioProgress(getAudioProgressValueForClientPoint(hotspot, clientX, clientY));
-    }
-
-    function updateVolumeFromClientPoint(hotspot, clientX, clientY) {
-      if (!hotspot || hotspot.action !== 'audio-volume-set') return;
-      setAudioVolume(getAudioProgressValueForClientPoint(hotspot, clientX, clientY));
-    }
-
-    function updateAudioControlFromClientPoint(hotspot, clientX, clientY) {
-      if (!hotspot) return;
-      if (hotspot.action === 'audio-volume-set') {
-        updateVolumeFromClientPoint(hotspot, clientX, clientY);
-        return;
-      }
-      if (hotspot.action === 'audio-progress-set') {
-        updateProgressFromClientPoint(hotspot, clientX, clientY);
+      if (isActive) {
+        syncFooterVideoToAudioTimeline(true);
       }
     }
 
@@ -2540,67 +2278,31 @@
       return baseTime + state.time * 0.35;
     }
 
-    function sampleFallbackAudioBands() {
-      if (!audioState.isPlaying) return [];
-      const phase = getFallbackAudioPhase();
-      const bands = [];
-      const bandCount = 12;
-      for (let bandIndex = 0; bandIndex < bandCount; bandIndex += 1) {
-        const bandPhase = phase * (1.7 + bandIndex * 0.11) + bandIndex * 0.82;
-        const wave =
-          Math.sin(bandPhase) * 0.5 +
-          Math.sin(bandPhase * 1.93 + 0.4) * 0.3 +
-          Math.cos(bandPhase * 0.61 - 0.2) * 0.2;
-        const shaped = Math.pow(clamp((wave + 1) * 0.5, 0, 1), 1.2);
-        bands.push(clamp(0.08 + shaped * (0.28 + (bandIndex / Math.max(1, bandCount - 1)) * 0.44), 0, 1));
-      }
-      return bands;
-    }
-
-    function sampleAudioBands() {
-      if (!audioState.isPlaying) return [];
-      if (!analyserNode || !analyserData) {
-        return sampleFallbackAudioBands();
-      }
-      try {
-        analyserNode.getByteFrequencyData(analyserData);
-        const bands = [];
-        const bandCount = 12;
-        const startIndex = 2;
-        const endIndex = Math.min(analyserData.length, 74);
-        const span = Math.max(1, endIndex - startIndex);
-        for (let bandIndex = 0; bandIndex < bandCount; bandIndex += 1) {
-          const from = startIndex + Math.floor((bandIndex / bandCount) * span);
-          const to = startIndex + Math.floor(((bandIndex + 1) / bandCount) * span);
-          let sum = 0;
-          let count = 0;
-          for (let index = from; index < Math.max(from + 1, to); index += 1) {
-            sum += analyserData[index] / 255;
-            count += 1;
-          }
-          bands.push(clamp((sum / Math.max(1, count)) * 1.15, 0, 1));
-        }
-        if (!bands.length || bands.every(function (value) { return value < 0.015; })) {
-          return sampleFallbackAudioBands();
-        }
-        return bands;
-      } catch {
-        return sampleFallbackAudioBands();
-      }
+    function maybeTriggerSpectrumKick(nextBass) {
+      if (!audioState.isPlaying || !isActive) return;
+      const now = (window.performance && typeof window.performance.now === 'function')
+        ? window.performance.now()
+        : Date.now();
+      const previousBass = clamp(Number(state.audioBass) || 0, 0, 1);
+      const bassRise = Math.max(0, nextBass - previousBass);
+      if (nextBass < 0.16 || bassRise < 0.03) return;
+      if (now - state.audioLastSpectrumKickAt < 118) return;
+      state.audioLastSpectrumKickAt = now;
+      handleDetectedKick(clamp((bassRise * 8.2) + nextBass * 0.42, 0.18, 1));
     }
 
     function sampleAudioLevel(delta) {
       let nextLevel = 0;
       let nextBass = 0;
-      const previousBass = state.audioBass;
-      if (audioState.isPlaying && analyserNode && analyserData) {
+      const spectrum = readDancerSpectrum() || readAudioAnalyserSpectrum();
+      if (audioState.isPlaying && spectrum) {
         try {
-          analyserNode.getByteFrequencyData(analyserData);
           let weightedSum = 0;
           let peak = 0;
-          const limit = Math.min(analyserData.length, 72);
+          const limit = Math.min(spectrum.length, 72);
           for (let index = 2; index < limit; index += 1) {
-            const normalizedValue = analyserData[index] / 255;
+            const rawValue = Number(spectrum[index]) || 0;
+            const normalizedValue = clamp(rawValue > 1 ? (rawValue / 255) : rawValue, 0, 1);
             weightedSum += normalizedValue * (1 + (index / Math.max(1, limit)) * 0.42);
             if (normalizedValue > peak) peak = normalizedValue;
           }
@@ -2608,9 +2310,9 @@
           let bassSum = 0;
           let bassPeak = 0;
           let bassCount = 0;
-          const bassLimit = Math.min(analyserData.length, 18);
+          const bassLimit = Math.min(spectrum.length, 18);
           for (let index = 2; index < bassLimit; index += 1) {
-            const normalizedValue = analyserData[index] / 255;
+            const normalizedValue = clamp(Number(spectrum[index]) || 0, 0, 1);
             const weight = 1.2 - ((index - 2) / Math.max(1, bassLimit - 2)) * 0.45;
             bassSum += normalizedValue * weight;
             bassPeak = Math.max(bassPeak, normalizedValue);
@@ -2621,6 +2323,7 @@
           nextLevel = 0;
           nextBass = 0;
         }
+        maybeTriggerSpectrumKick(nextBass);
       } else if (audioState.isPlaying) {
         const phase = getFallbackAudioPhase();
         nextLevel = clamp(
@@ -2640,14 +2343,8 @@
       }
       state.audioLevel += (nextLevel - state.audioLevel) * Math.min(1, delta * 7.5);
       state.audioBass += (nextBass - state.audioBass) * Math.min(1, delta * 9.2);
-      const bassRise = Math.max(0, nextBass - previousBass);
-      const kickExcite = audioState.isPlaying
-        ? clamp(Math.max(0, bassRise - 0.03) * 7.8 + nextBass * 0.16, 0, 1)
-        : 0;
-      state.audioKick = Math.max(kickExcite, state.audioKick * Math.exp(-delta * 10.8));
-      state.audioTrackProgress = audioState.isPlaying && audioState.duration > 0
-        ? clamp(audioState.currentTime / audioState.duration, 0, 1)
-        : 0;
+      state.audioKickPulse *= Math.exp(-delta * 10.8);
+      state.audioKick = Math.max(state.audioKickPulse, state.audioKick * Math.exp(-delta * 10.8));
       return state.audioLevel;
     }
 
@@ -2830,9 +2527,6 @@
 
     function triggerHotspot(hotspot) {
       if (!hotspot) return;
-      if (hotspot.action === 'ui-block') {
-        return;
-      }
       if (hotspot.action === 'close') {
         if (onClose) onClose();
         return;
@@ -2843,28 +2537,6 @@
       }
       if (hotspot.action === 'next') {
         if (onNext) onNext();
-        return;
-      }
-      if (hotspot.action === 'audio-toggle') {
-        toggleAudioPlayback();
-        return;
-      }
-      if (hotspot.action === 'audio-volume-toggle') {
-        toggleAudioVolumePanel();
-        return;
-      }
-      if (hotspot.action === 'audio-volume-set') {
-        updateVolumeFromHotspot(hotspot, {
-          x: state.pointerTargetUvX,
-          y: state.pointerTargetUvY
-        });
-        return;
-      }
-      if (hotspot.action === 'audio-progress-set') {
-        updateProgressFromHotspot(hotspot, {
-          x: state.pointerTargetUvX,
-          y: state.pointerTargetUvY
-        });
         return;
       }
       if (hotspot.url) openExternalUrl(hotspot.url);
@@ -2882,101 +2554,93 @@
       if (viewport.style.cursor !== nextCursor) viewport.style.cursor = nextCursor;
     }
 
-    function ensureAudioProgressDomOverlay() {
-      if (audioProgressDomOverlay) return audioProgressDomOverlay;
-      audioProgressDomOverlay = document.createElement('div');
-      audioProgressDomOverlay.setAttribute('aria-hidden', 'true');
-      audioProgressDomOverlay.style.position = 'absolute';
-      audioProgressDomOverlay.style.left = '0';
-      audioProgressDomOverlay.style.top = '0';
-      audioProgressDomOverlay.style.width = '1px';
-      audioProgressDomOverlay.style.height = '1px';
-      audioProgressDomOverlay.style.display = 'none';
-      audioProgressDomOverlay.style.opacity = '0';
-      audioProgressDomOverlay.style.background = 'transparent';
-      audioProgressDomOverlay.style.pointerEvents = 'auto';
-      audioProgressDomOverlay.style.touchAction = 'none';
-      audioProgressDomOverlay.style.cursor = 'pointer';
-      audioProgressDomOverlay.style.transformOrigin = '0 0';
-      audioProgressDomOverlay.style.willChange = 'transform';
-      audioProgressDomOverlay.style.zIndex = '2';
-
-      const releaseOverlayPointer = function (event) {
-        if (audioProgressOverlayPointerId == null) return;
-        if (event && event.pointerId != null && audioProgressOverlayPointerId !== event.pointerId) return;
-        if (audioProgressDomOverlay && audioProgressDomOverlay.releasePointerCapture && audioProgressOverlayPointerId != null) {
-          try {
-            audioProgressDomOverlay.releasePointerCapture(audioProgressOverlayPointerId);
-          } catch {}
-        }
-        audioProgressOverlayPointerId = null;
-        if (event) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-      };
-
-      audioProgressDomOverlay.addEventListener('pointerdown', function (event) {
-        const hotspot = activeAudioControlHotspot;
-        if (!hotspot || !audioState.available) return;
-        audioProgressOverlayPointerId = event.pointerId;
-        updateAudioControlFromClientPoint(hotspot, event.clientX, event.clientY);
-        if (audioProgressDomOverlay && audioProgressDomOverlay.setPointerCapture) {
-          try {
-            audioProgressDomOverlay.setPointerCapture(event.pointerId);
-          } catch {}
-        }
-        event.preventDefault();
-        event.stopPropagation();
-      });
-      audioProgressDomOverlay.addEventListener('pointermove', function (event) {
-        const hotspot = activeAudioControlHotspot;
-        if (audioProgressOverlayPointerId !== event.pointerId || !hotspot || !audioState.available) return;
-        updateAudioControlFromClientPoint(hotspot, event.clientX, event.clientY);
-        event.preventDefault();
-        event.stopPropagation();
-      });
-      audioProgressDomOverlay.addEventListener('pointerup', releaseOverlayPointer);
-      audioProgressDomOverlay.addEventListener('pointercancel', releaseOverlayPointer);
-      audioProgressDomOverlay.addEventListener('lostpointercapture', releaseOverlayPointer);
-      viewport.appendChild(audioProgressDomOverlay);
-      return audioProgressDomOverlay;
+    function ensureFlatCardFallbackElement() {
+      if (flatCardFallbackElement) return flatCardFallbackElement;
+      flatCardFallbackElement = document.createElement('canvas');
+      flatCardFallbackElement.setAttribute('aria-hidden', 'true');
+      flatCardFallbackElement.style.position = 'absolute';
+      flatCardFallbackElement.style.left = '50%';
+      flatCardFallbackElement.style.top = '50%';
+      flatCardFallbackElement.style.display = 'none';
+      flatCardFallbackElement.style.pointerEvents = 'none';
+      flatCardFallbackElement.style.transform = 'translate(-50%, -50%)';
+      flatCardFallbackElement.style.transformOrigin = '50% 50%';
+      flatCardFallbackElement.style.borderRadius = '24px';
+      flatCardFallbackElement.style.boxShadow = '0 18px 40px rgba(0, 0, 0, 0.34)';
+      flatCardFallbackElement.style.filter = 'drop-shadow(0 12px 24px rgba(0, 0, 0, 0.24))';
+      flatCardFallbackElement.style.zIndex = '1';
+      viewport.appendChild(flatCardFallbackElement);
+      return flatCardFallbackElement;
     }
 
-    function hideAudioProgressDomOverlay() {
-      audioProgressOverlayPointerId = null;
-      if (!audioProgressDomOverlay) return;
-      audioProgressDomOverlay.style.display = 'none';
+    function hideFlatCardFallback() {
+      if (!flatCardFallbackElement) return;
+      flatCardFallbackElement.style.display = 'none';
+      if (!state.dragActive) viewport.style.cursor = 'grab';
     }
 
-    function syncAudioProgressDomOverlayTransform() {
-      if (!audioState.available || !activeAudioControlHotspot || !root || !camera || !scene || !THREE) {
-        hideAudioProgressDomOverlay();
-        return;
-      }
+    function syncFlatCardFallbackLayout() {
+      if (!flatCardFallbackElement || flatCardFallbackElement.style.display === 'none') return;
       const rect = getViewportRect();
-      if (!rect.width || !rect.height) {
-        hideAudioProgressDomOverlay();
-        return;
+      if (!rect.width || !rect.height) return;
+      const isCompact = rect.width < 760;
+      const maxWidthPx = Math.min(200, rect.width - (isCompact ? 20 : 24));
+      const maxHeightPx = Math.max(220, rect.height - (isCompact ? 28 : 36));
+      const desiredWidthPx = Math.max(150, Math.min(maxWidthPx, maxHeightPx / Math.max(1, state.cardAspect)));
+      const desiredHeightPx = desiredWidthPx * Math.max(1, state.cardAspect);
+      flatCardFallbackElement.style.width = desiredWidthPx + 'px';
+      flatCardFallbackElement.style.height = desiredHeightPx + 'px';
+    }
+
+    function updateFlatCardFallback(textureResult) {
+      if (!textureResult || !textureResult.canvas) return;
+      const fallbackCanvas = ensureFlatCardFallbackElement();
+      if (fallbackCanvas.width !== textureResult.canvas.width) fallbackCanvas.width = textureResult.canvas.width;
+      if (fallbackCanvas.height !== textureResult.canvas.height) fallbackCanvas.height = textureResult.canvas.height;
+      const fallbackContext = fallbackCanvas.getContext('2d');
+      if (!fallbackContext) return;
+      fallbackContext.clearRect(0, 0, fallbackCanvas.width, fallbackCanvas.height);
+      fallbackContext.drawImage(textureResult.canvas, 0, 0);
+      fallbackCanvas.style.display = rendererUnavailable ? 'block' : 'none';
+      syncFlatCardFallbackLayout();
+      if (rendererUnavailable) viewport.style.cursor = 'default';
+    }
+
+    function resetSceneAfterFailure() {
+      viewport.removeEventListener('pointerdown', onPointerDown);
+      viewport.removeEventListener('pointermove', onPointerMove);
+      viewport.removeEventListener('pointerleave', onPointerLeave);
+      window.removeEventListener('pointerup', releasePointer);
+      window.removeEventListener('pointercancel', releasePointer);
+      window.removeEventListener('blur', releasePointer);
+      if (renderer) {
+        try {
+          renderer.dispose();
+        } catch {}
+        if (renderer.domElement && renderer.domElement.parentNode) {
+          renderer.domElement.parentNode.removeChild(renderer.domElement);
+        }
       }
-      scene.updateMatrixWorld(true);
-      camera.updateMatrixWorld(true);
-      const band = getProjectedControlBand(activeAudioControlHotspot, rect, 0.02);
-      if (!band) {
-        hideAudioProgressDomOverlay();
-        return;
-      }
-      const overlay = ensureAudioProgressDomOverlay();
-      const a = band.topRight.x - band.topLeft.x;
-      const b = band.topRight.y - band.topLeft.y;
-      const c = band.bottomLeft.x - band.topLeft.x;
-      const d = band.bottomLeft.y - band.topLeft.y;
-      if (![a, b, c, d, band.topLeft.x, band.topLeft.y].every(Number.isFinite)) {
-        hideAudioProgressDomOverlay();
-        return;
-      }
-      overlay.style.display = 'block';
-      overlay.style.transform = 'matrix(' + a + ',' + b + ',' + c + ',' + d + ',' + band.topLeft.x + ',' + band.topLeft.y + ')';
+      renderer = null;
+      scene = null;
+      camera = null;
+      root = null;
+      clothMesh = null;
+      artworkMesh = null;
+      audioBlobGroup = null;
+      audioBlobMesh = null;
+      audioBlobMaterial = null;
+      audioBlobGlowMesh = null;
+      audioBlobGlowMaterial = null;
+      shadowMesh = null;
+      raycaster = null;
+      clothGeometry = null;
+      clothMaterial = null;
+      artworkMaterial = null;
+      clothPoints = [];
+      clothConstraints = [];
+      hideArtworkDomOverlay();
+      clearArtworkLayer();
     }
 
     function ensureArtworkDomOverlay() {
@@ -3213,21 +2877,6 @@
       };
     }
 
-    function findProjectedAudioControlHotspot(clientX, clientY) {
-      if (!cardHotspots.length) return null;
-      for (let i = cardHotspots.length - 1; i >= 0; i -= 1) {
-        const hotspot = cardHotspots[i];
-        if (!hotspot || (hotspot.action !== 'audio-progress-set' && hotspot.action !== 'audio-volume-set')) continue;
-        const measurement = getProjectedControlMeasurement(hotspot, clientX, clientY);
-        if (!measurement) continue;
-        const maxDistance = hotspot.action === 'audio-volume-set' ? 22 : 12;
-        if (measurement.inside || measurement.distanceSquared <= maxDistance * maxDistance) {
-          return hotspot;
-        }
-      }
-      return null;
-    }
-
     function findHotspotAtUv(uv) {
       if (!uv || !cardHotspots.length) return null;
       const point = getCanvasPointFromUv(uv);
@@ -3258,13 +2907,7 @@
       state.pointerLocalX = localPoint.x;
       state.pointerLocalY = localPoint.y;
       state.pointerLocalZ = localPoint.z;
-      const uvHotspot = findHotspotAtUv(intersections[0].uv);
-      const projectedAudioHotspot = findProjectedAudioControlHotspot(clientX, clientY);
-      if (uvHotspot && isImmediateAudioHotspotAction(uvHotspot.action)) {
-        hoveredHotspot = uvHotspot;
-      } else {
-        hoveredHotspot = projectedAudioHotspot || uvHotspot;
-      }
+      hoveredHotspot = findHotspotAtUv(intersections[0].uv);
       state.pointerTargetInfluence = (hoveredHotspot || state.pressHotspot) && !state.dragActive ? 0 : 1;
       syncViewportCursor(hoveredHotspot);
       return true;
@@ -3272,20 +2915,14 @@
 
     function onPointerDown(event) {
       if (!isActive || event.button !== 0) return;
-      const projectedAudioHotspot = findProjectedAudioControlHotspot(event.clientX, event.clientY);
       const pointerHit = updatePointerHit(event.clientX, event.clientY);
       const uvHotspot = pointerHit ? findHotspotAtUv({
         x: state.pointerTargetUvX,
         y: state.pointerTargetUvY
       }) : null;
-      if (!pointerHit && !projectedAudioHotspot) return;
-      state.pressHotspot = (uvHotspot && isImmediateAudioHotspotAction(uvHotspot.action))
-        ? uvHotspot
-        : (projectedAudioHotspot || uvHotspot);
-      state.pressHotspotUsesProjection = !!(projectedAudioHotspot && state.pressHotspot === projectedAudioHotspot);
-      const pressAction = state.pressHotspot && state.pressHotspot.action;
+      if (!pointerHit) return;
+      state.pressHotspot = uvHotspot;
       state.pressHotspotConsumed = false;
-      state.volumeDragActive = !!(pressAction === 'audio-progress-set' || pressAction === 'audio-volume-set');
       state.dragActive = !state.pressHotspot;
       state.dragPointerId = event.pointerId;
       state.dragStartClientX = event.clientX;
@@ -3294,29 +2931,6 @@
       state.dragStartPosY = state.targetPosY;
       state.movedSincePointerDown = false;
       state.pointerTargetInfluence = state.dragActive ? 1.18 : 0;
-      if (state.volumeDragActive) {
-        if (state.pressHotspotUsesProjection) {
-          if (pressAction === 'audio-volume-set') {
-            updateVolumeFromClientPoint(state.pressHotspot, event.clientX, event.clientY);
-          } else {
-            updateProgressFromClientPoint(state.pressHotspot, event.clientX, event.clientY);
-          }
-        } else if (pressAction === 'audio-volume-set') {
-          updateVolumeFromHotspot(state.pressHotspot, {
-            x: state.pointerTargetUvX,
-            y: state.pointerTargetUvY
-          });
-        } else {
-          updateProgressFromHotspot(state.pressHotspot, {
-            x: state.pointerTargetUvX,
-            y: state.pointerTargetUvY
-          });
-        }
-      } else if (isImmediateAudioHotspotAction(pressAction)) {
-        state.dragActive = false;
-        state.pressHotspotConsumed = true;
-        triggerHotspot(state.pressHotspot);
-      }
       if (state.pressHotspot) {
         event.preventDefault();
       }
@@ -3341,30 +2955,6 @@
 
     function onPointerMove(event) {
       if (!isActive) return;
-      if (state.dragPointerId === event.pointerId && state.volumeDragActive) {
-        const pointerHit = updatePointerHit(event.clientX, event.clientY);
-        if (state.pressHotspotUsesProjection) {
-          if (state.pressHotspot && state.pressHotspot.action === 'audio-volume-set') {
-            updateVolumeFromClientPoint(state.pressHotspot, event.clientX, event.clientY);
-          } else {
-            updateProgressFromClientPoint(state.pressHotspot, event.clientX, event.clientY);
-          }
-        } else if (pointerHit) {
-          if (state.pressHotspot && state.pressHotspot.action === 'audio-volume-set') {
-            updateVolumeFromHotspot(state.pressHotspot, {
-              x: state.pointerTargetUvX,
-              y: state.pointerTargetUvY
-            });
-          } else {
-            updateProgressFromHotspot(state.pressHotspot, {
-              x: state.pointerTargetUvX,
-              y: state.pointerTargetUvY
-            });
-          }
-        }
-        event.preventDefault();
-        return;
-      }
       if (state.dragPointerId === event.pointerId && state.dragActive) {
         const rect = getViewportRect();
         const worldSize = getWorldSizeAtPlane();
@@ -3408,12 +2998,10 @@
       const pressedHotspotId = getHotspotIdentity(state.pressHotspot);
       const releaseHotspotId = getHotspotIdentity(releaseHotspot);
       const pressedHotspot = state.pressHotspot;
-      const wasVolumeDrag = state.volumeDragActive;
       const shouldOpenHotspot = !!(
         pressedHotspotId &&
         !state.pressHotspotConsumed &&
         !state.movedSincePointerDown &&
-        !wasVolumeDrag &&
         (!releaseHotspotId || releaseHotspotId === pressedHotspotId)
       );
       if (viewport.releasePointerCapture && state.dragPointerId != null) {
@@ -3427,9 +3015,7 @@
       state.targetPosY = 0;
       state.pointerTargetInfluence = 0;
       state.pressHotspot = null;
-      state.pressHotspotUsesProjection = false;
       state.pressHotspotConsumed = false;
-      state.volumeDragActive = false;
       state.movedSincePointerDown = false;
       resetDragState();
       viewport.classList.remove('is-dragging');
@@ -3445,17 +3031,14 @@
     }
 
     async function ensureScene() {
+      if (rendererUnavailable) return;
       if (renderer) return;
       if (scenePromise) return scenePromise;
 
       scenePromise = (async function () {
         THREE = await ensureThree();
 
-        renderer = new THREE.WebGLRenderer({
-          alpha: true,
-          antialias: true,
-          powerPreference: 'high-performance'
-        });
+        renderer = createWebGLRendererWithFallback(THREE);
         renderer.localClippingEnabled = true;
         renderer.setClearColor(0x000000, 0);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
@@ -3557,21 +3140,29 @@
 
       try {
         await scenePromise;
+        rendererUnavailable = false;
+        hideFlatCardFallback();
       } catch (error) {
+        rendererUnavailable = true;
+        console.warn('Falling back to flat release card because WebGL setup failed.', error);
+        resetSceneAfterFailure();
+        if (currentCardData) {
+          const textureResult = await buildCardTextureCanvas(buildTextureCardData(currentCardData));
+          updateFlatCardFallback(textureResult);
+        }
+      } finally {
         scenePromise = null;
-        throw error;
       }
-
-      scenePromise = null;
     }
 
     function resize() {
+      syncFlatCardFallbackLayout();
       if (!renderer || !camera) return;
       const rect = getViewportRect();
       if (!rect.width || !rect.height) return;
       const aspect = rect.width / Math.max(1, rect.height);
       const isCompact = rect.width < 760;
-      const maxWidthPx = Math.min(isCompact ? 198 : 205, rect.width - (isCompact ? 20 : 24));
+      const maxWidthPx = Math.min(200, rect.width - (isCompact ? 20 : 24));
       const maxHeightPx = Math.max(220, rect.height - (isCompact ? 28 : 36));
       const desiredWidthPx = Math.max(150, Math.min(maxWidthPx, maxHeightPx / Math.max(1, state.cardAspect)));
       camera.position.z = 5;
@@ -3648,10 +3239,7 @@
       state.posY += state.velY * delta;
 
       const audioLevel = sampleAudioLevel(delta);
-      if (audioState.isPlaying && now - state.audioTextureRefreshAt > 42) {
-        state.audioTextureRefreshAt = now;
-        scheduleCardTextureRefresh();
-      }
+      syncAudioTimelineState();
       const clothMetrics = simulateCloth(delta);
       const idleX = Math.sin(state.time * 0.36) * state.frameIdleX;
       const idleY = Math.cos(state.time * 0.31) * state.frameIdleY;
@@ -3697,7 +3285,6 @@
       root.position.z += ((Math.sin(state.time * 0.42) * 0.012 + state.openProgress * 0.012 + switchDepth) - root.position.z) * Math.min(1, delta * 3.2);
       applyRootScale(lerp(0.94, 1, smoothstep(0, 1, state.openProgress)) * switchScale);
       syncArtworkDomOverlayTransform();
-      syncAudioProgressDomOverlayTransform();
       setSurfaceOpacity(switchOpacity);
 
       shadowMesh.position.x = root.position.x * 0.28;
@@ -3729,7 +3316,7 @@
     async function setCard(cardData, options) {
       await ensureScene();
       const settings = options || {};
-      const shouldAnimateSwitch = !!(settings.animate && isActive && cardTexture);
+      const shouldAnimateSwitch = !!(settings.animate && isActive && cardTexture && renderer && scene && camera);
       const switchDirection = settings.direction < 0 ? -1 : 1;
       const setToken = currentCardSetToken + 1;
       currentCardSetToken = setToken;
@@ -3758,12 +3345,9 @@
     }
 
     function setActive(nextActive) {
+      const wasActive = isActive;
       isActive = !!nextActive;
       if (!isActive) {
-        if (textureRefreshRafId) {
-          window.cancelAnimationFrame(textureRefreshRafId);
-          textureRefreshRafId = 0;
-        }
         if (animationFrameId) {
           window.cancelAnimationFrame(animationFrameId);
           animationFrameId = 0;
@@ -3773,27 +3357,39 @@
         state.dragActive = false;
         state.dragPointerId = null;
         state.pointerTargetInfluence = 0;
-        state.volumeDragActive = false;
         resetDragState();
         resetSwitchState();
         viewport.classList.remove('is-dragging');
         viewport.style.cursor = 'grab';
         hideArtworkDomOverlay();
-        hideAudioProgressDomOverlay();
+        syncFooterVideoPlaybackState();
         return;
       }
 
-      if (!animationFrameId) {
+      syncFooterVideoPlaybackState();
+      if (rendererUnavailable) {
+        syncFlatCardFallbackLayout();
+        return;
+      }
+      if (!wasActive && renderer && scene && camera) {
+        resize();
+        resetClothState();
+        renderOnce();
+        window.requestAnimationFrame(function () {
+          if (!isActive || rendererUnavailable || !renderer || !scene || !camera) return;
+          resize();
+          resetClothState();
+          renderOnce();
+        });
+      }
+      if (!rendererUnavailable && renderer && scene && camera && !animationFrameId) {
         animationFrameId = window.requestAnimationFrame(animate);
       }
     }
 
     function destroy() {
       setActive(false);
-      if (textureRefreshRafId) {
-        window.cancelAnimationFrame(textureRefreshRafId);
-        textureRefreshRafId = 0;
-      }
+      clearFooterVideoBurstTimeout();
       viewport.removeEventListener('pointerdown', onPointerDown);
       viewport.removeEventListener('pointermove', onPointerMove);
       viewport.removeEventListener('pointerleave', onPointerLeave);
@@ -3812,10 +3408,21 @@
           audioElement.parentNode.removeChild(audioElement);
         }
       }
-      disconnectAudioAnalysisGraph();
-      if (audioContext && typeof audioContext.close === 'function') {
+      if (footerVideoElement) {
         try {
-          audioContext.close();
+          footerVideoElement.pause();
+        } catch {}
+        try {
+          footerVideoElement.removeAttribute('src');
+          footerVideoElement.load();
+        } catch {}
+        if (footerVideoElement.parentNode) {
+          footerVideoElement.parentNode.removeChild(footerVideoElement);
+        }
+      }
+      if (kickDetector && typeof kickDetector.off === 'function') {
+        try {
+          kickDetector.off();
         } catch {}
       }
       audioPlaybackUrlCache.forEach(function (objectUrl) {
@@ -3825,8 +3432,26 @@
         } catch {}
       });
       audioPlaybackUrlCache.clear();
+      footerVideoPendingTime = -1;
+      footerVideoPrimed = false;
+      footerVideoFlushAfterSeek = false;
       audioElement = null;
+      if (audioContext && typeof audioContext.close === 'function') {
+        try {
+          audioContext.close();
+        } catch {}
+      }
       audioContext = null;
+      audioAnalyser = null;
+      audioAnalyserSource = null;
+      audioAnalyserBins = null;
+      audioAnalyserReady = false;
+      kickDetector = null;
+      dancerInstance = null;
+      dancerReady = false;
+      dancerSpectrumReady = false;
+      footerVideoElement = null;
+      footerVideoReady = false;
       if (cardTexture) cardTexture.dispose();
       if (artworkTexture) artworkTexture.dispose();
       if (artworkMaskTexture) artworkMaskTexture.dispose();
@@ -3860,9 +3485,12 @@
       if (artworkDomOverlay && artworkDomOverlay.parentNode) {
         artworkDomOverlay.parentNode.removeChild(artworkDomOverlay);
       }
-      if (audioProgressDomOverlay && audioProgressDomOverlay.parentNode) {
-        audioProgressDomOverlay.parentNode.removeChild(audioProgressDomOverlay);
+      if (flatCardFallbackElement && flatCardFallbackElement.parentNode) {
+        flatCardFallbackElement.parentNode.removeChild(flatCardFallbackElement);
       }
+      flatCardFallbackElement = null;
+      rendererUnavailable = false;
+      setFooterSyncMessage('', '', false);
     }
 
     function getAudioSnapshot() {
@@ -3886,6 +3514,7 @@
       setAudioVolume: setAudioVolume,
       setAudioProgress: setAudioProgress,
       getAudioSnapshot: getAudioSnapshot,
+      resumeAudioSync: startAudioPlayback,
       destroy: destroy
     };
   }
