@@ -8,7 +8,13 @@
   const PLANE_WIDTH = 1.38;
   const PLANE_HEIGHT = PLANE_WIDTH * BASE_CARD_ASPECT;
   const DEFAULT_AUDIO_VOLUME = 0.72;
-  const FOOTER_VIDEO_URL = 'video/2016-seekable.mp4?v=20260408a';
+  const FOOTER_VIDEO_SOURCE = 'video/2016.mp4';
+  const FOOTER_VIDEO_RANDOM_PADDING_MS = 350;
+  const FOOTER_VIDEO_KICK_COOLDOWN_SECONDS = 0.22;
+  const FOOTER_VIDEO_RMS_SMOOTHING = 0.1;
+  const FOOTER_VIDEO_BASS_SMOOTHING = 0.12;
+  const FOOTER_VIDEO_MIN_RMS_THRESHOLD = 0.012;
+  const FOOTER_VIDEO_MIN_BASS_THRESHOLD = 0.05;
   const DANCER_SCRIPT_URL = 'https://unpkg.com/dancer@0.4.0/dancer.min.js';
   const CLOTH_SEGMENTS_X = 26;
   const CLOTH_SEGMENTS_Y = 38;
@@ -556,10 +562,10 @@
     const pulse = 1 + audioLevel * 0.07 + bassLevel * 0.08 + kickLevel * 0.06;
     const radius = clamp(Math.min(width, height) * 0.18, 10 * scale, 18 * scale);
     const screenGradient = ctx.createLinearGradient(x, y, x, y + height);
-    screenGradient.addColorStop(0, 'rgba(255, 255, 255, 0.16)');
-    screenGradient.addColorStop(0.08, 'rgba(81, 90, 108, 0.28)');
-    screenGradient.addColorStop(0.36, 'rgba(16, 18, 25, 0.48)');
-    screenGradient.addColorStop(1, 'rgba(5, 6, 10, 0.72)');
+    screenGradient.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
+    screenGradient.addColorStop(0.08, 'rgba(92, 105, 126, 0.24)');
+    screenGradient.addColorStop(0.34, 'rgba(18, 22, 30, 0.42)');
+    screenGradient.addColorStop(1, 'rgba(4, 5, 8, 0.82)');
     fillRoundedRect(ctx, x, y, width, height, radius, screenGradient);
 
     ctx.save();
@@ -573,9 +579,10 @@
       y + height * 0.5,
       Math.max(width, height) * 0.58
     );
-    glassCore.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
-    glassCore.addColorStop(0.26, 'rgba(122, 152, 188, 0.07)');
-    glassCore.addColorStop(0.64, 'rgba(34, 44, 60, 0.04)');
+    glassCore.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
+    glassCore.addColorStop(0.18, 'rgba(170, 205, 245, 0.12)');
+    glassCore.addColorStop(0.5, 'rgba(92, 126, 168, 0.07)');
+    glassCore.addColorStop(0.76, 'rgba(34, 44, 60, 0.03)');
     glassCore.addColorStop(1, 'rgba(255, 255, 255, 0)');
     fillRoundedRect(ctx, x, y, width, height, radius, glassCore);
 
@@ -587,33 +594,53 @@
       y + height * 0.52,
       Math.max(width, height) * 0.68
     );
-    screenGlow.addColorStop(0, 'rgba(154, 190, 232, 0.22)');
-    screenGlow.addColorStop(0.22, 'rgba(108, 148, 186, 0.10)');
-    screenGlow.addColorStop(0.56, 'rgba(45, 59, 82, 0.05)');
+    screenGlow.addColorStop(0, 'rgba(154, 190, 232, 0.28)');
+    screenGlow.addColorStop(0.18, 'rgba(108, 148, 186, 0.16)');
+    screenGlow.addColorStop(0.5, 'rgba(45, 59, 82, 0.07)');
     screenGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
     fillRoundedRect(ctx, x, y, width, height, radius, screenGlow);
 
     const screenSheen = ctx.createLinearGradient(x, y, x, y + height);
-    screenSheen.addColorStop(0, 'rgba(255, 255, 255, 0.16)');
-    screenSheen.addColorStop(0.16, 'rgba(255, 255, 255, 0.05)');
-    screenSheen.addColorStop(0.44, 'rgba(255, 255, 255, 0.008)');
+    screenSheen.addColorStop(0, 'rgba(255, 255, 255, 0.26)');
+    screenSheen.addColorStop(0.12, 'rgba(255, 255, 255, 0.12)');
+    screenSheen.addColorStop(0.26, 'rgba(255, 255, 255, 0.04)');
+    screenSheen.addColorStop(0.46, 'rgba(255, 255, 255, 0.008)');
     screenSheen.addColorStop(0.6, 'rgba(255, 255, 255, 0)');
     screenSheen.addColorStop(1, 'rgba(255, 255, 255, 0)');
     fillRoundedRect(ctx, x, y, width, height, radius, screenSheen);
 
     const edgeGlow = ctx.createLinearGradient(x, y, x, y + height);
-    edgeGlow.addColorStop(0, 'rgba(255, 255, 255, 0.10)');
-    edgeGlow.addColorStop(0.24, 'rgba(255, 255, 255, 0.016)');
-    edgeGlow.addColorStop(0.72, 'rgba(255, 255, 255, 0.03)');
-    edgeGlow.addColorStop(1, 'rgba(255, 255, 255, 0.12)');
+    edgeGlow.addColorStop(0, 'rgba(255, 255, 255, 0.14)');
+    edgeGlow.addColorStop(0.22, 'rgba(255, 255, 255, 0.02)');
+    edgeGlow.addColorStop(0.72, 'rgba(255, 255, 255, 0.045)');
+    edgeGlow.addColorStop(1, 'rgba(255, 255, 255, 0.16)');
     fillRoundedRect(ctx, x, y, width, height, radius, edgeGlow);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.filter = 'blur(' + Math.max(4 * scale, Math.min(width, height) * 0.012).toFixed(2) + 'px)';
+    const bloom = ctx.createRadialGradient(
+      x + width * 0.36,
+      y + height * 0.22,
+      Math.max(2, width * 0.06),
+      x + width * 0.5,
+      y + height * 0.5,
+      Math.max(width, height) * 0.74
+    );
+    bloom.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
+    bloom.addColorStop(0.22, 'rgba(210, 232, 255, 0.12)');
+    bloom.addColorStop(0.54, 'rgba(91, 154, 216, 0.04)');
+    bloom.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    fillRoundedRect(ctx, x, y, width, height, radius, bloom);
+    ctx.restore();
 
     const orbRadius = Math.max(8 * scale, Math.min(width, height) * 0.22 * pulse);
     const orbX = x + width * 0.5 + Math.sin(time * 0.88) * width * (0.022 + bassLevel * 0.014);
     const orbY = y + height * 0.48 + Math.cos(time * 0.72) * height * (0.02 + kickLevel * 0.02);
     ctx.save();
+    ctx.globalCompositeOperation = 'screen';
     ctx.shadowColor = 'rgba(255, 255, 255, ' + (0.18 + audioLevel * 0.12).toFixed(3) + ')';
-    ctx.shadowBlur = Math.max(10 * scale, orbRadius * (0.46 + audioLevel * 0.12));
+    ctx.shadowBlur = Math.max(12 * scale, orbRadius * (0.58 + audioLevel * 0.14));
     ctx.beginPath();
     ctx.arc(orbX, orbY, orbRadius, 0, Math.PI * 2);
     const orbFill = ctx.createRadialGradient(
@@ -624,19 +651,44 @@
       orbY,
       orbRadius
     );
-    orbFill.addColorStop(0, 'rgba(255, 255, 255, 0.99)');
-    orbFill.addColorStop(0.44, 'rgba(250, 251, 252, 0.98)');
-    orbFill.addColorStop(0.72, 'rgba(228, 235, 245, 0.92)');
-    orbFill.addColorStop(1, 'rgba(205, 214, 230, 0.7)');
+    orbFill.addColorStop(0, 'rgba(255, 255, 255, 0.94)');
+    orbFill.addColorStop(0.2, 'rgba(255, 255, 255, 0.76)');
+    orbFill.addColorStop(0.46, 'rgba(206, 231, 255, 0.58)');
+    orbFill.addColorStop(0.76, 'rgba(102, 150, 203, 0.34)');
+    orbFill.addColorStop(1, 'rgba(39, 49, 66, 0.08)');
     ctx.fillStyle = orbFill;
     ctx.fill();
     ctx.shadowBlur = 0;
-    ctx.lineWidth = Math.max(1, scale * 0.4);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = Math.max(1, scale * 0.5);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.68)';
     ctx.stroke();
+
+    ctx.globalCompositeOperation = 'screen';
+    ctx.filter = 'blur(' + Math.max(2 * scale, orbRadius * 0.06).toFixed(2) + 'px)';
+    const orbSheen = ctx.createLinearGradient(orbX - orbRadius, orbY - orbRadius, orbX + orbRadius, orbY + orbRadius);
+    orbSheen.addColorStop(0, 'rgba(255, 255, 255, 0)');
+    orbSheen.addColorStop(0.36, 'rgba(255, 255, 255, 0.24)');
+    orbSheen.addColorStop(0.54, 'rgba(170, 223, 255, 0.18)');
+    orbSheen.addColorStop(0.72, 'rgba(255, 255, 255, 0.12)');
+    orbSheen.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.beginPath();
+    ctx.arc(orbX, orbY, orbRadius * 0.96, 0, Math.PI * 2);
+    ctx.fillStyle = orbSheen;
+    ctx.fill();
+    ctx.filter = 'none';
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.save();
+    ctx.globalAlpha = 0.42;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+    ctx.beginPath();
+    ctx.arc(orbX - orbRadius * (0.24 + bassLevel * 0.02), orbY - orbRadius * (0.3 + kickLevel * 0.02), orbRadius * (0.14 + audioLevel * 0.03), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
     ctx.beginPath();
     ctx.arc(orbX - orbRadius * (0.28 + bassLevel * 0.01), orbY - orbRadius * (0.28 + kickLevel * 0.01), orbRadius * (0.18 + audioLevel * 0.05), 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
     ctx.fill();
     ctx.restore();
 
@@ -940,6 +992,11 @@
     let audioAnalyser = null;
     let audioAnalyserSource = null;
     let audioAnalyserBins = null;
+    let audioKickLowpassNode = null;
+    let audioKickAnalyser = null;
+    let audioKickAnalysisFrame = null;
+    let audioKickFrequencyFrame = null;
+    let audioKickBassBinCount = 0;
     let audioAnalyserReady = false;
     let footerOrbCtx = null;
     let footerOrbPixelRatio = 1;
@@ -947,16 +1004,17 @@
     let footerOrbCanvasHeight = 0;
     let footerVideoElement = null;
     let footerVideoReady = false;
-    let footerVideoLastJumpAt = 0;
-    let footerVideoRandomState = Math.random() * 997.13;
-    let footerVideoPrimed = false;
-    let footerVideoPendingTime = -1;
-    let footerVideoFlushAfterSeek = false;
-    let footerVideoPendingBurstMs = 0;
-    let footerVideoBurstTimeoutId = 0;
+    let footerVideoPendingSeekMs = 0;
+    let footerVideoPendingSeekReason = '';
+    let footerVideoPendingSeekTarget = -1;
+    let footerVideoPendingSeekRetries = 0;
+    let footerVideoPendingSeekTimerId = 0;
+    let footerVideoShouldResumeAfterSeek = false;
+    let kickDebugCounter = 0;
     let flatCardFallbackElement = null;
     let rendererUnavailable = false;
     const audioPlaybackUrlCache = new Map();
+    let footerVideoPlaybackUrl = '';
 
     const pointerNdc = { x: 0, y: 0 };
     const state = {
@@ -1187,6 +1245,108 @@
       });
     }
 
+    function getAudioTimelineState() {
+      const currentTime = audioElement && Number.isFinite(audioElement.currentTime)
+        ? Math.max(0, audioElement.currentTime)
+        : (Number.isFinite(audioState.currentTime) ? audioState.currentTime : 0);
+      const duration = audioElement && Number.isFinite(audioElement.duration) && audioElement.duration > 0
+        ? audioElement.duration
+        : (Number.isFinite(audioState.duration) ? audioState.duration : 0);
+      audioState.currentTime = currentTime;
+      audioState.duration = duration;
+      return { currentTime, duration };
+    }
+
+    function getRandomFooterVideoOffsetSeconds(durationSeconds) {
+      const safeDuration = Math.max(0, Number(durationSeconds) || 0);
+      if (!(safeDuration > 0.001)) return 0;
+      const durationMs = Math.max(1, Math.round(safeDuration * 1000));
+      if (durationMs <= FOOTER_VIDEO_RANDOM_PADDING_MS * 2) {
+        return (Math.floor(Math.random() * durationMs) + 1) / 1000;
+      }
+      const minMs = FOOTER_VIDEO_RANDOM_PADDING_MS;
+      const availableRange = durationMs - FOOTER_VIDEO_RANDOM_PADDING_MS * 2;
+      return (minMs + Math.floor(Math.random() * availableRange)) / 1000;
+    }
+
+    async function resolveFooterVideoPlaybackUrl(url) {
+      const normalizedUrl = resolveRuntimeUrl(url);
+      if (!normalizedUrl) return '';
+      if (footerVideoPlaybackUrl) return footerVideoPlaybackUrl;
+      try {
+        const response = await fetch(normalizedUrl, {
+          credentials: 'same-origin'
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const videoBlob = await response.blob();
+        footerVideoPlaybackUrl = URL.createObjectURL(videoBlob);
+        return footerVideoPlaybackUrl;
+      } catch (error) {
+        console.warn('Failed to resolve footer video via blob URL.', error);
+        return normalizedUrl;
+      }
+    }
+
+    function clearFooterVideoPendingSeekTimer() {
+      if (!footerVideoPendingSeekTimerId) return;
+      window.clearTimeout(footerVideoPendingSeekTimerId);
+      footerVideoPendingSeekTimerId = 0;
+    }
+
+    function commitFooterVideoSeek(video, targetTime, reason) {
+      if (!video) return false;
+      footerVideoPendingSeekTarget = targetTime;
+      footerVideoPendingSeekRetries = 0;
+      footerVideoPendingSeekMs = Math.round(targetTime * 1000);
+      footerVideoPendingSeekReason = reason || 'jump';
+      footerVideoShouldResumeAfterSeek = !!(audioState.isPlaying && isActive);
+      clearFooterVideoPendingSeekTimer();
+      try {
+        video.pause();
+        video.currentTime = targetTime;
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    function retryFooterVideoSeekIfNeeded(video) {
+      if (!video || footerVideoPendingSeekTarget < 0) return;
+      const actualTime = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+      const targetTime = footerVideoPendingSeekTarget;
+      const delta = Math.abs(actualTime - targetTime);
+      if (delta <= 0.25) {
+        footerVideoPendingSeekTarget = -1;
+        footerVideoPendingSeekRetries = 0;
+        clearFooterVideoPendingSeekTimer();
+        if (footerVideoShouldResumeAfterSeek && audioState.isPlaying && isActive) {
+          playFooterVideo();
+        }
+        footerVideoShouldResumeAfterSeek = false;
+        return;
+      }
+      if (footerVideoPendingSeekRetries >= 4) {
+        console.warn(
+          '[footer-video]',
+          'seek failed',
+          'reason=' + String(footerVideoPendingSeekReason || 'unknown'),
+          'targetMs=' + String(Math.round(targetTime * 1000)),
+          'actualMs=' + String(Math.round(actualTime * 1000))
+        );
+        footerVideoPendingSeekTarget = -1;
+        footerVideoPendingSeekRetries = 0;
+        clearFooterVideoPendingSeekTimer();
+        footerVideoShouldResumeAfterSeek = false;
+        return;
+      }
+      footerVideoPendingSeekRetries += 1;
+      clearFooterVideoPendingSeekTimer();
+      footerVideoPendingSeekTimerId = window.setTimeout(function () {
+        if (!footerVideoElement || footerVideoElement !== video || !footerVideoReady) return;
+        commitFooterVideoSeek(video, targetTime, footerVideoPendingSeekReason || 'retry');
+      }, 32);
+    }
+
     function ensureFooterVideoElement() {
       if (!footerOrbCanvas || !footerOrbCanvas.parentNode) return null;
       if (footerVideoElement) return footerVideoElement;
@@ -1196,38 +1356,28 @@
       video.muted = true;
       video.defaultMuted = true;
       video.playsInline = true;
-      video.loop = false;
+      video.loop = true;
       video.autoplay = false;
       video.playbackRate = 1;
       video.controls = false;
       video.setAttribute('aria-hidden', 'true');
       video.setAttribute('tabindex', '-1');
-      video.src = resolveRuntimeUrl(FOOTER_VIDEO_URL);
       video.addEventListener('loadedmetadata', function () {
         footerVideoReady = Number.isFinite(video.duration) && video.duration > 0;
         if (footerOrbCanvas) footerOrbCanvas.style.display = footerVideoReady ? 'none' : '';
-      });
-      video.addEventListener('canplay', function () {
-        footerVideoReady = Number.isFinite(video.duration) && video.duration > 0;
-        if (footerOrbCanvas) footerOrbCanvas.style.display = footerVideoReady ? 'none' : '';
-        syncFooterVideoPlaybackState();
+        if (audioState.isPlaying && isActive) {
+          syncFooterVideoPlaybackState();
+        }
       });
       video.addEventListener('seeked', function () {
-        if (footerVideoPendingTime >= 0) {
-          const nextPendingTime = footerVideoPendingTime;
-          footerVideoPendingTime = -1;
-          seekFooterVideoFrame(nextPendingTime);
-          return;
-        }
-        if (footerVideoFlushAfterSeek) {
-          const burstMs = footerVideoPendingBurstMs || 72;
-          footerVideoFlushAfterSeek = false;
-          footerVideoPendingBurstMs = 0;
-          startFooterVideoBurst(burstMs);
-          return;
-        }
-        footerVideoFlushAfterSeek = false;
-        syncFooterVideoPlaybackState();
+        console.log(
+          '[footer-video]',
+          'seeked',
+          'reason=' + String(footerVideoPendingSeekReason || 'unknown'),
+          'targetMs=' + String(footerVideoPendingSeekMs || 0),
+          'actualMs=' + String(Math.round(video.currentTime * 1000))
+        );
+        retryFooterVideoSeekIfNeeded(video);
       });
       video.addEventListener('error', function () {
         footerVideoReady = false;
@@ -1235,32 +1385,17 @@
       });
       footerVideoElement = video;
       footerOrbCanvas.insertAdjacentElement('afterend', video);
+      const sourceUrl = resolveRuntimeUrl(FOOTER_VIDEO_SOURCE);
+      if (sourceUrl) {
+        resolveFooterVideoPlaybackUrl(sourceUrl).then(function (playbackUrl) {
+          if (!footerVideoElement || footerVideoElement !== video) return;
+          video.src = playbackUrl || sourceUrl;
+          try {
+            video.load();
+          } catch {}
+        });
+      }
       return footerVideoElement;
-    }
-
-    function clearFooterVideoBurstTimeout() {
-      if (!footerVideoBurstTimeoutId) return;
-      window.clearTimeout(footerVideoBurstTimeoutId);
-      footerVideoBurstTimeoutId = 0;
-    }
-
-    function startFooterVideoBurst(durationMs) {
-      clearFooterVideoBurstTimeout();
-      const video = ensureFooterVideoElement();
-      if (!video || !footerVideoReady) return;
-      const burstMs = Math.max(40, Math.min(220, Math.round(durationMs || 96)));
-      try {
-        const playPromise = video.play();
-        if (playPromise && typeof playPromise.catch === 'function') {
-          playPromise.catch(function () {});
-        }
-      } catch {}
-      footerVideoBurstTimeoutId = window.setTimeout(function () {
-        footerVideoBurstTimeoutId = 0;
-        try {
-          video.pause();
-        } catch {}
-      }, burstMs);
     }
 
     function playFooterVideo() {
@@ -1274,86 +1409,46 @@
       } catch {}
     }
 
-    function flushFooterVideoFrame() {
-      startFooterVideoBurst(54);
+    function pauseFooterVideo() {
+      const video = footerVideoElement;
+      if (!video) return;
+      clearFooterVideoPendingSeekTimer();
+      footerVideoPendingSeekTarget = -1;
+      footerVideoPendingSeekRetries = 0;
+      footerVideoShouldResumeAfterSeek = false;
+      try {
+        video.pause();
+      } catch {}
     }
 
     function syncFooterVideoPlaybackState() {
       const video = ensureFooterVideoElement();
       if (!video || !footerVideoReady) return;
-      clearFooterVideoBurstTimeout();
       if (!audioState.isPlaying || !isActive) {
-        footerVideoPrimed = false;
-        footerVideoPendingTime = -1;
-        footerVideoPendingBurstMs = 0;
-        footerVideoFlushAfterSeek = false;
-        try {
-          video.pause();
-        } catch {}
+        pauseFooterVideo();
         return;
       }
-
-      const duration = Number.isFinite(video.duration) ? video.duration : 0;
-      if (!(duration > 0.2)) return;
-      if (!footerVideoPrimed) {
-        footerVideoPrimed = true;
-        seekFooterVideoFrame(pickTimelineFooterVideoTime());
+      if (footerVideoShouldResumeAfterSeek) {
         return;
       }
-      try {
-        video.pause();
-      } catch {}
+      playFooterVideo();
     }
 
-    function nextFooterVideoRandom() {
-      footerVideoRandomState = (footerVideoRandomState * 9301.0 + 49297.0 + 233.0) % 233280.0;
-      return footerVideoRandomState / 233280.0;
-    }
-
-    function randomizeFooterVideoMilliseconds(duration) {
-      const safeDuration = Math.max(0, Number(duration) || 0);
-      if (!(safeDuration > 0.2)) return 0;
-      const durationMs = Math.max(1, Math.floor(safeDuration * 1000));
-      return Math.floor(nextFooterVideoRandom() * durationMs);
-    }
-
-    function pickRandomFooterVideoTime(duration) {
-      const safeDuration = Math.max(0, Number(duration) || 0);
-      if (!(safeDuration > 0.2)) return 0;
-      const randomMs = randomizeFooterVideoMilliseconds(safeDuration);
-      return clamp(randomMs / 1000, 0, Math.max(0, safeDuration - 0.001));
-    }
-
-    function pickTimelineFooterVideoTime() {
+    function jumpFooterVideoToRandomTime(reason) {
       const video = ensureFooterVideoElement();
       if (!video || !footerVideoReady) return 0;
-      const videoDuration = Number.isFinite(video.duration) ? video.duration : 0;
-      if (!(videoDuration > 0.2)) return 0;
-      const audioDuration = Number.isFinite(audioState.duration) ? audioState.duration : 0;
-      const audioCurrentTime = Number.isFinite(audioState.currentTime) ? audioState.currentTime : 0;
-      if (!(audioDuration > 0.2)) {
-        return pickRandomFooterVideoTime(videoDuration);
-      }
-      const progress = clamp(audioCurrentTime / audioDuration, 0, 0.9995);
-      return clamp(progress * videoDuration, 0.02, Math.max(0.02, videoDuration - 0.08));
-    }
-
-    function seekFooterVideoFrame(targetTime) {
-      const video = ensureFooterVideoElement();
-      if (!video || !footerVideoReady) return;
       const duration = Number.isFinite(video.duration) ? video.duration : 0;
-      if (!(duration > 0.2)) return;
-      const safeTargetTime = clamp(targetTime, 0.02, Math.max(0.02, duration - 0.08));
-      if (video.seeking) {
-        footerVideoPendingTime = safeTargetTime;
-        return;
-      }
-      footerVideoPendingTime = -1;
-      footerVideoPrimed = true;
-      try {
-        video.pause();
-        video.currentTime = safeTargetTime;
-      } catch {}
+      if (!(duration > 0.2)) return 0;
+      const targetTime = getRandomFooterVideoOffsetSeconds(duration);
+      state.randomVideoMs = Math.round(targetTime * 1000);
+      commitFooterVideoSeek(video, targetTime, reason || 'jump');
+      console.log(
+        '[footer-video]',
+        String(reason || 'jump'),
+        'target=' + targetTime.toFixed(3),
+        'duration=' + duration.toFixed(3)
+      );
+      return targetTime;
     }
 
     let clothGeometry = null;
@@ -1372,7 +1467,12 @@
       available: false,
       autoplayBlocked: false,
       currentTime: 0,
-      duration: 0
+      duration: 0,
+      lastKickTimeSeconds: -Infinity,
+      rmsAverage: 0,
+      bassAverage: 0,
+      previousRms: 0,
+      previousBass: 0
     };
 
     function pointIndex(x, y) {
@@ -1884,16 +1984,13 @@
 
     function syncAudioPlaybackState() {
       audioState.isPlaying = !!(audioElement && !audioElement.paused && !audioElement.ended);
+      getAudioTimelineState();
       syncFooterVideoPlaybackState();
     }
 
     function syncAudioTimelineState() {
       if (!audioElement) return;
-      audioState.currentTime = Number.isFinite(audioElement.currentTime) ? Math.max(0, audioElement.currentTime) : 0;
-      audioState.duration = Number.isFinite(audioElement.duration) && audioElement.duration > 0 ? audioElement.duration : 0;
-      if (audioState.isPlaying && isActive) {
-        syncFooterVideoToAudioTimeline(false);
-      }
+      getAudioTimelineState();
     }
 
     async function ensureAudioAnalyser() {
@@ -1909,13 +2006,36 @@
           audioAnalyser.fftSize = 512;
           audioAnalyser.smoothingTimeConstant = 0.76;
         }
+        if (!audioKickLowpassNode) {
+          audioKickLowpassNode = audioContext.createBiquadFilter();
+          audioKickLowpassNode.type = 'lowpass';
+          audioKickLowpassNode.frequency.value = 220;
+          audioKickLowpassNode.Q.value = 1.2;
+        }
+        if (!audioKickAnalyser) {
+          audioKickAnalyser = audioContext.createAnalyser();
+          audioKickAnalyser.fftSize = 2048;
+          audioKickAnalyser.smoothingTimeConstant = 0.18;
+        }
         if (!audioAnalyserSource) {
           audioAnalyserSource = audioContext.createMediaElementSource(audioElement);
+          audioAnalyserSource.connect(audioContext.destination);
           audioAnalyserSource.connect(audioAnalyser);
-          audioAnalyser.connect(audioContext.destination);
+          audioAnalyserSource.connect(audioKickLowpassNode);
+          audioKickLowpassNode.connect(audioKickAnalyser);
         }
         if (!audioAnalyserBins || audioAnalyserBins.length !== audioAnalyser.frequencyBinCount) {
           audioAnalyserBins = new Uint8Array(audioAnalyser.frequencyBinCount);
+        }
+        if (!audioKickAnalysisFrame || audioKickAnalysisFrame.length !== audioKickAnalyser.fftSize) {
+          audioKickAnalysisFrame = new Float32Array(audioKickAnalyser.fftSize);
+        }
+        if (!audioKickFrequencyFrame || audioKickFrequencyFrame.length !== audioKickAnalyser.frequencyBinCount) {
+          audioKickFrequencyFrame = new Uint8Array(audioKickAnalyser.frequencyBinCount);
+        }
+        if (!audioKickBassBinCount) {
+          const binWidth = audioContext.sampleRate / audioKickAnalyser.fftSize;
+          audioKickBassBinCount = Math.max(3, Math.round(180 / Math.max(1e-6, binWidth)));
         }
         if (audioContext.state === 'suspended') {
           await audioContext.resume();
@@ -1937,6 +2057,72 @@
       } catch {
         return null;
       }
+    }
+
+    function computeKickFrameMetrics(frame) {
+      let sum = 0;
+      let peak = 0;
+      for (let index = 0; index < frame.length; index += 1) {
+        const sample = frame[index];
+        sum += sample * sample;
+        const absolute = Math.abs(sample);
+        if (absolute > peak) peak = absolute;
+      }
+      return {
+        rms: Math.sqrt(sum / Math.max(1, frame.length)),
+        peak: peak
+      };
+    }
+
+    function computeKickBassLevel(frame, binCount) {
+      if (!binCount) return 0;
+      let sum = 0;
+      for (let index = 0; index < binCount; index += 1) {
+        sum += frame[index];
+      }
+      return sum / Math.max(1, binCount) / 255;
+    }
+
+    function sampleRealtimeKick() {
+      if (
+        !audioAnalyserReady ||
+        !audioKickAnalyser ||
+        !audioKickAnalysisFrame ||
+        !audioKickFrequencyFrame ||
+        !audioState.isPlaying
+      ) {
+        return null;
+      }
+      try {
+        audioKickAnalyser.getFloatTimeDomainData(audioKickAnalysisFrame);
+        audioKickAnalyser.getByteFrequencyData(audioKickFrequencyFrame);
+      } catch {
+        return null;
+      }
+      const metrics = computeKickFrameMetrics(audioKickAnalysisFrame);
+      const bass = computeKickBassLevel(audioKickFrequencyFrame, audioKickBassBinCount);
+      audioState.rmsAverage = audioState.rmsAverage === 0
+        ? metrics.rms
+        : audioState.rmsAverage * (1 - FOOTER_VIDEO_RMS_SMOOTHING) + metrics.rms * FOOTER_VIDEO_RMS_SMOOTHING;
+      audioState.bassAverage = audioState.bassAverage === 0
+        ? bass
+        : audioState.bassAverage * (1 - FOOTER_VIDEO_BASS_SMOOTHING) + bass * FOOTER_VIDEO_BASS_SMOOTHING;
+      const rmsThreshold = Math.max(FOOTER_VIDEO_MIN_RMS_THRESHOLD, audioState.rmsAverage * 1.28);
+      const bassThreshold = Math.max(FOOTER_VIDEO_MIN_BASS_THRESHOLD, audioState.bassAverage * 1.18);
+      const strongRmsRise = metrics.rms > Math.max(audioState.previousRms * 1.08, audioState.previousRms + 0.0035);
+      const strongBassRise = bass > Math.max(audioState.previousBass * 1.12, audioState.previousBass + 0.02);
+      const isKick = metrics.peak > 0.09 && (
+        (bass >= bassThreshold && strongBassRise) ||
+        (metrics.rms >= rmsThreshold && strongRmsRise)
+      );
+      audioState.previousRms = metrics.rms;
+      audioState.previousBass = bass;
+      return {
+        rms: metrics.rms,
+        peak: metrics.peak,
+        bass: bass,
+        isKick: isKick
+      };
     }
 
     async function resolveAudioPlaybackUrl(url) {
@@ -2015,41 +2201,43 @@
       state.audioKick = 0;
       state.audioKickPulse = 0;
       state.audioLastSpectrumKickAt = 0;
+      audioState.lastKickTimeSeconds = -Infinity;
+      audioState.rmsAverage = 0;
+      audioState.bassAverage = 0;
+      audioState.previousRms = 0;
+      audioState.previousBass = 0;
     }
 
-    function handleDetectedKick(magnitude) {
-      const now = (window.performance && typeof window.performance.now === 'function')
-        ? window.performance.now()
-        : Date.now();
+    function logDetectedKick(source, magnitude) {
+      const audioTime = Number.isFinite(audioState.currentTime) ? audioState.currentTime : 0;
+      const video = footerVideoElement;
+      const videoTime = video && Number.isFinite(video.currentTime) ? video.currentTime : 0;
+      kickDebugCounter += 1;
+      console.log(
+        '[kick]',
+        '#' + kickDebugCounter,
+        'source=' + String(source || 'unknown'),
+        'mag=' + clamp(Number.isFinite(magnitude) ? magnitude : 0, 0, 1).toFixed(3),
+        'audioTime=' + audioTime.toFixed(3),
+        'videoTime=' + videoTime.toFixed(3),
+        'playing=' + String(!!audioState.isPlaying),
+        'videoReady=' + String(!!footerVideoReady)
+      );
+    }
+
+    function handleDetectedKick(magnitude, source) {
       const kickStrength = clamp(Number.isFinite(magnitude) ? magnitude : 0.4, 0.18, 1);
+      const nowSeconds = Number.isFinite(audioState.currentTime) ? audioState.currentTime : 0;
+      if (nowSeconds - audioState.lastKickTimeSeconds < FOOTER_VIDEO_KICK_COOLDOWN_SECONDS) return;
+      audioState.lastKickTimeSeconds = nowSeconds;
+      logDetectedKick(source || 'unknown', kickStrength);
       state.audioKickPulse = Math.max(state.audioKickPulse, kickStrength);
       if (!audioState.isPlaying || !isActive) return;
       const video = ensureFooterVideoElement();
       if (!video || !footerVideoReady) return;
-      if (now - footerVideoLastJumpAt < 72) return;
       const duration = Number.isFinite(video.duration) ? video.duration : 0;
       if (!(duration > 1.2)) return;
-      const baseTime = pickTimelineFooterVideoTime();
-      const jumpWindow = Math.max(0.08, Math.min(0.42, duration * 0.16));
-      footerVideoRandomState += kickStrength * 37.1 + audioState.currentTime * 0.91 + now * 0.0001;
-      const kickOffset = (nextFooterVideoRandom() - 0.5) * jumpWindow * (0.55 + kickStrength * 0.85);
-      footerVideoPendingBurstMs = Math.round(72 + kickStrength * 72);
-      footerVideoFlushAfterSeek = true;
-      seekFooterVideoFrame(clamp(baseTime + kickOffset, 0.02, Math.max(0.02, duration - 0.08)));
-      footerVideoLastJumpAt = now;
-    }
-
-    function syncFooterVideoToAudioTimeline(forceBurst) {
-      const video = ensureFooterVideoElement();
-      if (!video || !footerVideoReady || !audioState.available) return;
-      const duration = Number.isFinite(video.duration) ? video.duration : 0;
-      if (!(duration > 0.2)) return;
-      const targetTime = pickTimelineFooterVideoTime();
-      const currentVideoTime = Number.isFinite(video.currentTime) ? video.currentTime : 0;
-      if (!forceBurst && Math.abs(currentVideoTime - targetTime) < 0.045) return;
-      footerVideoPendingBurstMs = forceBurst ? 72 : 0;
-      footerVideoFlushAfterSeek = !!forceBurst;
-      seekFooterVideoFrame(targetTime);
+      jumpFooterVideoToRandomTime(source || 'kick');
     }
 
     async function ensureKickDetector() {
@@ -2075,7 +2263,7 @@
             threshold: 0.18,
             decay: 0.025,
             onKick: function (mag) {
-              handleDetectedKick(mag);
+              handleDetectedKick(mag, 'dancer');
             }
           });
         }
@@ -2119,6 +2307,12 @@
       element.volume = audioState.volume;
       setFooterSyncMessage('Loading track...', 'muted', false);
       await ensureAudioAnalyser();
+      if (element.ended) {
+        try {
+          element.currentTime = 0;
+        } catch {}
+      }
+      audioState.lastKickTimeSeconds = -Infinity;
       try {
         const playPromise = element.play();
         if (playPromise && typeof playPromise.then === 'function') {
@@ -2127,9 +2321,7 @@
         audioState.autoplayBlocked = false;
         syncAudioPlaybackState();
         syncAudioTimelineState();
-        ensureKickDetector().catch(function (error) {
-          console.warn(error);
-        });
+        setFooterSyncMessage('Kick sync is active.', '', false);
       } catch (error) {
         audioState.isPlaying = false;
         audioState.autoplayBlocked = true;
@@ -2139,7 +2331,6 @@
     }
 
     function pauseAudioPlayback() {
-      clearFooterVideoBurstTimeout();
       if (audioElement) {
         try {
           audioElement.pause();
@@ -2147,7 +2338,7 @@
       }
       audioState.isPlaying = false;
       resetAudioReactiveState();
-      syncFooterVideoPlaybackState();
+      pauseFooterVideo();
     }
 
     async function setAudioSource(url, shouldResume) {
@@ -2184,12 +2375,10 @@
       audioState.duration = 0;
       audioState.autoplayBlocked = false;
       resetAudioReactiveState();
-      footerVideoLastJumpAt = 0;
-      footerVideoPrimed = false;
-      footerVideoPendingTime = -1;
-      footerVideoFlushAfterSeek = false;
-      footerVideoPendingBurstMs = 0;
-      clearFooterVideoBurstTimeout();
+      footerVideoPendingSeekMs = 0;
+      footerVideoPendingSeekReason = '';
+      footerVideoShouldResumeAfterSeek = false;
+      pauseFooterVideo();
       audioState.available = !!normalizedUrl;
       const playbackUrl = normalizedUrl ? await resolveAudioPlaybackUrl(normalizedUrl) : '';
       if (audioSourceChangeToken !== sourceChangeToken) {
@@ -2268,8 +2457,8 @@
       } catch {}
       audioState.currentTime = nextTime;
       audioState.duration = duration;
-      if (isActive) {
-        syncFooterVideoToAudioTimeline(true);
+      if (isActive && audioState.isPlaying) {
+        jumpFooterVideoToRandomTime('seek');
       }
     }
 
@@ -2288,12 +2477,19 @@
       if (nextBass < 0.16 || bassRise < 0.03) return;
       if (now - state.audioLastSpectrumKickAt < 118) return;
       state.audioLastSpectrumKickAt = now;
-      handleDetectedKick(clamp((bassRise * 8.2) + nextBass * 0.42, 0.18, 1));
+      handleDetectedKick(clamp((bassRise * 8.2) + nextBass * 0.42, 0.18, 1), 'spectrum');
     }
 
     function sampleAudioLevel(delta) {
       let nextLevel = 0;
       let nextBass = 0;
+      const realtimeKick = sampleRealtimeKick();
+      if (realtimeKick && realtimeKick.isKick) {
+        handleDetectedKick(
+          clamp((realtimeKick.bass * 1.18) + (realtimeKick.peak * 0.92) + (realtimeKick.rms * 5.4), 0.18, 1),
+          'realtime'
+        );
+      }
       const spectrum = readDancerSpectrum() || readAudioAnalyserSpectrum();
       if (audioState.isPlaying && spectrum) {
         try {
@@ -2357,11 +2553,12 @@
 
       audioBlobMaterial = new THREE.ShaderMaterial({
         transparent: true,
-        wireframe: true,
-        clipping: true,
         depthWrite: false,
         depthTest: true,
         toneMapped: false,
+        side: THREE.DoubleSide,
+        wireframe: false,
+        clipping: true,
         blending: THREE.NormalBlending,
         clippingPlanes: [
           new THREE.Plane(),
@@ -2385,6 +2582,8 @@
           'uniform float uKick;',
           'uniform float uProgress;',
           'varying float vAudio;',
+          'varying vec3 vNormalView;',
+          'varying vec3 vViewPosition;',
           'float hash(vec3 p) {',
           '  return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);',
           '}',
@@ -2436,17 +2635,33 @@
           '  displaced.xy *= 1.0 + vec2(0.03 + uBass * 0.08 + weirdness * 0.12, 0.04 + uAudio * 0.06 + weirdness * 0.18) * vec2(sin(time * 0.92 + position.z * 1.7), cos(time * 0.88 + position.x * 1.4));',
           '  displaced.z *= 0.96 + (ridged * 0.08) + uBass * 0.04 + weirdness * 0.12 + uKick * 0.08;',
           '  vAudio = clamp(uAudio * 0.42 + uBass * 0.42 + weirdness * 0.24 + uKick * 0.34, 0.0, 1.0);',
-          '  gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);',
+          '  vec4 mvPosition = modelViewMatrix * vec4(displaced, 1.0);',
+          '  vViewPosition = -mvPosition.xyz;',
+          '  vNormalView = normalize(normalMatrix * warpedNormal);',
+          '  gl_Position = projectionMatrix * mvPosition;',
           '}'
         ].join('\n'),
         fragmentShader: [
           'uniform vec3 uColor;',
-        'uniform float uOpacity;',
-        'varying float vAudio;',
-        'void main() {',
-          '  float alpha = (0.05 + vAudio * 0.1) * uOpacity;',
-          '  vec3 color = mix(uColor * 0.8, uColor, vAudio * 0.24);',
-          '  gl_FragColor = vec4(color, alpha);',
+          'uniform float uOpacity;',
+          'varying float vAudio;',
+          'varying vec3 vNormalView;',
+          'varying vec3 vViewPosition;',
+          'void main() {',
+          '  vec3 N = normalize(vNormalView);',
+          '  vec3 V = normalize(vViewPosition);',
+          '  float fresnel = pow(1.0 - max(dot(N, V), 0.0), 2.8);',
+          '  float rim = smoothstep(0.08, 0.98, fresnel);',
+          '  float core = 1.0 - rim;',
+          '  vec3 coldTint = vec3(0.10, 0.13, 0.17);',
+          '  vec3 body = mix(coldTint, uColor, 0.18 + vAudio * 0.42);',
+          '  body = mix(body * 0.22, body, 0.42 + vAudio * 0.22);',
+          '  body += rim * vec3(0.76, 0.88, 1.0) * (0.7 + vAudio * 0.24);',
+          '  body += pow(rim, 1.8) * vec3(1.0) * 0.1;',
+          '  body += core * vec3(0.02, 0.03, 0.05);',
+          '  float alpha = clamp(0.08 + vAudio * 0.08 + rim * 0.46 + core * 0.06, 0.0, 0.96) * uOpacity;',
+          '  alpha *= 0.84 + core * 0.12;',
+          '  gl_FragColor = vec4(body, alpha);',
           '}'
         ].join('\n')
       });
@@ -2456,6 +2671,21 @@
       audioBlobMesh.scale.set(1.18, 1.08, 0.78);
       audioBlobMesh.renderOrder = 3;
       audioBlobGroup.add(audioBlobMesh);
+
+      audioBlobGlowMaterial = new THREE.MeshBasicMaterial({
+        color: new THREE.Color('#9edaff'),
+        transparent: true,
+        opacity: 0.12,
+        depthWrite: false,
+        depthTest: true,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending
+      });
+      audioBlobGlowMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(1.04, 2), audioBlobGlowMaterial);
+      audioBlobGlowMesh.rotation.set(0.1, -0.02, -0.06);
+      audioBlobGlowMesh.scale.set(1.22, 1.16, 0.94);
+      audioBlobGlowMesh.renderOrder = 2;
+      audioBlobGroup.add(audioBlobGlowMesh);
 
       root.add(audioBlobGroup);
     }
@@ -2522,6 +2752,14 @@
         audioBlobMaterial.uniforms.uBass.value = bassLevel;
         audioBlobMaterial.uniforms.uKick.value = kickLevel;
         audioBlobMaterial.uniforms.uProgress.value = trackProgress;
+        audioBlobMaterial.uniforms.uOpacity.value = clamp(0.9 + reactiveLevel * 0.08 + bassLevel * 0.08 + kickLevel * 0.06, 0.72, 1);
+      }
+      if (audioBlobGlowMaterial) {
+        audioBlobGlowMaterial.opacity = clamp(0.08 + reactiveLevel * 0.18 + bassLevel * 0.12 + kickLevel * 0.08, 0.06, 0.34);
+      }
+      if (audioBlobGlowMesh) {
+        const glowScale = 1.02 + reactiveLevel * 0.08 + bassLevel * 0.12 + kickLevel * 0.07;
+        audioBlobGlowMesh.scale.set(1.22 * glowScale, 1.16 * glowScale, 0.94 * glowScale);
       }
     }
 
@@ -3389,7 +3627,6 @@
 
     function destroy() {
       setActive(false);
-      clearFooterVideoBurstTimeout();
       viewport.removeEventListener('pointerdown', onPointerDown);
       viewport.removeEventListener('pointermove', onPointerMove);
       viewport.removeEventListener('pointerleave', onPointerLeave);
@@ -3420,6 +3657,18 @@
           footerVideoElement.parentNode.removeChild(footerVideoElement);
         }
       }
+      if (footerVideoPlaybackUrl) {
+        try {
+          URL.revokeObjectURL(footerVideoPlaybackUrl);
+        } catch {}
+        footerVideoPlaybackUrl = '';
+      }
+      clearFooterVideoPendingSeekTimer();
+      footerVideoPendingSeekTarget = -1;
+      footerVideoPendingSeekRetries = 0;
+      footerVideoPendingSeekMs = 0;
+      footerVideoPendingSeekReason = '';
+      footerVideoShouldResumeAfterSeek = false;
       if (kickDetector && typeof kickDetector.off === 'function') {
         try {
           kickDetector.off();
@@ -3432,9 +3681,6 @@
         } catch {}
       });
       audioPlaybackUrlCache.clear();
-      footerVideoPendingTime = -1;
-      footerVideoPrimed = false;
-      footerVideoFlushAfterSeek = false;
       audioElement = null;
       if (audioContext && typeof audioContext.close === 'function') {
         try {
@@ -3445,6 +3691,11 @@
       audioAnalyser = null;
       audioAnalyserSource = null;
       audioAnalyserBins = null;
+      audioKickLowpassNode = null;
+      audioKickAnalyser = null;
+      audioKickAnalysisFrame = null;
+      audioKickFrequencyFrame = null;
+      audioKickBassBinCount = 0;
       audioAnalyserReady = false;
       kickDetector = null;
       dancerInstance = null;

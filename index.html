@@ -1121,11 +1121,11 @@
       will-change: transform, filter, box-shadow;
     }
     body.is-view-plain .releases a {
-      overflow: visible;
+      overflow: hidden;
       isolation: isolate;
       --plain-card-radius: 4px;
       border-radius: var(--plain-card-radius);
-      transform-style: preserve-3d;
+      transform-style: flat;
       transform-origin: center center;
       --plain-hover-shift-x: 0px;
       --plain-hover-shift-y: 0px;
@@ -1136,8 +1136,8 @@
       background: #090909;
     }
     body.is-view-plain .releases {
-      perspective: 980px;
-      transform-style: preserve-3d;
+      perspective: none;
+      transform-style: flat;
     }
     body.is-view-plain .releases {
       gap: var(--releases-grid-gap);
@@ -1271,7 +1271,22 @@
     .plain-release-panel {
       position: fixed;
       inset: 0;
-      --plain-release-panel-width: min(200px, calc(100vw - 24px));
+      --plain-release-icons-per-row: 5;
+      --plain-release-card-pad-x: 10px;
+      --plain-release-card-pad-bottom: 14px;
+      --plain-release-icon-size: 26px;
+      --plain-release-icon-gap: 5px;
+      --plain-release-icon-row-width: calc(
+        (var(--plain-release-icon-size) * var(--plain-release-icons-per-row)) +
+        (var(--plain-release-icon-gap) * (var(--plain-release-icons-per-row) - 1))
+      );
+      --plain-release-panel-width: min(
+        calc(var(--plain-release-icon-row-width) + (var(--plain-release-card-pad-x) * 2)),
+        calc(100vw - 24px)
+      );
+      --plain-release-ui-icon-size: calc(var(--plain-release-icon-size) * 0.44);
+      --plain-release-ui-icon-stroke: 2px;
+      --plain-release-ui-radius: 12px;
       z-index: 8;
       display: none;
       align-items: center;
@@ -1300,7 +1315,7 @@
       left: 0;
       width: 0;
       height: 0;
-      border-radius: 12px;
+      border-radius: var(--plain-release-ui-radius);
       overflow: hidden;
       opacity: 0;
       pointer-events: none;
@@ -1440,61 +1455,11 @@
       --plain-release-nav-shift-x: 0px;
       --plain-release-nav-shift-y: 0px;
       --plain-release-nav-rotate: 0deg;
-      width: 38px;
-      height: 38px;
-      min-width: 38px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 999px;
-      padding: 0;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(31, 35, 44, 0.78);
-      box-shadow:
-        0 12px 26px rgba(0, 0, 0, 0.24),
-        0 3px 10px rgba(0, 0, 0, 0.18),
-        inset 0 1px 0 rgba(255, 255, 255, 0.18),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.02);
-      backdrop-filter: blur(14px) saturate(145%);
-      -webkit-backdrop-filter: blur(14px) saturate(145%);
-      color: rgba(255, 255, 255, 0.96);
-      font: inherit;
-      font-size: 0;
-      font-weight: 500;
-      line-height: 1;
-      cursor: pointer;
       pointer-events: auto;
       z-index: 3;
-      transition: background-color 160ms ease, border-color 160ms ease, opacity 160ms ease, color 160ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 180ms ease;
-      user-select: none;
-      -webkit-user-select: none;
       will-change: transform;
-      transform-style: preserve-3d;
-    }
-    .plain-release-panel__nav::before {
-      content: "";
-      width: 7px;
-      height: 7px;
-      border-right: 1.5px solid currentColor;
-      border-bottom: 1.5px solid currentColor;
-      display: block;
-      opacity: 0.9;
-    }
-    .plain-release-panel__nav--prev::before {
-      transform: translateX(0.5px) rotate(135deg);
-    }
-    .plain-release-panel__nav--next::before {
-      transform: translateX(-0.5px) rotate(-45deg);
-    }
-    .plain-release-panel__nav:hover {
-      background: rgba(40, 45, 56, 0.9);
-      border-color: rgba(255, 255, 255, 0.18);
-      box-shadow:
-        0 16px 30px rgba(0, 0, 0, 0.28),
-        0 5px 12px rgba(0, 0, 0, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.22),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-      color: #ffffff;
+      transform-style: flat;
+      overflow: hidden;
     }
     .plain-release-panel__nav[disabled] {
       opacity: 0.26;
@@ -1502,20 +1467,14 @@
       pointer-events: none;
     }
     .plain-release-panel__nav--prev {
-      left: calc(50% - var(--plain-release-panel-width) / 2 - 54px);
+      left: calc(50% - var(--plain-release-panel-width) / 2 - var(--plain-release-icon-size) - 16px);
       transform:
-        translate3d(var(--plain-release-nav-shift-x), calc(-50% + var(--plain-release-nav-shift-y)), 0)
-        rotateX(var(--plain-release-nav-tilt-x))
-        rotateY(var(--plain-release-nav-tilt-y))
-        rotate(var(--plain-release-nav-rotate));
+        translate3d(var(--plain-release-nav-shift-x), calc(-50% + var(--plain-release-nav-shift-y)), 18px);
     }
     .plain-release-panel__nav--next {
-      left: calc(50% + var(--plain-release-panel-width) / 2 + 18px);
+      left: calc(50% + var(--plain-release-panel-width) / 2 + 16px);
       transform:
-        translate3d(calc(var(--plain-release-nav-shift-x) * -1), calc(-50% + var(--plain-release-nav-shift-y)), 0)
-        rotateX(calc(var(--plain-release-nav-tilt-x) * -1))
-        rotateY(calc(var(--plain-release-nav-tilt-y) * -1))
-        rotate(calc(var(--plain-release-nav-rotate) * -1));
+        translate3d(calc(var(--plain-release-nav-shift-x) * -1), calc(-50% + var(--plain-release-nav-shift-y)), 18px);
     }
     .plain-release-panel__edge {
       display: none;
@@ -1557,7 +1516,7 @@
       max-height: calc(100vh - var(--controls-h, 50px) - 36px);
       overflow-x: hidden;
       overflow-y: auto;
-      padding: 10px 10px 14px;
+      padding: 10px var(--plain-release-card-pad-x) var(--plain-release-card-pad-bottom);
       border: 0;
       background: transparent;
       color: #f3f1ea;
@@ -1702,61 +1661,14 @@
       position: absolute;
       top: 14px;
       right: 14px;
-      width: 30px;
-      height: 30px;
-      min-width: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 0;
-      border-radius: 999px;
-      padding: 0;
-      background: rgba(8, 10, 14, 0.34);
-      color: rgba(255, 255, 255, 0.94);
-      font: inherit;
-      font-size: 0;
-      font-weight: 500;
-      line-height: 1;
-      box-shadow:
-        0 8px 20px rgba(0, 0, 0, 0.18),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.18);
-      backdrop-filter: blur(12px) saturate(140%);
-      -webkit-backdrop-filter: blur(12px) saturate(140%);
-      cursor: pointer;
       z-index: 2;
-      transform: translate3d(0, 0, 40px);
-      transform-style: preserve-3d;
+      transform: translate3d(0, 0, 0);
+      transform-style: flat;
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
-      transition:
-        background-color 180ms ease,
-        color 180ms ease,
-        box-shadow 180ms ease,
-        transform 180ms ease;
-    }
-    .plain-release-panel__close::before,
-    .plain-release-panel__close::after {
-      content: "";
-      position: absolute;
-      width: 9px;
-      height: 1.6px;
-      border-radius: 999px;
-      background: currentColor;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
-    }
-    .plain-release-panel__close::before {
-      transform: rotate(45deg);
-    }
-    .plain-release-panel__close::after {
-      transform: rotate(-45deg);
     }
     .plain-release-panel__close:hover {
-      background: rgba(8, 10, 14, 0.52);
-      color: #ffffff;
-      box-shadow:
-        0 10px 24px rgba(0, 0, 0, 0.24),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.24);
-      transform: translate3d(0, 0, 40px);
+      transform: translate3d(0, 0, 0);
     }
     .plain-release-panel__close:focus-visible {
       outline: none;
@@ -1764,7 +1676,7 @@
       box-shadow:
         0 0 0 2px rgba(255, 255, 255, 0.88),
         0 10px 24px rgba(0, 0, 0, 0.22);
-      transform: translate3d(0, 0, 40px);
+      transform: translate3d(0, 0, 0);
     }
     .plain-release-panel__artwork-frame {
       position: relative;
@@ -1772,7 +1684,7 @@
       width: 100%;
       aspect-ratio: 1 / 1;
       overflow: hidden;
-      border-radius: 14px;
+      border-radius: var(--plain-release-ui-radius);
       background: rgba(255, 255, 255, 0.05);
       backdrop-filter: blur(10px) saturate(135%);
       -webkit-backdrop-filter: blur(10px) saturate(135%);
@@ -1817,10 +1729,13 @@
       z-index: 1;
     }
     .plain-release-panel__title {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
       margin-top: 6px;
-      margin-right: 28px;
+      padding-right: 28px;
       margin-bottom: 0;
-      max-width: 100%;
+      max-width: none;
       font-size: 12px;
       line-height: 1.16;
       font-weight: 400;
@@ -1829,52 +1744,14 @@
     }
     .plain-release-panel__actions {
       display: grid;
-      --plain-release-pill-gap: 8px;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      justify-content: stretch;
-      gap: var(--plain-release-pill-gap);
+      grid-template-columns: repeat(5, var(--plain-release-icon-size));
+      width: min(100%, var(--plain-release-icon-row-width));
+      justify-content: start;
+      justify-items: start;
+      gap: var(--plain-release-icon-gap);
       margin-top: 12px;
       position: relative;
       z-index: 1;
-    }
-    .plain-release-panel__actions a,
-    .plain-release-panel__socials a {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0;
-      width: 100%;
-      min-width: 0;
-      max-width: none;
-      height: 30px;
-      padding: 0;
-      box-sizing: border-box;
-      border: 0;
-      border-radius: 999px;
-      color: #f3f1ea;
-      text-decoration: none;
-      background: rgba(255, 255, 255, 0.07);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.16),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.18);
-      backdrop-filter: blur(12px) saturate(135%);
-      -webkit-backdrop-filter: blur(12px) saturate(135%);
-      font-size: 9px;
-      font-weight: 400;
-      line-height: 1;
-      white-space: nowrap;
-      transition: background-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
-      user-select: none;
-      -webkit-user-select: none;
-      --plain-release-link-accent: 255, 255, 255;
-      justify-self: start;
-    }
-    .plain-release-panel__actions a:hover,
-    .plain-release-panel__socials a:hover {
-      background: rgba(255, 255, 255, 0.14);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.2),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.24);
     }
     .plain-release-panel__socials a {
       font-size: 9px;
@@ -1883,40 +1760,122 @@
     .plain-release-panel__socials a .plain-release-panel__button-label {
       display: none;
     }
-    .plain-release-panel__button-icon {
-      width: 18px;
-      height: 18px;
-      min-width: 18px;
-      border-radius: 999px;
+    .plain-release-panel__actions .plain-release-panel__ui-button,
+    .plain-release-panel__socials .plain-release-panel__ui-button {
+      justify-self: start;
+      transform: translate3d(0, 0, -28px);
+      transform-style: flat;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .plain-release-panel__ui-button {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: rgba(var(--plain-release-link-accent), 0.18);
+      width: var(--plain-release-icon-size);
+      height: var(--plain-release-icon-size);
+      min-width: var(--plain-release-icon-size);
+      box-sizing: border-box;
+      padding: 0;
+      border: 0;
+      border-radius: var(--plain-release-ui-radius);
+      corner-shape: squircle;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(20, 23, 30, 0.16)),
+        rgba(31, 35, 44, 0.28);
+      box-shadow:
+        0 10px 24px rgba(0, 0, 0, 0.18),
+        0 2px 8px rgba(0, 0, 0, 0.14),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(14px) saturate(140%) brightness(1.04);
+      -webkit-backdrop-filter: blur(14px) saturate(140%) brightness(1.04);
+      color: rgba(255, 255, 255, 0.96);
+      font: inherit;
+      font-size: 0;
+      font-weight: 500;
+      line-height: 1;
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        opacity 160ms ease,
+        color 160ms ease,
+        transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 180ms ease;
+      --plain-release-link-accent: 255, 255, 255;
+    }
+    .plain-release-panel__ui-button:hover {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(28, 32, 40, 0.22)),
+        rgba(40, 45, 56, 0.42);
+      box-shadow:
+        0 12px 26px rgba(0, 0, 0, 0.22),
+        0 4px 10px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.24),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+      color: #ffffff;
+    }
+    .cloth-release-footer__tags-list a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-width: 0;
+      aspect-ratio: 1 / 1;
+      height: auto;
+      box-sizing: border-box;
+      padding: 0;
+      border: 0;
+      border-radius: 10px;
+      corner-shape: squircle;
+      color: #f3f1ea;
+      text-decoration: none;
+      background: rgba(255, 255, 255, 0.07);
       box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.16),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+        inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(12px) saturate(135%);
+      -webkit-backdrop-filter: blur(12px) saturate(135%);
+      transition: background-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .cloth-release-footer__tags-list a:hover {
+      background: rgba(255, 255, 255, 0.14);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+    }
+    .cloth-release-footer__tags-list a svg {
+      width: var(--cloth-release-tag-icon-size, 12px);
+      height: var(--cloth-release-tag-icon-size, 12px);
+      box-sizing: border-box;
+      display: block;
+      fill: currentColor;
+    }
+    .plain-release-panel__button-icon {
+      width: 100%;
+      height: 100%;
+      min-width: 100%;
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: inherit;
+      background: transparent;
+      box-shadow: none;
       color: rgba(243, 241, 234, 0.96);
-      flex: 0 0 18px;
-    }
-    .plain-release-panel__actions a[data-platform="x"] .plain-release-panel__button-icon,
-    .plain-release-panel__socials a[data-platform="x"] .plain-release-panel__button-icon {
-      width: 16px;
-      height: 16px;
-      min-width: 16px;
-      flex-basis: 16px;
-    }
-    .plain-release-panel__actions a[data-platform="x"] .plain-release-panel__button-icon svg,
-    .plain-release-panel__socials a[data-platform="x"] .plain-release-panel__button-icon svg {
-      width: 8px;
-      height: 8px;
-    }
-    .plain-release-panel__actions a:hover .plain-release-panel__button-icon,
-    .plain-release-panel__socials a:hover .plain-release-panel__button-icon {
-      background: rgba(var(--plain-release-link-accent), 0.28);
+      flex: 0 0 100%;
     }
     .plain-release-panel__button-icon svg {
-      width: 9px;
-      height: 9px;
+      width: var(--plain-release-ui-icon-size);
+      height: var(--plain-release-ui-icon-size);
+      box-sizing: border-box;
       display: block;
       fill: currentColor;
     }
@@ -1950,10 +1909,11 @@
     }
     .plain-release-panel__socials {
       display: grid;
-      --plain-release-pill-gap: 8px;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      justify-content: stretch;
-      gap: var(--plain-release-pill-gap);
+      grid-template-columns: repeat(5, var(--plain-release-icon-size));
+      width: min(100%, var(--plain-release-icon-row-width));
+      justify-content: start;
+      justify-items: start;
+      gap: var(--plain-release-icon-gap);
       padding: 0;
       margin: 0;
       list-style: none;
@@ -1992,8 +1952,9 @@
       display: none;
       align-items: center;
       justify-content: center;
-      --cloth-release-frame-width: min(200px, calc(100vw - 24px));
+      --cloth-release-frame-width: min(184px, calc(100vw - 24px));
       --cloth-release-frame-height: calc(var(--cloth-release-frame-width) * 2.19);
+      --cloth-release-tag-icon-size: 12px;
       padding: 0;
       pointer-events: none;
       overflow: hidden;
@@ -2093,26 +2054,35 @@
     @media (max-width: 760px) {
       .plain-release-panel {
         padding: calc(var(--controls-h, 50px) + 8px) 10px 10px;
-        --plain-release-panel-width: min(100%, 200px);
+        --plain-release-card-pad-x: 9px;
+        --plain-release-card-pad-bottom: 13px;
+        --plain-release-icon-size: 24px;
+        --plain-release-icon-gap: 4px;
+        --plain-release-panel-width: min(
+          calc(var(--plain-release-icon-row-width) + (var(--plain-release-card-pad-x) * 2)),
+          100%
+        );
+        --plain-release-ui-icon-size: calc(var(--plain-release-icon-size) * 0.44);
+        --plain-release-ui-icon-stroke: 1.8px;
       }
       .plain-release-panel__scene {
         width: var(--plain-release-panel-width);
       }
       .plain-release-panel__nav--prev {
-        left: calc(50% - var(--plain-release-panel-width) / 2 - 50px);
+        left: calc(50% - var(--plain-release-panel-width) / 2 - var(--plain-release-icon-size) - 14px);
       }
       .plain-release-panel__nav--next {
-        left: calc(50% + var(--plain-release-panel-width) / 2 + 12px);
+        left: calc(50% + var(--plain-release-panel-width) / 2 + 14px);
       }
       .plain-release-panel__morph {
         display: none;
       }
       .plain-release-panel__card {
         width: 100%;
-        padding: 10px 10px 14px;
+        padding: 10px var(--plain-release-card-pad-x) var(--plain-release-card-pad-bottom);
       }
       .plain-release-panel__title {
-        margin-right: 28px;
+        padding-right: 28px;
         font-size: 11px;
       }
       .plain-release-panel__artist {
@@ -2203,8 +2173,10 @@
       --canvas-3d-page-rail-gap: 10px;
       --canvas-3d-page-label-font-size: 10px;
       --canvas-3d-page-label-inline-size: 3.8em;
-      --canvas-3d-page-dot-size: 12px;
+      --canvas-3d-page-dot-size: 10px;
       --canvas-3d-page-dot-gap: 10px;
+      --canvas-3d-page-progress-width: 10px;
+      --canvas-3d-page-progress-height: clamp(120px, 18vh, 220px);
       display: grid;
       grid-template-columns: 34px minmax(0, 1fr);
       grid-template-areas: "rail shell";
@@ -2271,13 +2243,18 @@
       padding-top: 4px;
     }
     .canvas-mode__release-page-label {
-      color: rgba(255, 255, 255, 0.78);
+      color: rgba(255, 255, 255, 0.94);
       font-size: var(--canvas-3d-page-label-font-size);
       letter-spacing: 0.1em;
+      font-weight: 700;
       text-align: center;
       inline-size: var(--canvas-3d-page-label-inline-size);
       flex: 0 0 var(--canvas-3d-page-label-inline-size);
+      margin-inline-start: -4px;
       font-variant-numeric: tabular-nums;
+      text-shadow:
+        0 0 6px rgba(0, 0, 0, 0.85),
+        0 0 1px rgba(255, 255, 255, 0.4);
       white-space: nowrap;
       writing-mode: vertical-rl;
       transform: rotate(180deg);
@@ -2288,6 +2265,35 @@
       grid-auto-rows: min-content;
       gap: var(--canvas-3d-page-dot-gap);
       align-content: start;
+      margin-top: 20px;
+      margin-left: 3px;
+      box-sizing: border-box;
+    }
+    .canvas-mode__release-page-dots.is-progress {
+      position: relative;
+      display: block;
+      width: var(--canvas-3d-page-progress-width);
+      height: var(--canvas-3d-page-progress-height);
+      margin-top: 16px;
+      margin-left: 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+        0 0 0 1px rgba(0, 0, 0, 0.14);
+      overflow: hidden;
+    }
+    .canvas-mode__release-page-dots.is-progress .canvas-mode__release-page-progress-fill {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: var(--canvas-3d-page-progress-fill, 0%);
+      border-radius: inherit;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(185, 208, 255, 0.34));
+      box-shadow:
+        0 0 14px rgba(180, 208, 255, 0.22),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
     }
     .canvas-mode__release-page-dot {
       width: var(--canvas-3d-page-dot-size);
@@ -2596,6 +2602,7 @@
       box-shadow: none;
     }
     .cloth-release-footer {
+      --cloth-release-control-radius: 10px;
       position: relative;
       right: auto;
       left: auto;
@@ -2603,21 +2610,14 @@
       z-index: 9;
       width: 100%;
       display: none;
-      grid-template-columns: minmax(0, 1fr) auto;
-      grid-template-areas: "stack page";
-      gap: 10px 12px;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
       padding: 0;
       transform: none;
       pointer-events: auto;
     }
     .cloth-release-footer.is-visible {
       display: grid;
-    }
-    .cloth-release-footer__stack {
-      grid-area: stack;
-      display: grid;
-      gap: 8px;
-      min-width: 0;
     }
     .cloth-release-footer__panel {
       border-radius: 18px;
@@ -2630,6 +2630,7 @@
         0 18px 34px rgba(0, 0, 0, 0.18);
     }
     .cloth-release-footer__player {
+      grid-area: auto;
       border-radius: 18px 18px 0 0;
     }
     .cloth-release-footer__tags {
@@ -2658,22 +2659,29 @@
     }
     .cloth-release-footer__tags-list {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
       align-items: stretch;
       min-width: 0;
     }
     .cloth-release-footer__tags-page {
-      grid-area: page;
-      align-self: start;
-      justify-self: end;
-      padding: 10px 2px 0 0;
-      color: rgba(255, 255, 255, 0.88);
-      font-size: 11px;
+      position: absolute;
+      top: 16px;
+      right: 18px;
+      margin: 0;
+      padding: 0;
+      color: rgba(255, 255, 255, 0.96);
+      font-size: 12px;
       letter-spacing: 0.08em;
+      font-weight: 700;
       font-variant-numeric: tabular-nums;
+      text-shadow:
+        0 0 6px rgba(0, 0, 0, 0.85),
+        0 0 1px rgba(255, 255, 255, 0.35);
       white-space: nowrap;
       user-select: none;
+      z-index: 12;
+      pointer-events: none;
     }
     .cloth-release-footer__player {
       position: relative;
@@ -2871,64 +2879,6 @@
     .cloth-release-footer__meta {
       display: none;
     }
-    .cloth-release-footer__tags-list a {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0;
-      min-width: 0;
-      width: 100%;
-      aspect-ratio: 1 / 1;
-      height: auto;
-      padding: 0;
-      border: 0;
-      border-radius: 14px;
-      corner-shape: squircle;
-      color: #f3f1ea;
-      text-decoration: none;
-      background: rgba(255, 255, 255, 0.07);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.16),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.18);
-      backdrop-filter: blur(12px) saturate(135%);
-      -webkit-backdrop-filter: blur(12px) saturate(135%);
-      font-size: 9px;
-      font-weight: 400;
-      line-height: 1;
-      white-space: nowrap;
-      transition: background-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
-      user-select: none;
-      -webkit-user-select: none;
-      --plain-release-link-accent: 255, 255, 255;
-    }
-    .cloth-release-footer__tags-list a:hover {
-      background: rgba(255, 255, 255, 0.14);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.2),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.24);
-    }
-    .cloth-release-footer__tags-list a .plain-release-panel__button-icon {
-      width: 18px;
-      height: 18px;
-      min-width: 18px;
-      border-radius: 8px;
-      corner-shape: squircle;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(var(--plain-release-link-accent), 0.18);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.16),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-      color: rgba(243, 241, 234, 0.96);
-      flex: 0 0 18px;
-    }
-    .cloth-release-footer__tags-list a .plain-release-panel__button-icon svg {
-      width: 10px;
-      height: 10px;
-      display: block;
-      fill: currentColor;
-    }
     .cloth-release-footer__tags-list a .plain-release-panel__button-label {
       display: none;
     }
@@ -2938,7 +2888,7 @@
       border: 0;
       width: 32px;
       height: 32px;
-      border-radius: 999px;
+      border-radius: var(--cloth-release-control-radius);
       corner-shape: squircle;
       background: rgba(255, 255, 255, 0.08);
       backdrop-filter: blur(9px);
@@ -2955,12 +2905,12 @@
     .cloth-release-footer__button--small {
       width: 32px;
       height: 32px;
-      border-radius: 999px;
+      border-radius: var(--cloth-release-control-radius);
     }
     .cloth-release-footer__button--play {
       width: 38px;
       height: 38px;
-      border-radius: 999px;
+      border-radius: var(--cloth-release-control-radius);
     }
     .cloth-release-footer__button:disabled {
       opacity: 0.38;
@@ -3035,16 +2985,23 @@
         --canvas-3d-page-rail-gap: 8px;
         --canvas-3d-page-label-font-size: 9px;
         --canvas-3d-page-label-inline-size: 3.4em;
-        --canvas-3d-page-dot-size: 11px;
+        --canvas-3d-page-dot-size: 9px;
         --canvas-3d-page-dot-gap: 8px;
+        --canvas-3d-page-progress-width: 10px;
+        --canvas-3d-page-progress-height: clamp(100px, 16vh, 160px);
         padding: 8px 8px 10px 8px;
+      }
+      .canvas-mode__release-page-dots.is-progress {
+        margin-top: 12px;
+        margin-left: 11px;
       }
       .canvas-mode__release-page-rail {
         padding-top: 2px;
       }
       .cloth-release-panel {
-        --cloth-release-frame-width: min(100%, 168px);
+        --cloth-release-frame-width: min(100%, 154px);
         --cloth-release-frame-height: calc(var(--cloth-release-frame-width) * 2.19);
+        --cloth-release-tag-icon-size: 10px;
       }
       body.is-view-3d.canvas-active .cloth-release-panel__layout {
         padding: 12px 0 10px;
@@ -3054,11 +3011,9 @@
         padding: 0 10px;
         box-sizing: border-box;
       }
-      .cloth-release-footer__stack {
-        gap: 6px;
-      }
       .cloth-release-footer__tags-page {
-        padding-top: 8px;
+        top: 14px;
+        right: 16px;
       }
       .cloth-release-footer__panel,
       .cloth-release-footer__player,
@@ -3080,7 +3035,8 @@
         font-size: 8px;
       }
       .cloth-release-footer__tags-list {
-        gap: 5px;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 4px;
       }
       .cloth-release-footer__player {
         gap: 6px;
@@ -3116,9 +3072,16 @@
       }
       .cloth-release-footer__tags-list a {
         min-width: 0;
-        height: 22px;
-        padding: 0 7px 0 4px;
-        gap: 5px;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        height: auto;
+        padding: 0;
+        gap: 0;
+        border-radius: var(--cloth-release-control-radius);
+      }
+      .cloth-release-footer__tags-list a svg {
+        width: var(--cloth-release-tag-icon-size);
+        height: var(--cloth-release-tag-icon-size);
       }
       .cloth-release-footer__button {
         width: 28px;
@@ -3168,7 +3131,7 @@
       position: absolute;
       display: block;
       z-index: 5;
-      border-radius: 2px;
+      border-radius: 0;
       overflow: hidden;
       cursor: pointer;
       background: #0f0f0f;
@@ -3176,9 +3139,9 @@
       height: var(--canvas-tile-size, 72px);
       aspect-ratio: 1 / 1;
       box-shadow:
-        0 12px 30px rgba(0, 0, 0, 0.42),
-        0 3px 10px rgba(0, 0, 0, 0.34),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+        0 10px 22px rgba(0, 0, 0, 0.34),
+        0 2px 8px rgba(0, 0, 0, 0.28),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.12);
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
       transform-style: flat;
@@ -3187,8 +3150,8 @@
     html.performance-mode .canvas-tile,
     body.performance-mode .canvas-tile {
       box-shadow:
-        0 8px 18px rgba(0, 0, 0, 0.36),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+        0 8px 18px rgba(0, 0, 0, 0.28),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.08);
     }
     .canvas-tile img {
       display: block;
@@ -3204,20 +3167,21 @@
     }
     .canvas-space--sphere .canvas-tile {
       border-radius: 18px;
-      background: rgba(8, 9, 12, 0.82);
-      box-shadow:
-        0 10px 22px rgba(0, 0, 0, 0.2),
-        0 3px 10px rgba(0, 0, 0, 0.16),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-    }
-    .canvas-space--cards .canvas-tile {
-      border-radius: 0;
+      border: 0;
+      overflow: visible;
       background: transparent;
       box-shadow: none;
+    }
+    .canvas-space--cards .canvas-tile {
+      background: transparent;
+      box-shadow:
+        0 10px 22px rgba(0, 0, 0, 0.32),
+        0 2px 8px rgba(0, 0, 0, 0.26);
       isolation: isolate;
       will-change: transform, filter, opacity;
     }
     .canvas-space--cards .canvas-tile img {
+      border-radius: 2px;
       transform-origin: center center;
       transition: filter 90ms linear, transform 90ms linear, opacity 160ms ease;
     }
@@ -3225,7 +3189,12 @@
       position: relative;
       z-index: 1;
       opacity: 1;
-      border-radius: inherit;
+      border-radius: 30px;
+      border: 0;
+      background: #0f0f0f;
+      box-shadow:
+        0 10px 22px rgba(0, 0, 0, 0.2),
+        0 3px 10px rgba(0, 0, 0, 0.16);
     }
     .canvas-space--sphere .canvas-tile.is-pointer-pull {
       transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease, filter 220ms ease;
@@ -3283,11 +3252,8 @@
       .plain-release-panel__card::before,
       .plain-release-panel__card::after,
       .plain-release-panel__close,
-      .plain-release-panel__close::before,
-      .plain-release-panel__close::after,
       .plain-release-panel__artwork-frame,
-      .plain-release-panel__actions a,
-      .plain-release-panel__socials a,
+      .plain-release-panel__ui-button,
       .plain-release-panel__button-icon,
       .cloth-release-panel__status,
       .cloth-release-footer__panel,
@@ -3301,6 +3267,7 @@
       body.is-view-3d .releases a,
       body.is-view-3d .releases a::after,
       .canvas-space--sphere .canvas-tile,
+      .canvas-space--sphere .canvas-tile img,
       .canvas-tools button {
         corner-shape: squircle;
       }
@@ -3783,14 +3750,22 @@
       <img id="plainReleaseMorphImage" alt="">
       <div class="plain-release-panel__morph-overlay" id="plainReleaseMorphOverlay"></div>
     </div>
-    <button type="button" class="plain-release-panel__nav plain-release-panel__nav--prev" id="plainReleasePrev" aria-label="Previous release">&#x2039;</button>
+    <button type="button" class="plain-release-panel__ui-button plain-release-panel__nav plain-release-panel__nav--prev is-icon-only" id="plainReleasePrev" aria-label="Previous release">
+      <span class="plain-release-panel__button-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path fill="currentColor" d="M14.62 19.59 8.03 13a1.41 1.41 0 0 1 0-2l6.59-6.59L16 5.79 10.41 11.38a.87.87 0 0 0 0 1.24L16 18.21z"></path></svg>
+      </span>
+    </button>
     <div class="plain-release-panel__scene" id="plainReleaseScene">
       <div class="plain-release-panel__shadow" aria-hidden="true"></div>
       <div class="plain-release-panel__edge plain-release-panel__edge--right" aria-hidden="true"></div>
       <div class="plain-release-panel__edge plain-release-panel__edge--bottom" aria-hidden="true"></div>
       <section class="plain-release-panel__card" role="dialog" aria-modal="true" aria-labelledby="plainReleaseTitle">
         <div class="plain-release-panel__surface" aria-hidden="true"></div>
-        <button type="button" class="plain-release-panel__close" id="plainReleaseClose" aria-label="Close">&times;</button>
+        <button type="button" class="plain-release-panel__ui-button plain-release-panel__close is-icon-only" id="plainReleaseClose" aria-label="Close">
+          <span class="plain-release-panel__button-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41-6.3-6.29-6.3 6.29L2.88 18.29 9.17 12 2.88 5.71 4.29 4.29l6.3 6.3 6.29-6.3z"></path></svg>
+          </span>
+        </button>
         <div class="plain-release-panel__content" id="plainReleaseContent">
           <div class="plain-release-panel__artwork-frame" id="plainReleaseArtworkFrame" hidden>
             <img class="plain-release-panel__artwork" id="plainReleaseArtwork" alt="">
@@ -3810,17 +3785,21 @@
         </div>
       </section>
     </div>
-    <button type="button" class="plain-release-panel__nav plain-release-panel__nav--next" id="plainReleaseNext" aria-label="Next release">&#x203A;</button>
+    <button type="button" class="plain-release-panel__ui-button plain-release-panel__nav plain-release-panel__nav--next is-icon-only" id="plainReleaseNext" aria-label="Next release">
+      <span class="plain-release-panel__button-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path fill="currentColor" d="m9.38 19.59-1.38-1.38 5.59-5.59a.87.87 0 0 0 0-1.24L8 5.79l1.41-1.38L16 11a1.41 1.41 0 0 1 0 2z"></path></svg>
+      </span>
+    </button>
   </div>
   <div class="cloth-release-panel" id="clothReleasePanel" aria-hidden="true" hidden>
     <div class="cloth-release-panel__backdrop" data-close-cloth-release></div>
-    <div class="cloth-release-panel__layout">
-      <div class="cloth-release-panel__stage">
-        <div class="cloth-release-panel__viewport" id="clothReleaseViewport"></div>
-        <div class="cloth-release-panel__status" id="clothReleaseStatus" hidden>Loading 3D card...</div>
-      </div>
-      <div class="cloth-release-footer" id="clothReleaseFooter" hidden aria-hidden="true">
-        <div class="cloth-release-footer__stack">
+      <div class="cloth-release-panel__layout">
+        <div class="cloth-release-panel__stage">
+          <div class="cloth-release-panel__viewport" id="clothReleaseViewport"></div>
+          <div class="cloth-release-panel__status" id="clothReleaseStatus" hidden>Loading 3D card...</div>
+        </div>
+        <div class="cloth-release-footer__tags-page" id="clothFooterPage">#001</div>
+        <div class="cloth-release-footer" id="clothReleaseFooter" hidden aria-hidden="true">
           <div class="cloth-release-footer__tags cloth-release-footer__panel">
             <div class="cloth-release-footer__tags-groups">
               <div class="cloth-release-footer__tags-group">
@@ -3833,7 +3812,6 @@
               </div>
             </div>
           </div>
-          <div class="cloth-release-footer__tags-page" id="clothFooterPage">#001</div>
           <div class="cloth-release-footer__player cloth-release-footer__panel">
             <div class="cloth-release-footer__controls">
               <canvas class="cloth-release-footer__orb" id="clothFooterOrbCanvas" aria-hidden="true"></canvas>
@@ -12006,13 +11984,13 @@
       const SCENE_RESIZE_WIDTH_REBUILD_THRESHOLD = usePerformanceMode ? 12 : 1;
       const SCENE_RESIZE_HEIGHT_REBUILD_THRESHOLD = usePerformanceMode ? 120 : 1;
       const PILL_SLIDER_TRANSITION_MS = 340;
-      const SIZE_SCALE = { 4: 0.9, 3: 0.6, 2: 0.34, 1: 0.14 };
+      const SIZE_SCALE = { 4: 0.8, 3: 0.6, 2: 0.34, 1: 0.14 };
       const RELEASE_CANVAS_SIZE_PRESETS = {
         4: {
-          desktop: { targetWidth: 214, minWidth: 186, maxWidth: 246, gap: 12, preferredRows: 3, minColumns: 4, maxColumns: 6 },
-          laptop: { targetWidth: 196, minWidth: 170, maxWidth: 224, gap: 10, preferredRows: 3, minColumns: 4, maxColumns: 5 },
-          tablet: { targetWidth: 170, minWidth: 148, maxWidth: 194, gap: 9, preferredRows: 3, minColumns: 3, maxColumns: 4 },
-          phone: { targetWidth: 116, minWidth: 100, maxWidth: 132, gap: 6, preferredRows: 4, minColumns: 2, maxColumns: 2 }
+          desktop: { targetWidth: 196, minWidth: 170, maxWidth: 226, gap: 11, preferredRows: 3, minColumns: 4, maxColumns: 6 },
+          laptop: { targetWidth: 180, minWidth: 156, maxWidth: 206, gap: 10, preferredRows: 3, minColumns: 4, maxColumns: 5 },
+          tablet: { targetWidth: 158, minWidth: 138, maxWidth: 182, gap: 8, preferredRows: 3, minColumns: 3, maxColumns: 4 },
+          phone: { targetWidth: 110, minWidth: 96, maxWidth: 126, gap: 6, preferredRows: 4, minColumns: 2, maxColumns: 2 }
         },
         3: {
           desktop: { targetWidth: 154, minWidth: 132, maxWidth: 178, gap: 10, preferredRows: 4, minColumns: 7, maxColumns: 9 },
@@ -12183,6 +12161,7 @@
       let grid3dFloatTime = 0;
       let controlsDotsEffect = null;
       let canvasModeBackdropEffect = null;
+      let viewLayoutResyncToken = 0;
 
       if (usePerformanceMode) {
         document.documentElement.classList.add('performance-mode');
@@ -12543,6 +12522,7 @@
         const pageRail = document.createElement('div');
         const pageLabel = document.createElement('div');
         const pageDots = document.createElement('div');
+        let pageProgressFill = null;
         const measureProbe = document.createElement('button');
         shell.className = 'canvas-mode__release-shell';
         rail.className = 'canvas-mode__release-rail';
@@ -12718,75 +12698,36 @@
         }
 
         function resetPageDotsOverflowLayout() {
-          pageDots.classList.remove('is-split');
+          pageDots.classList.remove('is-progress');
           root.classList.remove('is-page-dots-split');
           pageDots.style.removeProperty('--canvas-3d-page-dot-rows');
           root.style.removeProperty('--canvas-3d-page-dot-size');
           root.style.removeProperty('--canvas-3d-page-dot-gap');
           root.style.removeProperty('--canvas-3d-page-rail-gap');
           root.style.removeProperty('--canvas-3d-page-label-font-size');
+          pageDots.style.removeProperty('--canvas-3d-page-progress-fill');
+          if (pageProgressFill && pageProgressFill.parentNode === pageDots) {
+            pageDots.removeChild(pageProgressFill);
+          }
         }
 
         function updatePageDotsOverflowLayout() {
           resetPageDotsOverflowLayout();
-          if (!isActive || getReleaseCanvasViewportTier() !== 'phone') return;
-          const dotCount = pageDots.childElementCount || 0;
-          if (dotCount < 2) return;
-          const rootRect = root.getBoundingClientRect();
-          const railRect = rail.getBoundingClientRect();
-          const firstDot = pageDots.firstElementChild;
-          const dotRect = firstDot && firstDot.getBoundingClientRect ? firstDot.getBoundingClientRect() : null;
-          const pageRailRect = pageRail.getBoundingClientRect();
-          const labelRect = pageLabel.getBoundingClientRect();
-          const railStyle = window.getComputedStyle(pageRail);
-          const labelStyle = window.getComputedStyle(pageLabel);
-          const dotsStyle = window.getComputedStyle(pageDots);
-          const dotGap = Math.max(
-            0,
-            parseFloat(dotsStyle.rowGap || '') ||
-            parseFloat(dotsStyle.gap || '') ||
-            0
-          );
-          const railGap = Math.max(
-            0,
-            parseFloat(railStyle.rowGap || '') ||
-            parseFloat(railStyle.gap || '') ||
-            0
-          );
-          const dotSize = Math.max(
-            0,
-            dotRect ? dotRect.height : 0,
-            firstDot ? (parseFloat(window.getComputedStyle(firstDot).height || '') || 0) : 0
-          );
-          const labelFontSize = Math.max(0, parseFloat(labelStyle.fontSize || '') || 0);
-          const singleColumnDotsHeight = dotRect
-            ? dotCount * dotRect.height + Math.max(0, dotCount - 1) * dotGap
-            : 0;
-          const singleColumnRailHeight = labelRect.height + railGap + singleColumnDotsHeight;
-          const availableRailHeight = Math.max(
-            0,
-            rootRect.height - Math.max(0, pageRailRect.top - rootRect.top) - 4
-          );
-          const availableDotsHeight = Math.max(
-            0,
-            rootRect.height - Math.max(0, pageRailRect.top - rootRect.top) - labelRect.height - 8
-          );
-          const hasVerticalOverflow =
-            pageDots.scrollHeight > pageDots.clientHeight + 1 ||
-            railRect.bottom > rootRect.bottom + 1 ||
-            (singleColumnDotsHeight > 0 && singleColumnDotsHeight > availableDotsHeight + 1);
-          if (!hasVerticalOverflow) return;
-          const heightScale = singleColumnRailHeight > 0 ? Math.min(1, availableRailHeight / singleColumnRailHeight) : 1;
-          const dotStackScale = singleColumnDotsHeight > 0 ? Math.min(1, availableDotsHeight / singleColumnDotsHeight) : 1;
-          const scale = Math.max(0.52, Math.min(heightScale, dotStackScale, 1));
-          const nextDotSize = Math.max(6, dotSize * scale);
-          const nextDotGap = Math.max(3, dotGap * Math.min(scale, 0.9));
-          const nextRailGap = Math.max(4, railGap * Math.min(scale, 0.88));
-          const nextLabelFontSize = Math.max(6, labelFontSize * Math.min(scale, 0.92));
-          root.style.setProperty('--canvas-3d-page-dot-size', nextDotSize.toFixed(2) + 'px');
-          root.style.setProperty('--canvas-3d-page-dot-gap', nextDotGap.toFixed(2) + 'px');
-          root.style.setProperty('--canvas-3d-page-rail-gap', nextRailGap.toFixed(2) + 'px');
-          root.style.setProperty('--canvas-3d-page-label-font-size', nextLabelFontSize.toFixed(2) + 'px');
+          pageDots.classList.add('is-progress');
+          pageDots.setAttribute('role', 'progressbar');
+          pageDots.setAttribute('aria-valuemin', '1');
+          pageDots.setAttribute('aria-valuemax', String(totalPages));
+          pageDots.setAttribute('aria-valuenow', String(pageIndex + 1));
+          pageDots.setAttribute('aria-label', 'Release page progress');
+          if (!pageProgressFill) {
+            pageProgressFill = document.createElement('div');
+            pageProgressFill.className = 'canvas-mode__release-page-progress-fill';
+          }
+          if (pageProgressFill.parentNode !== pageDots) {
+            pageDots.appendChild(pageProgressFill);
+          }
+          const progress = totalPages > 1 ? pageIndex / (totalPages - 1) : 1;
+          pageDots.style.setProperty('--canvas-3d-page-progress-fill', (progress * 100).toFixed(2) + '%');
         }
 
         function schedulePageDotsOverflowLayout() {
@@ -13067,20 +13008,7 @@
           list.style.setProperty('--canvas-3d-card-column-gap', columnGap.toFixed(2) + 'px');
           list.style.setProperty('--canvas-3d-card-width', itemWidth.toFixed(2) + 'px');
           list.style.setProperty('--canvas-3d-card-height-offset', Math.max(0, itemHeight - itemWidth).toFixed(2) + 'px');
-          for (let i = 0; i < totalPages; i += 1) {
-            const dot = document.createElement('button');
-            dot.type = 'button';
-            dot.className = 'canvas-mode__release-page-dot';
-            dot.setAttribute('aria-label', 'Go to page ' + (i + 1));
-            dot.setAttribute('aria-pressed', i === pageIndex ? 'true' : 'false');
-            if (i === pageIndex) dot.classList.add('is-active');
-            dot.addEventListener('click', function () {
-              pageTransitionDirection = i >= pageIndex ? 1 : -1;
-              pageIndex = i;
-              renderPage(true);
-            });
-            pageDots.appendChild(dot);
-          }
+          updatePageDotsOverflowLayout();
           schedulePageDotsOverflowLayout();
         }
 
@@ -13196,10 +13124,7 @@
           if (!activeIndex) activeIndex = getReleaseCanvasPrimaryIndex();
           syncSelection(activeIndex);
           pageLabel.textContent = String(pageIndex + 1).padStart(2, '0') + ' / ' + String(totalPages).padStart(2, '0');
-          Array.from(pageDots.children).forEach(function (dot, dotIndex) {
-            dot.classList.toggle('is-active', dotIndex === pageIndex);
-            dot.setAttribute('aria-pressed', dotIndex === pageIndex ? 'true' : 'false');
-          });
+          updatePageDotsOverflowLayout();
           schedulePageDotsOverflowLayout();
           list.style.setProperty('--page-transition-direction', String(direction));
           list.style.opacity = '0';
@@ -13760,8 +13685,16 @@
         const iconMeta = getPlainReleaseLinkIconMeta(link, fallbackTextLabel);
         const textLabel = iconMeta.providerName === 'vk' ? 'Vkontakte' : fallbackTextLabel;
         anchor.textContent = '';
+        anchor.classList.add('plain-release-panel__ui-button');
         anchor.dataset.platform = iconMeta.providerName;
         anchor.style.setProperty('--plain-release-link-accent', iconMeta.meta.accent);
+        if (settings.compact) {
+          anchor.classList.add('is-icon-only');
+          anchor.setAttribute('aria-label', textLabel);
+          anchor.title = textLabel;
+          anchor.innerHTML = '<span class="plain-release-panel__button-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path fill="currentColor" d="' + iconMeta.meta.path + '"></path></svg></span>';
+          return;
+        }
 
         const icon = document.createElement('span');
         icon.className = 'plain-release-panel__button-icon';
@@ -13769,15 +13702,10 @@
         icon.innerHTML = '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path fill="currentColor" d="' + iconMeta.meta.path + '"></path></svg>';
 
         anchor.appendChild(icon);
-        if (!settings.compact) {
-          const label = document.createElement('span');
-          label.className = 'plain-release-panel__button-label';
-          label.textContent = textLabel;
-          anchor.appendChild(label);
-        } else {
-          anchor.setAttribute('aria-label', textLabel);
-          anchor.title = textLabel;
-        }
+        const label = document.createElement('span');
+        label.className = 'plain-release-panel__button-label';
+        label.textContent = textLabel;
+        anchor.appendChild(label);
       }
 
       function sortPlainReleaseLinks(links) {
@@ -13878,7 +13806,7 @@
           anchor.href = releaseLink.url;
           anchor.target = '_blank';
           anchor.rel = 'noreferrer';
-          decoratePlainReleaseLinkAnchor(anchor, releaseLink, releaseLink.label || 'Release');
+          decoratePlainReleaseLinkAnchor(anchor, releaseLink, releaseLink.label || 'Release', { compact: true });
           plainReleaseLinks.appendChild(anchor);
         }
       }
@@ -13996,7 +13924,7 @@
           anchor.href = socialLink.url;
           anchor.target = '_blank';
           anchor.rel = 'noreferrer';
-          decoratePlainReleaseLinkAnchor(anchor, socialLink, socialLink.label);
+          decoratePlainReleaseLinkAnchor(anchor, socialLink, socialLink.label, { compact: true });
           listItem.appendChild(anchor);
           plainReleaseSocials.appendChild(listItem);
         }
@@ -15263,14 +15191,7 @@
         let didDrag = false;
         let isRendering = false;
         let hoverNeedsRender = false;
-        let motionNeedsRender = false;
-        let motionTime = 0;
-        let motionTimer = 0;
         let lastViewport = null;
-        let prevRotX = rotX;
-        let prevRotY = rotY;
-        let spinFaceX = 0;
-        let spinFaceY = 0;
         let pinchActive = false;
         let pinchStartDistance = 0;
         let pinchStartZoom = zoom;
@@ -15523,8 +15444,6 @@
           field.innerHTML = '';
           tileStates.length = 0;
           hoverNeedsRender = true;
-          motionNeedsRender = true;
-          motionTime = 0;
           const viewport = getSceneViewportSize();
           const viewportWidth = viewport.width;
           const viewportHeight = viewport.height;
@@ -15569,10 +15488,6 @@
           rotY = 0;
           targetRotX = rotX;
           targetRotY = rotY;
-          prevRotX = rotX;
-          prevRotY = rotY;
-          spinFaceX = 0;
-          spinFaceY = 0;
           const preparedTiles = [];
 
           for (let i = 0; i < tilesForCanvas.length; i += 1) {
@@ -15692,31 +15607,34 @@
 
             if (!forceAll && !hoverActive && !t.isDynamic) continue;
 
-            let driftX = 0;
-            let driftY = 0;
-            let driftZ = 0;
-            if (t.isDynamic && !t.isPointerOver && t.hover < 0.01 && t.targetHover < 0.01) {
-              const p = motionTime * t.motionSpeed + t.motionPhase;
-              driftX = Math.cos(p) * t.motionAmpX;
-              driftY = Math.sin(p * 1.07) * t.motionAmpY;
-              driftZ = Math.sin(p * 0.75) * t.motionAmpZ;
-            }
-
             const hoverLift = t.hover * (tileSize * 0.34);
             const scale = 1 + t.hover * hoverScaleForCanvas(currentCanvasSizeFactor);
             const hoverRotX = 0;
             const hoverRotY = 0;
-            let worldX = t.baseX + driftX;
-            let worldY = t.baseY + driftY;
-            let worldZ = t.baseZ + driftZ + hoverLift;
-            if (t.el.classList.contains('is-pointer-pull')) {
+            let worldX = t.baseX;
+            let worldY = t.baseY;
+            let worldZ = t.baseZ + hoverLift;
+            const pullActive = t.isPointerOver && hasHoverPointer && !isDragging && !pinchActive;
+            if (pullActive) {
+              const rect = t.el.getBoundingClientRect();
+              const centerX = rect.left + rect.width * 0.5;
+              const centerY = rect.top + rect.height * 0.5;
+              const pullX = clamp(hoverPointerX - centerX, -tileSize * 0.95, tileSize * 0.95);
+              const pullY = clamp(hoverPointerY - centerY, -tileSize * 0.95, tileSize * 0.95);
+              const pullScale = clamp(0.12 + t.hover * 0.12, 0.12, 0.26);
+              worldX += pullX * pullScale;
+              worldY += pullY * pullScale;
+              if (!t.el.classList.contains('is-pointer-pull')) {
+                t.el.classList.add('is-pointer-pull');
+              }
+            } else if (t.el.classList.contains('is-pointer-pull')) {
               t.el.classList.remove('is-pointer-pull');
             }
             const horizontal = Math.max(0.0001, Math.sqrt(worldX * worldX + worldZ * worldZ));
             const sphereFaceY = Math.atan2(worldX, worldZ) * RAD_TO_DEG;
             const sphereFaceX = -Math.atan2(worldY, horizontal) * RAD_TO_DEG;
-            const totalRotX = sphereFaceX + spinFaceX + t.rotX + hoverRotX;
-            const totalRotY = sphereFaceY + spinFaceY + t.rotY + hoverRotY;
+            const totalRotX = sphereFaceX + t.rotX + hoverRotX;
+            const totalRotY = sphereFaceY + t.rotY + hoverRotY;
             const surfaceNormal = normalizeVector({ x: worldX, y: worldY, z: worldZ });
             const screenUp = { x: 0, y: -1, z: 0 };
             let desiredUp = projectVectorOnPlane(screenUp, surfaceNormal);
@@ -15814,24 +15732,8 @@
             rafId = 0;
             return;
           }
-          const spaceRect = space.getBoundingClientRect();
-          const hoverTiltActive = hasHoverPointer && !isDragging && !pinchActive && spaceRect.width > 0 && spaceRect.height > 0;
-          const hoverTiltX = hoverTiltActive
-            ? clamp((hoverPointerY - (spaceRect.top + spaceRect.height * 0.5)) / Math.max(1, spaceRect.height * 0.5), -1, 1) * 4.2
-            : 0;
-          const hoverTiltY = hoverTiltActive
-            ? clamp((hoverPointerX - (spaceRect.left + spaceRect.width * 0.5)) / Math.max(1, spaceRect.width * 0.5), -1, 1) * 5.6
-            : 0;
-          const desiredRotX = targetRotX - hoverTiltX;
-          const desiredRotY = targetRotY + hoverTiltY;
-          const rotDeltaX = normalizeAngle(desiredRotX - prevRotX);
-          const rotDeltaY = normalizeAngle(desiredRotY - prevRotY);
-          spinFaceX += (clamp(rotDeltaX * -3.4, -16, 16) - spinFaceX) * 0.24;
-          spinFaceY += (clamp(rotDeltaY * 3.6, -20, 20) - spinFaceY) * 0.24;
-          prevRotX = desiredRotX;
-          prevRotY = desiredRotY;
-          rotX = desiredRotX;
-          rotY = desiredRotY;
+          rotX = targetRotX;
+          rotY = targetRotY;
           const zoomDelta = targetZoom - zoom;
           if (Math.abs(zoomDelta) < 0.06) {
             zoom = targetZoom;
@@ -15840,18 +15742,14 @@
           }
 
           updateCamera();
-          const cameraAnimating =
-            Math.abs(targetZoom - zoom) > 0.1;
-          const spinAnimating =
-            Math.abs(spinFaceX) > 0.06 || Math.abs(spinFaceY) > 0.06;
+          const cameraAnimating = Math.abs(targetZoom - zoom) > 0.1;
           let hoverAnimating = false;
-          if (hoverNeedsRender || motionNeedsRender || cameraAnimating || spinAnimating) {
-            hoverAnimating = renderTiles(!!(cameraAnimating || spinAnimating));
+          if (hoverNeedsRender || cameraAnimating) {
+            hoverAnimating = renderTiles(cameraAnimating);
             hoverNeedsRender = hoverAnimating;
-            motionNeedsRender = false;
           }
 
-          if (hoverAnimating || cameraAnimating || spinAnimating) {
+          if (hoverAnimating || cameraAnimating) {
             rafId = window.requestAnimationFrame(frame);
             return;
           }
@@ -16002,14 +15900,12 @@
           updateCamera();
           renderTiles(true);
           hoverNeedsRender = false;
-          motionNeedsRender = false;
         }
 
         buildTiles();
         updateCamera();
         renderTiles(true);
         hoverNeedsRender = false;
-        motionNeedsRender = false;
         space.addEventListener('pointerdown', onPointerDown);
         space.addEventListener('pointermove', onSpacePointerMove);
         space.addEventListener('pointerleave', onSpacePointerLeave);
@@ -16036,7 +15932,6 @@
             updateCamera();
             renderTiles(true);
             hoverNeedsRender = false;
-            motionNeedsRender = false;
           },
           setPaused: function (nextPaused) {
             isPaused = !!nextPaused;
@@ -16047,13 +15942,11 @@
               return;
             }
             hoverNeedsRender = true;
-            motionNeedsRender = true;
             ensureRender();
           },
           destroy: function () {
             stopped = true;
             if (rafId) window.cancelAnimationFrame(rafId);
-            if (motionTimer) window.clearInterval(motionTimer);
             endDrag(activePointerId);
             space.removeEventListener('pointerdown', onPointerDown);
             space.removeEventListener('pointermove', onSpacePointerMove);
@@ -16088,7 +15981,8 @@
         const SIZE_TO_CARDS_MIN_GAP = { 4: 24, 3: 18, 2: 14, 1: 10 };
         const PERSPECTIVE = 1100;
         const CARDS_FRONT_FOCUS_DEPTH_FACTOR = 0.28;
-        const BUTTON_ZOOM_STEP = 650;
+        const enableCardsIdleMotion = false;
+        const BUTTON_ZOOM_STEP = 780;
         const PINCH_ZOOM_FACTOR = 4.8;
         const CLICKABLE_ALPHA_THRESHOLD = 0.02;
         let currentCardsSizeFactor = sizeFactor;
@@ -16271,8 +16165,8 @@
           if (bucket <= 0) return tileState.texture;
           if (!tileState.textureMipCache) tileState.textureMipCache = {};
           const targetSize = bucket === 1
-            ? Math.max(28, Math.min(96, Math.round(tileSize * 0.58)))
-            : Math.max(18, Math.min(56, Math.round(tileSize * 0.32)));
+            ? Math.max(18, Math.min(72, Math.round(tileSize * 0.42)))
+            : Math.max(10, Math.min(28, Math.round(tileSize * 0.18)));
           const cacheKey = String(targetSize);
           if (!tileState.textureMipCache[cacheKey]) {
             const mipCanvas = createTileMipCanvas(tileState.imageEl, targetSize);
@@ -16320,8 +16214,8 @@
           if (bucket <= 0) return tileState.texture;
           if (!tileState.textureMipCache) tileState.textureMipCache = {};
           const targetSize = bucket === 1
-            ? Math.max(28, Math.min(96, Math.round(tileSize * 0.58)))
-            : Math.max(18, Math.min(56, Math.round(tileSize * 0.32)));
+            ? Math.max(52, Math.min(144, Math.round(tileSize * 0.82)))
+            : Math.max(30, Math.min(84, Math.round(tileSize * 0.46)));
           const cacheKey = String(targetSize);
           if (!tileState.textureMipCache[cacheKey]) {
             const mipCanvas = createTileMipCanvas(tileState.imageEl, targetSize);
@@ -16369,8 +16263,8 @@
           if (bucket <= 0) return tileState.texture;
           if (!tileState.textureMipCache) tileState.textureMipCache = {};
           const targetSize = bucket === 1
-            ? Math.max(28, Math.min(96, Math.round(tileSize * 0.58)))
-            : Math.max(18, Math.min(56, Math.round(tileSize * 0.32)));
+            ? Math.max(52, Math.min(144, Math.round(tileSize * 0.82)))
+            : Math.max(30, Math.min(84, Math.round(tileSize * 0.46)));
           const cacheKey = String(targetSize);
           if (!tileState.textureMipCache[cacheKey]) {
             const mipCanvas = createTileMipCanvas(tileState.imageEl, targetSize);
@@ -16637,11 +16531,11 @@
           cloudSpreadX = clamp(viewportWidth * 2.3 * spreadFactor, 900, 3600);
           cloudSpreadY = clamp(viewportHeight * 1.95 * spreadFactor, 760, 2800);
           cloudSpreadZ = clamp(Math.sqrt(releaseCount) * 92 * spreadFactor, 980, 4200);
-          fadeStartSizePx = clamp(minViewport * 0.17, 120, 260);
-          fadeEndSizePx = clamp(minViewport * 0.26, fadeStartSizePx + 75, 390);
+          fadeStartSizePx = clamp(minViewport * 0.2, 140, 300);
+          fadeEndSizePx = clamp(minViewport * 0.32, fadeStartSizePx + 90, 460);
           zoomNearLimit = -Math.max(60, tileSize * 0.9);
           zoomFarLimit = -Math.max(9000, cloudSpreadZ * 2.2);
-          zoom = -clamp(cloudSpreadZ * 0.3, Math.abs(zoomNearLimit) + 40, Math.abs(zoomFarLimit) * 0.62);
+          zoom = zoomFarLimit;
           targetZoom = zoom;
           camX = 0;
           camY = 0;
@@ -16699,9 +16593,9 @@
               rotZ: (hash(i * 11.63 + 6) - 0.5) * 12,
               motionPhase: hash(i * 5.49 + 7) * Math.PI * 2,
               motionSpeed: 0.36 + hash(i * 8.77 + 8) * 0.54,
-              motionAmpX: enableSceneIdleMotion ? (3 + hash(i * 13.41 + 9) * 10) : 0,
-              motionAmpY: enableSceneIdleMotion ? (2 + hash(i * 15.23 + 10) * 8) : 0,
-              motionAmpZ: enableSceneIdleMotion ? (2 + hash(i * 21.19 + 11) * 10) : 0,
+              motionAmpX: enableCardsIdleMotion ? (3 + hash(i * 13.41 + 9) * 10) : 0,
+              motionAmpY: enableCardsIdleMotion ? (2 + hash(i * 15.23 + 10) * 8) : 0,
+              motionAmpZ: enableCardsIdleMotion ? (2 + hash(i * 21.19 + 11) * 10) : 0,
               hover: 0,
               targetHover: 0,
               depthRank: -1,
@@ -16771,16 +16665,16 @@
           const cosX = Math.cos(radX);
           const sinY = Math.sin(radY);
           const cosY = Math.cos(radY);
-          const performanceBlurScale = usePerformanceMode ? 0.35 : 1;
+          const performanceBlurScale = usePerformanceMode ? 0.72 : 1;
           const focusViewZ = -clamp(
             Math.abs(zoom) * CARDS_FRONT_FOCUS_DEPTH_FACTOR,
             tileSize * 0.5,
             cloudSpreadZ * 0.2
           );
-          const farBuffer = clamp(tileSize * 0.55, 36, 72);
+          const farBuffer = clamp(tileSize * 1.1, 80, 140);
           const farStartViewZ = focusViewZ - farBuffer;
-          const focusFarRange = clamp(cloudSpreadZ * 0.24 + tileSize * 0.7, 180, 640);
-          const farMaxBlur = clamp(tileSize * 0.2, 10, 30) * performanceBlurScale;
+          const focusFarRange = clamp(cloudSpreadZ * 0.74 + tileSize * 1.6, 620, 1900);
+          const farMaxBlur = clamp(tileSize * 0.28, 16, 32) * performanceBlurScale;
           for (let i = 0; i < tileStates.length; i += 1) {
             const t = tileStates[i];
             const hoverDelta = t.targetHover - t.hover;
@@ -16809,10 +16703,11 @@
               alpha = clamp(alpha, 0, 1);
             }
             const farProgress = clamp((farStartViewZ - viewZ) / focusFarRange, 0, 1);
-            let depthBlur = Math.pow(farProgress, 1.34) * farMaxBlur;
-            depthBlur *= 1 - t.hover * 0.86;
+            const farBlurProgress = clamp((farProgress - 0.58) / 0.42, 0, 1);
+            let depthBlur = Math.pow(farBlurProgress, 1.6) * farMaxBlur;
+            depthBlur *= 1 - t.hover * 0.88;
             depthBlur = clamp(depthBlur, 0, farMaxBlur);
-            alpha *= 1 - farProgress * 0.12;
+            alpha *= 1 - farProgress * 0.03;
             alpha = clamp(alpha, 0, 1);
             const shadowOpacity = clamp(0.22 - farProgress * 0.15 + t.hover * 0.12, 0.06, 0.28);
             const tileFilter =
@@ -16823,16 +16718,8 @@
               t.el.style.filter = tileFilter;
             }
             if (t.imageEl) {
-              const focusAmount = 1 - clamp(depthBlur / Math.max(1.5, farMaxBlur), 0, 1);
-              const imageScale = clamp(1 + depthBlur * 0.01 + t.hover * 0.018, 1, 1.08);
-              const imageBrightness = clamp(0.8 + focusAmount * 0.24 + t.hover * 0.06, 0.76, 1.14);
-              const imageSaturation = clamp(0.68 + focusAmount * 0.4 + t.hover * 0.08, 0.64, 1.22);
-              const imageContrast = clamp(0.88 + focusAmount * 0.18, 0.84, 1.16);
-              const depthImageFilter =
-                'saturate(' + imageSaturation.toFixed(3) + ') ' +
-                'brightness(' + imageBrightness.toFixed(3) + ') ' +
-                'contrast(' + imageContrast.toFixed(3) + ')';
-              const depthImageTransform = 'scale(' + imageScale.toFixed(3) + ')';
+              const depthImageFilter = 'none';
+              const depthImageTransform = 'scale(' + clamp(1 + t.hover * 0.018, 1, 1.03).toFixed(3) + ')';
               if (depthImageFilter !== t.depthImageFilter) {
                 t.depthImageFilter = depthImageFilter;
                 t.imageEl.style.filter = depthImageFilter;
@@ -17074,7 +16961,7 @@
         renderTiles(true);
         hoverNeedsRender = false;
         motionNeedsRender = false;
-        if (enableSceneIdleMotion) {
+        if (enableCardsIdleMotion) {
           motionTimer = window.setInterval(function () {
             if (stopped || isPaused) return;
             motionTime += 0.035;
@@ -17176,7 +17063,9 @@
         const SIZE_TO_CARDS_MIN_GAP = { 4: 24, 3: 18, 2: 14, 1: 10 };
         const PERSPECTIVE = 1100;
         const CARDS_FRONT_FOCUS_DEPTH_FACTOR = 0.28;
-        const BUTTON_ZOOM_STEP = 650;
+        const enableCardsIdleMotion = false;
+        const MAX_BLURRED_CARDS = usePerformanceMode ? 3 : 5;
+        const BUTTON_ZOOM_STEP = 900;
         const PINCH_ZOOM_FACTOR = 4.8;
         const CLICKABLE_ALPHA_THRESHOLD = 0.02;
         let currentCardsSizeFactor = sizeFactor;
@@ -17315,7 +17204,7 @@
           const rect = space.getBoundingClientRect();
           const nextWidth = Math.max(1, Math.round(rect.width || window.innerWidth || 1));
           const nextHeight = Math.max(1, Math.round(rect.height || window.innerHeight || 1));
-          const nextPixelRatio = Math.min(window.devicePixelRatio || 1, usePerformanceMode ? 1.25 : 2);
+          const nextPixelRatio = Math.min(window.devicePixelRatio || 1, usePerformanceMode ? 1 : 1.25);
           const pixelWidth = Math.max(1, Math.round(nextWidth * nextPixelRatio));
           const pixelHeight = Math.max(1, Math.round(nextHeight * nextPixelRatio));
           if (surface.width !== pixelWidth) surface.width = pixelWidth;
@@ -17356,8 +17245,8 @@
           if (bucket <= 0) return tileState.imageEl;
           if (!tileState.mipCache) tileState.mipCache = {};
           const targetSize = bucket === 1
-            ? Math.max(28, Math.min(96, Math.round(tileSize * 0.58)))
-            : Math.max(18, Math.min(56, Math.round(tileSize * 0.32)));
+            ? Math.max(64, Math.min(168, Math.round(tileSize * 0.96)))
+            : Math.max(42, Math.min(112, Math.round(tileSize * 0.64)));
           const cacheKey = String(targetSize);
           if (!tileState.mipCache[cacheKey]) {
             tileState.mipCache[cacheKey] = createTileMipCanvas(tileState.imageEl, targetSize) || tileState.imageEl;
@@ -17594,13 +17483,7 @@
           const p0 = quad[0];
           const p1 = quad[1];
           const p3 = quad[3];
-          const sourceBucket = tileState.hover > 0.015
-            ? 0
-            : tileState.farProgress > 0.7 || tileState.projectedSize < tileSize * 0.72
-              ? 2
-              : tileState.farProgress > 0.34
-                ? 1
-                : 0;
+          const sourceBucket = tileState.renderBucket || 0;
           const bitmap = getTileBitmapSource(tileState, sourceBucket);
           if (!bitmap) return;
 
@@ -17611,26 +17494,24 @@
           const transformE = p0.x * canvasPixelRatio;
           const transformF = p0.y * canvasPixelRatio;
           const shadowOpacity = clamp(0.24 - tileState.farProgress * 0.14 + tileState.hover * 0.12, 0.06, 0.28);
-          const shadowBlur = (6 + tileState.projectedSize * 0.07 + tileState.hover * 10) * canvasPixelRatio;
-          const shadowOffsetY = (6 + tileState.projectedSize * 0.025) * canvasPixelRatio;
+          const shadowBlur = tileState.renderBlur > 0.01
+            ? 0
+            : (4 + tileState.projectedSize * 0.035 + tileState.hover * 8) * canvasPixelRatio;
+          const shadowOffsetY = tileState.renderBlur > 0.01
+            ? 0
+            : (4 + tileState.projectedSize * 0.016) * canvasPixelRatio;
 
           surfaceContext.save();
           surfaceContext.setTransform(transformA, transformB, transformC, transformD, transformE, transformF);
           surfaceContext.globalAlpha = tileState.screenAlpha;
+          const depthBlur = tileState.renderBlur || 0;
+          surfaceContext.filter = depthBlur > 0.01 ? ('blur(' + depthBlur.toFixed(2) + 'px)') : 'none';
           surfaceContext.shadowColor = 'rgba(0, 0, 0, ' + shadowOpacity.toFixed(3) + ')';
           surfaceContext.shadowBlur = shadowBlur;
           surfaceContext.shadowOffsetX = 0;
           surfaceContext.shadowOffsetY = shadowOffsetY;
           surfaceContext.drawImage(bitmap, 0, 0, tileSize, tileSize);
-
-          if (tileState.farProgress > 0.001) {
-            surfaceContext.shadowColor = 'transparent';
-            surfaceContext.shadowBlur = 0;
-            surfaceContext.shadowOffsetY = 0;
-            surfaceContext.globalAlpha = Math.min(0.18, tileState.farProgress * 0.14) * tileState.screenAlpha;
-            surfaceContext.fillStyle = '#000';
-            surfaceContext.fillRect(0, 0, tileSize, tileSize);
-          }
+          surfaceContext.filter = 'none';
 
           if (tileState.hover > 0.001) {
             surfaceContext.globalAlpha = Math.min(0.12, tileState.hover * 0.1);
@@ -17662,11 +17543,11 @@
           cloudSpreadX = clamp(viewportWidth * 2.3 * spreadFactor, 900, 3600);
           cloudSpreadY = clamp(viewportHeight * 1.95 * spreadFactor, 760, 2800);
           cloudSpreadZ = clamp(Math.sqrt(releaseCount) * 92 * spreadFactor, 980, 4200);
-          fadeStartSizePx = clamp(minViewport * 0.17, 120, 260);
-          fadeEndSizePx = clamp(minViewport * 0.26, fadeStartSizePx + 75, 390);
+          fadeStartSizePx = clamp(minViewport * 0.2, 140, 300);
+          fadeEndSizePx = clamp(minViewport * 0.32, fadeStartSizePx + 90, 460);
           zoomNearLimit = -Math.max(60, tileSize * 0.9);
           zoomFarLimit = -Math.max(9000, cloudSpreadZ * 2.2);
-          zoom = -clamp(cloudSpreadZ * 0.3, Math.abs(zoomNearLimit) + 40, Math.abs(zoomFarLimit) * 0.62);
+          zoom = zoomFarLimit;
           targetZoom = zoom;
           camX = 0;
           camY = 0;
@@ -17706,9 +17587,9 @@
               rotZ: (hash(i * 11.63 + 6) - 0.5) * 12,
               motionPhase: hash(i * 5.49 + 7) * Math.PI * 2,
               motionSpeed: 0.36 + hash(i * 8.77 + 8) * 0.54,
-              motionAmpX: enableSceneIdleMotion ? (3 + hash(i * 13.41 + 9) * 10) : 0,
-              motionAmpY: enableSceneIdleMotion ? (2 + hash(i * 15.23 + 10) * 8) : 0,
-              motionAmpZ: enableSceneIdleMotion ? (2 + hash(i * 21.19 + 11) * 10) : 0,
+              motionAmpX: enableCardsIdleMotion ? (3 + hash(i * 13.41 + 9) * 10) : 0,
+              motionAmpY: enableCardsIdleMotion ? (2 + hash(i * 15.23 + 10) * 8) : 0,
+              motionAmpZ: enableCardsIdleMotion ? (2 + hash(i * 21.19 + 11) * 10) : 0,
               hover: 0,
               targetHover: 0,
               depthRank: -1,
@@ -17719,6 +17600,8 @@
               drawBounds: null,
               projectedSize: 0,
               farProgress: 0,
+              renderBlur: 0,
+              renderBucket: 0,
               mipCache: null
             };
             tileStates.push(tileState);
@@ -17840,8 +17723,22 @@
             return left.depthRank - right.depthRank;
           });
 
+          let blurredCards = 0;
           for (let i = 0; i < drawQueue.length; i += 1) {
-            drawTile(drawQueue[i]);
+            const tileState = drawQueue[i];
+            tileState.renderBlur = 0;
+            tileState.renderBucket = 0;
+            if (tileState.hover <= 0.015) {
+              if (tileState.farProgress > 0.985 && blurredCards < MAX_BLURRED_CARDS) {
+                const farBlurProgress = clamp((tileState.farProgress - 0.985) / 0.015, 0, 1);
+                tileState.renderBlur = clamp(Math.pow(farBlurProgress, 1.8) * 6, 0, 6);
+                tileState.renderBucket = tileState.renderBlur > 4.5 ? 2 : 1;
+                blurredCards += 1;
+              } else if (tileState.farProgress > 0.94) {
+                tileState.renderBucket = 1;
+              }
+            }
+            drawTile(tileState);
           }
 
           return hoverAnimating;
@@ -18046,7 +17943,7 @@
         renderTiles(true);
         hoverNeedsRender = false;
         motionNeedsRender = false;
-        if (enableSceneIdleMotion) {
+        if (enableCardsIdleMotion) {
           motionTimer = window.setInterval(function () {
             if (stopped || isPaused) return;
             motionTime += 0.035;
@@ -18307,8 +18204,8 @@
           if (bucket <= 0) return tileState.texture;
           if (!tileState.textureMipCache) tileState.textureMipCache = {};
           const targetSize = bucket === 1
-            ? Math.max(28, Math.min(96, Math.round(tileSize * 0.58)))
-            : Math.max(18, Math.min(56, Math.round(tileSize * 0.32)));
+            ? Math.max(22, Math.min(72, Math.round(tileSize * 0.38)))
+            : Math.max(10, Math.min(26, Math.round(tileSize * 0.14)));
           const cacheKey = String(targetSize);
           if (!tileState.textureMipCache[cacheKey]) {
             const mipCanvas = createTileMipCanvas(tileState.imageEl, targetSize);
@@ -18333,8 +18230,11 @@
         }
 
         function cameraDistanceForZoom(nextZoom) {
-          const baseDistance = 2600 + Math.max(0, Math.abs(nextZoom) - 1200) * 0.82;
-          return clamp(baseDistance, 1200, 8200);
+          const zoomRange = Math.max(1, zoomNearLimit - zoomFarLimit);
+          const zoomProgress = clamp((nextZoom - zoomFarLimit) / zoomRange, 0, 1);
+          const maxDistance = Math.max(2600, cloudSpreadZ * 2.9);
+          const minDistance = Math.max(120, tileSize * 0.92);
+          return maxDistance - (maxDistance - minDistance) * zoomProgress;
         }
 
         function startPinchGesture() {
@@ -18429,11 +18329,11 @@
           cloudSpreadX = clamp(viewportWidth * 2.3 * spreadFactor, 900, 3600);
           cloudSpreadY = clamp(viewportHeight * 1.95 * spreadFactor, 760, 2800);
           cloudSpreadZ = clamp(Math.sqrt(releaseCount) * 92 * spreadFactor, 980, 4200);
-          fadeStartSizePx = clamp(minViewport * 0.17, 120, 260);
-          fadeEndSizePx = clamp(minViewport * 0.26, fadeStartSizePx + 75, 390);
-          zoomNearLimit = Math.max(tileSize * 1.2, cloudSpreadZ * 0.76);
-          zoomFarLimit = -Math.max(6200, cloudSpreadZ * 1.7);
-          zoom = -clamp(cloudSpreadZ * 0.44, Math.abs(zoomNearLimit) + 20, Math.abs(zoomFarLimit) * 0.75);
+          fadeStartSizePx = clamp(minViewport * 0.2, 140, 300);
+          fadeEndSizePx = clamp(minViewport * 0.32, fadeStartSizePx + 90, 460);
+          zoomNearLimit = Math.max(tileSize * 4.4, cloudSpreadZ * 1.28);
+          zoomFarLimit = -Math.max(18000, cloudSpreadZ * 4.2);
+          zoom = zoomFarLimit;
           targetZoom = zoom;
           camX = 0;
           camY = 0;
@@ -18474,10 +18374,10 @@
               rotY: (hash(i * 9.91 + 5) - 0.5) * 26,
               rotZ: (hash(i * 11.63 + 6) - 0.5) * 12,
               motionPhase: hash(i * 5.49 + 7) * Math.PI * 2,
-              motionSpeed: 0.36 + hash(i * 8.77 + 8) * 0.54,
-              motionAmpX: enableSceneIdleMotion ? (3 + hash(i * 13.41 + 9) * 10) : 0,
-              motionAmpY: enableSceneIdleMotion ? (2 + hash(i * 15.23 + 10) * 8) : 0,
-              motionAmpZ: enableSceneIdleMotion ? (2 + hash(i * 21.19 + 11) * 10) : 0,
+              motionSpeed: 0.2 + hash(i * 8.77 + 8) * 0.24,
+              motionAmpX: enableSceneIdleMotion ? (7 + hash(i * 13.41 + 9) * 14) : 0,
+              motionAmpY: enableSceneIdleMotion ? (5 + hash(i * 15.23 + 10) * 11) : 0,
+              motionAmpZ: enableSceneIdleMotion ? (8 + hash(i * 21.19 + 11) * 18) : 0,
               texture: null,
               textureBucket: -1,
               textureMipCache: null
@@ -18589,7 +18489,7 @@
           }
         }
 
-        function updateProjectedBounds(tileState) {
+        function updateProjectedBounds(tileState, rect) {
           if (!tileState || !tileState.mesh) return null;
           const bounds = tileState.projectedBounds || { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
           const halfSize = Math.max(1, tileSize * (1 + tileState.hover * 0.22) * 0.5);
@@ -18602,11 +18502,11 @@
           let right = -Infinity;
           let top = Infinity;
           let bottom = -Infinity;
-          const rect = renderer.domElement.getBoundingClientRect();
+          const viewRect = rect || renderer.domElement.getBoundingClientRect();
           for (let i = 0; i < points.length; i += 1) {
             const point = points[i].clone().applyMatrix4(tileState.mesh.matrixWorld).project(camera);
-            const screenX = rect.left + ((point.x + 1) * 0.5 * rect.width);
-            const screenY = rect.top + ((1 - point.y) * 0.5 * rect.height);
+            const screenX = viewRect.left + ((point.x + 1) * 0.5 * viewRect.width);
+            const screenY = viewRect.top + ((1 - point.y) * 0.5 * viewRect.height);
             if (screenX < left) left = screenX;
             if (screenX > right) right = screenX;
             if (screenY < top) top = screenY;
@@ -18728,8 +18628,9 @@
           );
           const farBuffer = clamp(tileSize * 0.8, 48, 92);
           const farStartViewZ = focusViewZ - farBuffer;
-          const focusFarRange = clamp(cloudSpreadZ * 0.32 + tileSize * 0.95, 240, 820);
+          const focusFarRange = clamp(cloudSpreadZ * 0.45 + tileSize * 1.4, 360, 1500);
           const maxDistance = Math.max(1, camera.position.z);
+          const rendererRect = renderer.domElement.getBoundingClientRect();
           scene.updateMatrixWorld(true);
 
           for (let i = 0; i < tileStates.length; i += 1) {
@@ -18759,9 +18660,9 @@
             t.mesh.scale.setScalar(tileSize * scale);
             const nextTextureBucket = t.hover > 0.015
               ? 0
-              : t.farProgress > 0.55 || t.projectedSize < tileSize * 0.9
+              : t.farProgress > 0.44 || t.projectedSize < tileSize * 1.18
                 ? 2
-                : t.farProgress > 0.22
+                : t.farProgress > 0.18 || t.projectedSize < tileSize * 1.82
                   ? 1
                   : 0;
             if (nextTextureBucket !== t.textureBucket) {
@@ -18799,7 +18700,7 @@
               t.mesh.visible = true;
             }
             t.depthRank = Math.round((viewZ + maxDistance + 4000) * 1000) + i;
-            updateProjectedBounds(t);
+            updateProjectedBounds(t, rendererRect);
           }
           renderer.render(scene, camera);
           return hoverAnimating;
@@ -18890,7 +18791,7 @@
           targetCamX = 0;
           targetCamY = 0;
           targetRotY += dx * 0.045;
-          targetRotX = clamp(targetRotX - dy * 0.04, -40, 40);
+          targetRotX = clamp(targetRotX + dy * 0.04, -40, 40);
           startX = event.clientX;
           startY = event.clientY;
           ensureRender();
@@ -18953,7 +18854,7 @@
           event.preventDefault();
           const wheelUnit = event.deltaMode === 1 ? 16 : (event.deltaMode === 2 ? window.innerHeight : 1);
           const wheelDelta = event.deltaY * wheelUnit;
-          targetZoom = clamp(targetZoom - wheelDelta * 2.2, zoomFarLimit, zoomNearLimit);
+          targetZoom = clamp(targetZoom - wheelDelta * 3.6, zoomFarLimit, zoomNearLimit);
           ensureRender();
         }
 
@@ -18993,7 +18894,7 @@
           const nextViewport = getSceneViewportSize();
           const nextWidth = Math.max(1, Math.round(nextViewport.width || 1));
           const nextHeight = Math.max(1, Math.round(nextViewport.height || 1));
-          const dpr = Math.min(window.devicePixelRatio || 1, usePerformanceMode ? 1.25 : 2);
+          const dpr = Math.min(window.devicePixelRatio || 1, usePerformanceMode ? 1.25 : 1.5);
           const pixelWidth = Math.max(1, Math.round(nextWidth * dpr));
           const pixelHeight = Math.max(1, Math.round(nextHeight * dpr));
           if (renderer.domElement.width !== pixelWidth) renderer.domElement.width = pixelWidth;
@@ -19051,10 +18952,10 @@
         if (enableSceneIdleMotion) {
           motionTimer = window.setInterval(function () {
             if (stopped || isPaused) return;
-            motionTime += 0.035;
+            motionTime += 0.045;
             motionNeedsRender = true;
             ensureRender();
-          }, 70);
+          }, 60);
         }
         space.addEventListener('pointerdown', onPointerDown);
         space.addEventListener('pointermove', onSpacePointerMove);
@@ -19069,11 +18970,11 @@
         return {
           resize: resize,
           zoomIn: function () {
-            targetZoom = clamp(targetZoom + BUTTON_ZOOM_STEP, zoomFarLimit, zoomNearLimit);
+            targetZoom = clamp(targetZoom + BUTTON_ZOOM_STEP * 1.1, zoomFarLimit, zoomNearLimit);
             ensureRender();
           },
           zoomOut: function () {
-            targetZoom = clamp(targetZoom - BUTTON_ZOOM_STEP, zoomFarLimit, zoomNearLimit);
+            targetZoom = clamp(targetZoom - BUTTON_ZOOM_STEP * 1.1, zoomFarLimit, zoomNearLimit);
             ensureRender();
           },
           setSizeFactor: function (nextSizeFactor) {
@@ -19101,7 +19002,7 @@
       }
 
       function createSceneByMode(nextMode) {
-        if (nextMode === 'cards') return createCardsSceneWebGL();
+        if (nextMode === 'cards') return createCardsSceneWebGL() || createCardsSceneDomLegacy();
         return createSphereScene();
       }
 
@@ -19280,7 +19181,7 @@
         const minTile = sizeFactor === 1 ? X1_TILE_SIZE : Math.max(48, Math.floor(BASE_MIN_TILE * effectiveFactor));
         let cols = Math.max(1, Math.ceil(viewportWidth / minTile));
         let cellSize = Math.max(1, viewportWidth / cols);
-        const tileGap = sizeFactor === 1 ? 2 : sizeFactor === 4 ? 4 : 3;
+        const tileGap = sizeFactor === 4 ? 4 : sizeFactor === 2 ? 3 : 2;
         let rows = Math.ceil(orderedTiles.length / cols);
 
         updateReleasesLayoutStyles(cols, rows, cellSize, tileGap);
@@ -19366,9 +19267,35 @@
         iconEl.style.setProperty('--shuffle-icon-spin', (nextTurns * 360) + 'deg');
       }
 
+      function resyncCurrentViewLayout(expectedMode, expectedSizeFactor) {
+        const token = ++viewLayoutResyncToken;
+        window.requestAnimationFrame(function () {
+          window.requestAnimationFrame(function () {
+            if (token !== viewLayoutResyncToken) return;
+            if (viewMode !== expectedMode) return;
+            if (sizeFactor !== expectedSizeFactor) return;
+            if (viewMode === '3d' && releaseCanvasScene && typeof releaseCanvasScene.setSizeFactor === 'function') {
+              releaseCanvasScene.setSizeFactor(sizeFactor);
+              if (typeof releaseCanvasScene.resize === 'function') {
+                releaseCanvasScene.resize();
+              }
+              return;
+            }
+            if (viewMode === 'plain') {
+              renderOrderedGrid();
+              return;
+            }
+            if (floatingScene && typeof floatingScene.setSizeFactor === 'function') {
+              floatingScene.setSizeFactor(sizeFactor);
+            }
+          });
+        });
+      }
+
       function setViewMode(nextMode, triggerButton) {
         if (viewMode === nextMode) return;
         suppressButtonHoverFill(triggerButton);
+        const nextSizeFactor = sizeFactor;
         compactSection = 'view';
         clothReleaseAutoOpenToken += 1;
         if (nextMode !== 'plain') closePlainReleasePanel();
@@ -19396,9 +19323,11 @@
         }
         if (isCanvasMode) {
           enterCanvasMode(viewMode);
+          resyncCurrentViewLayout(nextMode, nextSizeFactor);
           return;
         }
         renderOrderedGrid();
+        resyncCurrentViewLayout(nextMode, nextSizeFactor);
       }
 
       if (typeShuffleBtn) {
@@ -19445,11 +19374,13 @@
           if (viewMode === '3d' && releaseCanvasScene && typeof releaseCanvasScene.setSizeFactor === 'function') {
             releaseCanvasScene.setSizeFactor(sizeFactor);
           }
+          resyncCurrentViewLayout(viewMode, sizeFactor);
           return;
         }
         if (floatingScene && typeof floatingScene.setSizeFactor === 'function') {
           floatingScene.setSizeFactor(sizeFactor);
         }
+        resyncCurrentViewLayout(viewMode, sizeFactor);
       }
 
       if (sizeX4Btn) sizeX4Btn.addEventListener('click', function () { setSize(4, sizeX4Btn); });
