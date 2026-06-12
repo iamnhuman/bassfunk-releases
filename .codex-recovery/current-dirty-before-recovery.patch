@@ -1,0 +1,464 @@
+diff --git a/index.html b/index.html
+index 2215a40..04b910a 100644
+--- a/index.html
++++ b/index.html
+@@ -1225,25 +1225,67 @@
+       object-fit: cover;
+       transition: filter 220ms ease, transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease;
+     }
+-    .releases a.is-release-source-hidden {
++    body.is-view-plain .releases a.is-release-source-hidden {
+       opacity: 1;
+-      --release-base-scale: 1;
++      z-index: 18;
++      overflow: visible;
++      --release-base-scale: 1.035;
+       --release-reactive-scale: 1;
+       --release-reactive-x: 0px;
+       --release-reactive-y: 0px;
+-      --release-reactive-z: 0px;
++      --release-reactive-z: 16px;
+       --release-reactive-rot-x: 0deg;
+       --release-reactive-rot-y: 0deg;
++      animation: selected-release-float 2.8s ease-in-out infinite;
++      filter:
++        drop-shadow(0 16px 16px rgba(0, 0, 0, 0.42))
++        drop-shadow(0 30px 34px rgba(0, 0, 0, 0.34))
++        drop-shadow(0 0 26px rgba(255, 255, 255, 0.16));
+     }
+     .canvas-tile.is-release-source-hidden {
+       opacity: 1;
+       transform: none;
+     }
+-    .releases a.is-release-source-hidden img,
++    body.is-view-plain .releases a.is-release-source-hidden img,
+     .canvas-tile.is-release-source-hidden img {
+-      filter: blur(6px) contrast(1.2) brightness(1.4);
+-      transform: scale(1.08);
+-      opacity: 0.88;
++      filter: saturate(1.1) contrast(1.04) brightness(1.08);
++      transform: scale(1.035);
++      opacity: 1;
++    }
++    body.is-view-plain .releases a.is-release-source-hidden::before {
++      opacity: 1;
++      transform: translate3d(0, 9px, 0) scale(1.22);
++      background:
++        radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.54) 0%, rgba(0, 0, 0, 0.34) 42%, transparent 74%);
++      filter: blur(14px);
++    }
++    body.is-view-plain .releases a.is-release-source-hidden::after {
++      content: "" !important;
++      display: block !important;
++      z-index: 2;
++      opacity: 1;
++      border-radius: inherit;
++      box-shadow:
++        inset 0 0 0 1px rgba(255, 255, 255, 0.44),
++        0 0 20px rgba(255, 255, 255, 0.22),
++        0 0 44px rgba(108, 174, 255, 0.18);
++    }
++    @keyframes selected-release-float {
++      0%,
++      100% {
++        transform:
++          translate3d(var(--plain-hover-shift-x), calc(var(--plain-hover-shift-y) - 5px), var(--plain-hover-lift-z))
++          rotateX(var(--plain-hover-rot-x))
++          rotateY(var(--plain-hover-rot-y))
++          scale(1.035);
++      }
++      50% {
++        transform:
++          translate3d(var(--plain-hover-shift-x), calc(var(--plain-hover-shift-y) - 13px), var(--plain-hover-lift-z))
++          rotateX(var(--plain-hover-rot-x))
++          rotateY(var(--plain-hover-rot-y))
++          scale(1.045);
++      }
+     }
+     .releases.has-cloth-release-focus a:not(.is-cloth-release-active) img {
+       filter: saturate(0.82) brightness(0.72);
+@@ -2176,7 +2218,7 @@
+       --canvas-3d-page-dot-size: 10px;
+       --canvas-3d-page-dot-gap: 10px;
+       --canvas-3d-page-progress-width: 10px;
+-      --canvas-3d-page-progress-height: clamp(120px, 18vh, 220px);
++      --canvas-3d-page-progress-height: calc(100vh - var(--controls-h, 50px) - 112px);
+       display: grid;
+       grid-template-columns: 34px minmax(0, 1fr);
+       grid-template-areas: "rail shell";
+@@ -2240,6 +2282,7 @@
+       justify-items: start;
+       gap: var(--canvas-3d-page-rail-gap);
+       min-height: 0;
++      height: 100%;
+       padding-top: 4px;
+     }
+     .canvas-mode__release-page-label {
+@@ -2274,7 +2317,9 @@
+       display: block;
+       width: var(--canvas-3d-page-progress-width);
+       height: var(--canvas-3d-page-progress-height);
+-      margin-top: 16px;
++      min-height: 0;
++      align-self: stretch;
++      margin-top: 0;
+       margin-left: 10px;
+       border-radius: 999px;
+       background: rgba(255, 255, 255, 0.08);
+@@ -2287,8 +2332,9 @@
+       position: absolute;
+       left: 0;
+       right: 0;
+-      bottom: 0;
+-      height: var(--canvas-3d-page-progress-fill, 0%);
++      top: var(--canvas-3d-page-progress-thumb-top, 0%);
++      height: var(--canvas-3d-page-progress-thumb-height, 36px);
++      min-height: 34px;
+       border-radius: inherit;
+       background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(185, 208, 255, 0.34));
+       box-shadow:
+@@ -2988,16 +3034,16 @@
+         --canvas-3d-page-dot-size: 9px;
+         --canvas-3d-page-dot-gap: 8px;
+         --canvas-3d-page-progress-width: 10px;
+-        --canvas-3d-page-progress-height: clamp(100px, 16vh, 160px);
++        --canvas-3d-page-progress-height: calc(100vh - var(--controls-h, 50px) - 92px);
+         padding: 8px 8px 10px 8px;
+       }
+-      .canvas-mode__release-page-dots.is-progress {
+-        margin-top: 12px;
+-        margin-left: 11px;
+-      }
+       .canvas-mode__release-page-rail {
+         padding-top: 2px;
+       }
++      .canvas-mode__release-page-dots.is-progress {
++        margin-top: 0;
++        margin-left: 11px;
++      }
+       .cloth-release-panel {
+         --cloth-release-frame-width: min(100%, 154px);
+         --cloth-release-frame-height: calc(var(--cloth-release-frame-width) * 2.19);
+@@ -3313,9 +3359,8 @@
+ 	      <span class="control-label">View</span>
+ 	      <div class="control-pill" role="radiogroup" aria-label="View">
+ 	        <button type="button" id="viewPlainBtn" class="is-active"><span>Plain</span></button>
+-	        <button type="button" id="view3dBtn"><span>3D</span></button>
+-	        <button type="button" id="viewCardsBtn"><span>Cards</span></button>
+-	        <button type="button" id="viewSphereBtn"><span>Sphere</span></button>
++	        <button type="button" id="view3dBtn"><span>Player</span></button>
++	        <button type="button" id="viewWaveBtn"><span>Wave</span></button>
+ 	      </div>
+ 	    </div>
+ 	    <div class="control-cluster type-cluster" data-section="type">
+@@ -3850,6 +3895,7 @@
+   </div>
+   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+   <script src="./scripts/vendor/three.min.js"></script>
++  <script type="module" src="./scripts/sileo-hover.bundle.js?v=20260523a"></script>
+   <script type="module">
+     import {
+       getAssignedAudioMap,
+@@ -3869,8 +3915,7 @@
+       const typeNormalBtn = document.getElementById('typeNormalBtn');
+       const viewPlainBtn = document.getElementById('viewPlainBtn');
+       const view3dBtn = document.getElementById('view3dBtn');
+-      const viewCardsBtn = document.getElementById('viewCardsBtn');
+-      const viewSphereBtn = document.getElementById('viewSphereBtn');
++      const viewWaveBtn = document.getElementById('viewWaveBtn');
+       const sizeX4Btn = document.getElementById('sizeX4Btn');
+       const sizeX3Btn = document.getElementById('sizeX3Btn');
+       const sizeX2Btn = document.getElementById('sizeX2Btn');
+@@ -12140,6 +12185,7 @@
+       let pageLoaderHidden = !pageLoader;
+       let introScene = null;
+       let activePlainReleaseIndex = '';
++      let activeSileoReleaseIndex = '';
+       let activePlainReleaseSourceTile = null;
+       let activeClothReleaseSourceTile = null;
+       let plainReleaseAnimationToken = 0;
+@@ -12340,6 +12386,10 @@
+         return viewMode === 'sphere';
+       }
+ 
++      function isFloatingCanvasView(nextMode) {
++        return nextMode === 'wave';
++      }
++
+       function get3dGridTileMotionState(tile) {
+         if (!tile) return null;
+         if (!tile._grid3dMotionState) {
+@@ -12494,7 +12544,7 @@
+           }
+           return;
+         }
+-        if (viewMode === 'sphere' || viewMode === 'cards') {
++        if (isFloatingCanvasView(viewMode)) {
+           if (canvasModeBackdropEffect) canvasModeBackdropEffect.start();
+           return;
+         }
+@@ -12522,7 +12572,6 @@
+         const pageRail = document.createElement('div');
+         const pageLabel = document.createElement('div');
+         const pageDots = document.createElement('div');
+-        let pageProgressFill = null;
+         const measureProbe = document.createElement('button');
+         shell.className = 'canvas-mode__release-shell';
+         rail.className = 'canvas-mode__release-rail';
+@@ -12567,6 +12616,7 @@
+         let currentSizeFactor = sizeFactor;
+         const itemHeightCache = new Map();
+         let pageDotsOverflowRafId = 0;
++        let pageProgressFill = null;
+         function getLayoutConfig(viewportWidth, layoutHeight) {
+           const width = Math.max(220, Math.floor(viewportWidth || document.documentElement.clientWidth || window.innerWidth || 0));
+           return getReleaseCanvasLayoutPreset(currentSizeFactor || 3, width, layoutHeight || (listViewport ? listViewport.clientHeight : 0));
+@@ -12699,6 +12749,11 @@
+ 
+         function resetPageDotsOverflowLayout() {
+           pageDots.classList.remove('is-progress');
++          pageDots.removeAttribute('role');
++          pageDots.removeAttribute('aria-valuemin');
++          pageDots.removeAttribute('aria-valuemax');
++          pageDots.removeAttribute('aria-valuenow');
++          pageDots.removeAttribute('aria-label');
+           root.classList.remove('is-page-dots-split');
+           pageDots.style.removeProperty('--canvas-3d-page-dot-rows');
+           root.style.removeProperty('--canvas-3d-page-dot-size');
+@@ -12706,6 +12761,8 @@
+           root.style.removeProperty('--canvas-3d-page-rail-gap');
+           root.style.removeProperty('--canvas-3d-page-label-font-size');
+           pageDots.style.removeProperty('--canvas-3d-page-progress-fill');
++          pageDots.style.removeProperty('--canvas-3d-page-progress-thumb-height');
++          pageDots.style.removeProperty('--canvas-3d-page-progress-thumb-top');
+           if (pageProgressFill && pageProgressFill.parentNode === pageDots) {
+             pageDots.removeChild(pageProgressFill);
+           }
+@@ -12728,6 +12785,10 @@
+           }
+           const progress = totalPages > 1 ? pageIndex / (totalPages - 1) : 1;
+           pageDots.style.setProperty('--canvas-3d-page-progress-fill', (progress * 100).toFixed(2) + '%');
++          const thumbPercent = totalPages > 1 ? Math.max(7, Math.min(34, 100 / totalPages)) : 100;
++          const thumbTop = totalPages > 1 ? progress * (100 - thumbPercent) : 0;
++          pageDots.style.setProperty('--canvas-3d-page-progress-thumb-height', thumbPercent.toFixed(2) + '%');
++          pageDots.style.setProperty('--canvas-3d-page-progress-thumb-top', thumbTop.toFixed(2) + '%');
+         }
+ 
+         function schedulePageDotsOverflowLayout() {
+@@ -13909,6 +13970,59 @@
+         return sortPlainReleaseLinks(links);
+       }
+ 
++      function buildSileoReleaseCardPayload(index, sourceTile) {
++        const resolvedIndex = resolvePlainReleaseIndex(index, sourceTile);
++        const resolvedTile = sourceTile || getPlainReleaseTileByIndex(resolvedIndex);
++        const detail = getPlainReleaseDetail(resolvedIndex, resolvedTile);
++        if (!detail) return null;
++        const sourceImage = resolvedTile ? resolvedTile.querySelector('img') : null;
++        const artworkUrl = sourceImage
++          ? normalizePlainReleaseAssetUrl(sourceImage.currentSrc || sourceImage.src || (sourceImage.getAttribute ? (sourceImage.getAttribute('src') || '') : ''))
++          : '';
++        return {
++          index: resolvedIndex,
++          artistName: detail.artistName || '',
++          releaseTitle: detail.releaseTitle || '',
++          artworkUrl: artworkUrl,
++          releaseLinks: buildReleaseLinksForPanel(detail),
++          artistLinks: buildPlainReleaseArtistLinks(detail),
++          canGoPrev: !!getPlainReleaseIndexOffset(resolvedIndex, -1),
++          canGoNext: !!getPlainReleaseIndexOffset(resolvedIndex, 1),
++          onClose: function () {
++            activeSileoReleaseIndex = '';
++            clearPlainReleaseSourceTile();
++            if (window.BassfunkSileoHover && typeof window.BassfunkSileoHover.close === 'function') {
++              window.BassfunkSileoHover.close();
++            }
++          },
++          onPrev: function () {
++            navigateSileoReleaseCard(-1);
++          },
++          onNext: function () {
++            navigateSileoReleaseCard(1);
++          }
++        };
++      }
++
++      function openSileoReleaseCard(index, sourceTile) {
++        const payload = buildSileoReleaseCardPayload(index, sourceTile);
++        if (!payload) return;
++        activeSileoReleaseIndex = payload.index;
++        const resolvedTile = sourceTile || getPlainReleaseTileByIndex(payload.index);
++        setPlainReleaseSourceTile(resolvedTile);
++        if (window.BassfunkSileoHover && typeof window.BassfunkSileoHover.open === 'function') {
++          window.BassfunkSileoHover.open(payload);
++        }
++      }
++
++      function navigateSileoReleaseCard(offset) {
++        if (!activeSileoReleaseIndex) return;
++        const nextIndex = getPlainReleaseIndexOffset(activeSileoReleaseIndex, offset);
++        if (!nextIndex) return;
++        const nextTile = getPlainReleaseTileByIndex(nextIndex);
++        openSileoReleaseCard(nextIndex, nextTile);
++      }
++
+       function renderPlainReleaseSocials(detail) {
+         if (!plainReleaseSocials) return;
+         plainReleaseSocials.textContent = '';
+@@ -14633,7 +14747,7 @@
+           openClothReleasePanel(tileIndex, tile);
+           return;
+         }
+-        openPlainReleasePanel(tileIndex, tile);
++        openSileoReleaseCard(tileIndex, tile);
+       });
+ 
+       releases.addEventListener('pointermove', function (event) {
+@@ -14834,7 +14948,7 @@
+         window.requestAnimationFrame(function () {
+           window.requestAnimationFrame(function () {
+             refreshControlsLayout();
+-            if (viewMode === 'sphere' || viewMode === 'cards') {
++            if (isFloatingCanvasView(viewMode)) {
+               if (floatingScene) floatingScene.resize();
+               return;
+             }
+@@ -17063,7 +17177,7 @@
+         const SIZE_TO_CARDS_MIN_GAP = { 4: 24, 3: 18, 2: 14, 1: 10 };
+         const PERSPECTIVE = 1100;
+         const CARDS_FRONT_FOCUS_DEPTH_FACTOR = 0.28;
+-        const enableCardsIdleMotion = false;
++        const enableCardsIdleMotion = true;
+         const MAX_BLURRED_CARDS = usePerformanceMode ? 3 : 5;
+         const BUTTON_ZOOM_STEP = 900;
+         const PINCH_ZOOM_FACTOR = 4.8;
+@@ -17543,11 +17657,11 @@
+           cloudSpreadX = clamp(viewportWidth * 2.3 * spreadFactor, 900, 3600);
+           cloudSpreadY = clamp(viewportHeight * 1.95 * spreadFactor, 760, 2800);
+           cloudSpreadZ = clamp(Math.sqrt(releaseCount) * 92 * spreadFactor, 980, 4200);
+-          fadeStartSizePx = clamp(minViewport * 0.2, 140, 300);
+-          fadeEndSizePx = clamp(minViewport * 0.32, fadeStartSizePx + 90, 460);
++          fadeStartSizePx = clamp(minViewport * 0.17, 120, 260);
++          fadeEndSizePx = clamp(minViewport * 0.26, fadeStartSizePx + 75, 390);
+           zoomNearLimit = -Math.max(60, tileSize * 0.9);
+           zoomFarLimit = -Math.max(9000, cloudSpreadZ * 2.2);
+-          zoom = zoomFarLimit;
++          zoom = -clamp(cloudSpreadZ * 0.3, Math.abs(zoomNearLimit) + 40, Math.abs(zoomFarLimit) * 0.62);
+           targetZoom = zoom;
+           camX = 0;
+           camY = 0;
+@@ -18015,6 +18129,7 @@
+       function createCardsSceneWebGL() {
+         if (!canvasMode || typeof THREE === 'undefined') return null;
+         const tilesForCards = sampleTilesForCanvas();
++        const enableCardsWaveMotion = true;
+         const space = document.createElement('div');
+         const panelSourceProxy = document.createElement('a');
+         const panelSourceImage = document.createElement('img');
+@@ -18333,7 +18448,7 @@
+           fadeEndSizePx = clamp(minViewport * 0.32, fadeStartSizePx + 90, 460);
+           zoomNearLimit = Math.max(tileSize * 4.4, cloudSpreadZ * 1.28);
+           zoomFarLimit = -Math.max(18000, cloudSpreadZ * 4.2);
+-          zoom = zoomFarLimit;
++          zoom = -clamp(cloudSpreadZ * 0.42, Math.abs(zoomNearLimit) + 240, Math.abs(zoomFarLimit) * 0.52);
+           targetZoom = zoom;
+           camX = 0;
+           camY = 0;
+@@ -18375,9 +18490,9 @@
+               rotZ: (hash(i * 11.63 + 6) - 0.5) * 12,
+               motionPhase: hash(i * 5.49 + 7) * Math.PI * 2,
+               motionSpeed: 0.2 + hash(i * 8.77 + 8) * 0.24,
+-              motionAmpX: enableSceneIdleMotion ? (7 + hash(i * 13.41 + 9) * 14) : 0,
+-              motionAmpY: enableSceneIdleMotion ? (5 + hash(i * 15.23 + 10) * 11) : 0,
+-              motionAmpZ: enableSceneIdleMotion ? (8 + hash(i * 21.19 + 11) * 18) : 0,
++              motionAmpX: enableCardsWaveMotion ? (7 + hash(i * 13.41 + 9) * 14) : 0,
++              motionAmpY: enableCardsWaveMotion ? (5 + hash(i * 15.23 + 10) * 11) : 0,
++              motionAmpZ: enableCardsWaveMotion ? (8 + hash(i * 21.19 + 11) * 18) : 0,
+               texture: null,
+               textureBucket: -1,
+               textureMipCache: null
+@@ -18949,7 +19064,7 @@
+         renderTiles(true);
+         hoverNeedsRender = false;
+         motionNeedsRender = false;
+-        if (enableSceneIdleMotion) {
++        if (enableCardsWaveMotion) {
+           motionTimer = window.setInterval(function () {
+             if (stopped || isPaused) return;
+             motionTime += 0.045;
+@@ -19002,15 +19117,14 @@
+       }
+ 
+       function createSceneByMode(nextMode) {
+-        if (nextMode === 'cards') return createCardsSceneWebGL() || createCardsSceneDomLegacy();
+-        return createSphereScene();
++        if (nextMode === 'wave') return createCardsSceneWebGL() || createCardsSceneDomLegacy();
++        return null;
+       }
+ 
+       function enterCanvasMode(nextMode) {
+         if (!canvasMode) return;
+         document.documentElement.classList.add('canvas-active');
+         document.body.classList.add('canvas-active');
+-        document.body.classList.toggle('canvas-sphere-active', nextMode === 'sphere');
+         canvasMode.hidden = false;
+         canvasMode.classList.add('is-active');
+         canvasMode.setAttribute('aria-hidden', 'false');
+@@ -19206,8 +19320,7 @@
+       function updateViewButtons() {
+         if (viewPlainBtn) viewPlainBtn.classList.toggle('is-active', viewMode === 'plain');
+         if (view3dBtn) view3dBtn.classList.toggle('is-active', viewMode === '3d');
+-        if (viewCardsBtn) viewCardsBtn.classList.toggle('is-active', viewMode === 'cards');
+-        if (viewSphereBtn) viewSphereBtn.classList.toggle('is-active', viewMode === 'sphere');
++        if (viewWaveBtn) viewWaveBtn.classList.toggle('is-active', viewMode === 'wave');
+         document.body.classList.toggle('is-view-plain', viewMode === 'plain');
+         document.body.classList.toggle('is-view-3d', viewMode === '3d');
+         if (viewMode !== 'plain') resetPlainReleaseHoverTile();
+@@ -19303,8 +19416,8 @@
+         if (viewMode === '3d' && nextMode !== '3d') {
+           leaveReleaseCanvasMode();
+         }
+-        const wasCanvasMode = viewMode === 'sphere' || viewMode === 'cards';
+-        const isCanvasMode = nextMode === 'sphere' || nextMode === 'cards';
++        const wasCanvasMode = isFloatingCanvasView(viewMode);
++        const isCanvasMode = isFloatingCanvasView(nextMode);
+         if (wasCanvasMode && !isCanvasMode) leaveCanvasMode();
+         viewMode = nextMode;
+         if (nextMode === 'sphere' && sizeFactor !== 4 && sizeFactor !== 2) {
+@@ -19347,8 +19460,7 @@
+       if (typeNormalBtn) typeNormalBtn.addEventListener('click', function () { setTypeMode('normal', typeNormalBtn); });
+       if (viewPlainBtn) viewPlainBtn.addEventListener('click', function () { setViewMode('plain', viewPlainBtn); });
+       if (view3dBtn) view3dBtn.addEventListener('click', function () { setViewMode('3d', view3dBtn); });
+-      if (viewSphereBtn) viewSphereBtn.addEventListener('click', function () { setViewMode('sphere', viewSphereBtn); });
+-      if (viewCardsBtn) viewCardsBtn.addEventListener('click', function () { setViewMode('cards', viewCardsBtn); });
++      if (viewWaveBtn) viewWaveBtn.addEventListener('click', function () { setViewMode('wave', viewWaveBtn); });
+       if (canvasZoomInBtn) canvasZoomInBtn.addEventListener('click', function () { if (floatingScene) floatingScene.zoomIn(); });
+       if (canvasZoomOutBtn) canvasZoomOutBtn.addEventListener('click', function () { if (floatingScene) floatingScene.zoomOut(); });
+ 
+@@ -19369,7 +19481,7 @@
+         if (sizeX2Btn) sizeX2Btn.classList.toggle('is-active', viewMode === 'sphere' ? sizeFactor === 2 : sizeFactor === 3);
+         if (sizeX1Btn) sizeX1Btn.classList.toggle('is-active', sizeFactor === 1);
+         syncAllPillSliders();
+-        if (viewMode !== 'sphere' && viewMode !== 'cards') {
++        if (viewMode !== 'sphere' && !isFloatingCanvasView(viewMode)) {
+           updateGrid();
+           if (viewMode === '3d' && releaseCanvasScene && typeof releaseCanvasScene.setSizeFactor === 'function') {
+             releaseCanvasScene.setSizeFactor(sizeFactor);
+@@ -19399,7 +19511,7 @@
+         const nextSize = Number(initialSearchParams.get('size') || '0');
+         const hasIntroGate = !!pageLoader;
+         if (nextType === 'normal' || nextType === 'shuffle') setTypeMode(nextType);
+-        if (!hasIntroGate && (nextView === 'plain' || nextView === '3d' || nextView === 'cards' || nextView === 'sphere')) setViewMode(nextView);
++        if (!hasIntroGate && (nextView === 'plain' || nextView === '3d' || nextView === 'wave')) setViewMode(nextView);
+         if (nextSize >= 1 && nextSize <= 4) setSize(nextSize);
+       }
+ 
+@@ -19446,7 +19558,7 @@
+         if (viewMode === '3d' && releaseCanvasScene && typeof releaseCanvasScene.resize === 'function') {
+           releaseCanvasScene.resize();
+         }
+-        if (viewMode === 'sphere' || viewMode === 'cards') {
++        if (isFloatingCanvasView(viewMode)) {
+           if (floatingScene) floatingScene.resize();
+           if (canvasModeBackdropEffect) canvasModeBackdropEffect.resize();
+           return;

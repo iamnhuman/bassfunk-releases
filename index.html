@@ -51,11 +51,20 @@
     html {
       scrollbar-gutter: auto;
     }
+    html.is-release-panel-open {
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
     body {
       position: relative;
       overflow-x: hidden;
       box-sizing: border-box;
       font-family: var(--ui-font);
+    }
+    body.is-release-panel-open {
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: none;
     }
     body *:not(.material-symbols-outlined),
     body *:not(.material-symbols-outlined)::before,
@@ -800,7 +809,7 @@
       color: #efefef;
       font-size: 10px;
       font-weight: 400;
-      padding: 0 0 0 4px;
+      padding: 0;
       opacity: 0.9;
       line-height: 1;
       white-space: nowrap;
@@ -893,8 +902,9 @@
       justify-content: center;
       padding: 0 22px 0 4px;
     }
-    #view3dBtn {
-      min-width: 37px;
+    #view3dBtn,
+    #viewCardsBtn {
+      min-width: 66px;
       padding: 0 8px;
     }
     .controls button:hover {
@@ -1034,7 +1044,7 @@
       }
       .control-label {
         font-size: 10px;
-        padding-left: 3px;
+        padding-left: 0;
       }
       .control-pill {
         gap: 4px;
@@ -1225,25 +1235,67 @@
       object-fit: cover;
       transition: filter 220ms ease, transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease;
     }
-    .releases a.is-release-source-hidden {
+    body.is-view-plain .releases a.is-release-source-hidden {
       opacity: 1;
-      --release-base-scale: 1;
+      z-index: 18;
+      overflow: visible;
+      --release-base-scale: 1.035;
       --release-reactive-scale: 1;
       --release-reactive-x: 0px;
       --release-reactive-y: 0px;
-      --release-reactive-z: 0px;
+      --release-reactive-z: 16px;
       --release-reactive-rot-x: 0deg;
       --release-reactive-rot-y: 0deg;
+      animation: selected-release-float 2.8s ease-in-out infinite;
+      filter:
+        drop-shadow(0 16px 16px rgba(0, 0, 0, 0.42))
+        drop-shadow(0 30px 34px rgba(0, 0, 0, 0.34))
+        drop-shadow(0 0 26px rgba(255, 255, 255, 0.16));
     }
     .canvas-tile.is-release-source-hidden {
       opacity: 1;
       transform: none;
     }
-    .releases a.is-release-source-hidden img,
+    body.is-view-plain .releases a.is-release-source-hidden img,
     .canvas-tile.is-release-source-hidden img {
-      filter: blur(6px) contrast(1.2) brightness(1.4);
-      transform: scale(1.08);
-      opacity: 0.88;
+      filter: saturate(1.1) contrast(1.04) brightness(1.08);
+      transform: scale(1.035);
+      opacity: 1;
+    }
+    body.is-view-plain .releases a.is-release-source-hidden::before {
+      opacity: 1;
+      transform: translate3d(0, 9px, 0) scale(1.22);
+      background:
+        radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.54) 0%, rgba(0, 0, 0, 0.34) 42%, transparent 74%);
+      filter: blur(14px);
+    }
+    body.is-view-plain .releases a.is-release-source-hidden::after {
+      content: "" !important;
+      display: block !important;
+      z-index: 2;
+      opacity: 1;
+      border-radius: inherit;
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.44),
+        0 0 20px rgba(255, 255, 255, 0.22),
+        0 0 44px rgba(108, 174, 255, 0.18);
+    }
+    @keyframes selected-release-float {
+      0%,
+      100% {
+        transform:
+          translate3d(var(--plain-hover-shift-x), calc(var(--plain-hover-shift-y) - 5px), var(--plain-hover-lift-z))
+          rotateX(var(--plain-hover-rot-x))
+          rotateY(var(--plain-hover-rot-y))
+          scale(1.035);
+      }
+      50% {
+        transform:
+          translate3d(var(--plain-hover-shift-x), calc(var(--plain-hover-shift-y) - 13px), var(--plain-hover-lift-z))
+          rotateX(var(--plain-hover-rot-x))
+          rotateY(var(--plain-hover-rot-y))
+          scale(1.045);
+      }
     }
     .releases.has-cloth-release-focus a:not(.is-cloth-release-active) img {
       filter: saturate(0.82) brightness(0.72);
@@ -1274,7 +1326,8 @@
       --plain-release-icons-per-row: 5;
       --plain-release-card-pad-x: 10px;
       --plain-release-card-pad-bottom: 14px;
-      --plain-release-icon-size: 26px;
+      --plain-release-button-size: 26px;
+      --plain-release-icon-size: var(--plain-release-button-size);
       --plain-release-icon-gap: 5px;
       --plain-release-icon-row-width: calc(
         (var(--plain-release-icon-size) * var(--plain-release-icons-per-row)) +
@@ -1287,13 +1340,14 @@
       --plain-release-ui-icon-size: calc(var(--plain-release-icon-size) * 0.44);
       --plain-release-ui-icon-stroke: 2px;
       --plain-release-ui-radius: 12px;
+      --plain-release-panel-shift-x: 0px;
       z-index: 8;
       display: none;
       align-items: center;
       justify-content: center;
       padding: max(20px, calc(var(--controls-h, 50px) + 10px)) 24px 24px;
       pointer-events: none;
-      perspective: 1160px;
+      perspective: none;
       perspective-origin: 50% 50%;
     }
     .plain-release-panel.is-open {
@@ -1302,7 +1356,10 @@
     .plain-release-panel__backdrop {
       position: absolute;
       inset: 0;
-      background: transparent;
+      background:
+        radial-gradient(ellipse at 50% 52%, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.08) 36%, rgba(0, 0, 0, 0.46) 78%, rgba(0, 0, 0, 0.76) 100%),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.76), rgba(0, 0, 0, 0.08) 18%, rgba(0, 0, 0, 0.08) 82%, rgba(0, 0, 0, 0.76)),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.04) 24%, rgba(0, 0, 0, 0.06) 72%, rgba(0, 0, 0, 0.72));
       opacity: 1;
       pointer-events: auto;
     }
@@ -1349,7 +1406,7 @@
     .plain-release-panel__scene {
       position: relative;
       width: var(--plain-release-panel-width);
-      transform-style: preserve-3d;
+      transform-style: flat;
       overflow: hidden;
       border-radius: 22px;
       border: 0;
@@ -1397,7 +1454,7 @@
       --plain-release-grab-glow: 0;
       opacity: 0;
       transform:
-        translate3d(var(--plain-release-shift-x), calc(28px + var(--plain-release-shift-y)), -120px)
+        translate3d(calc(var(--plain-release-panel-shift-x) + var(--plain-release-shift-x)), calc(28px + var(--plain-release-shift-y)), 0)
         rotateX(calc(var(--plain-release-base-x) + var(--plain-release-tilt-x)))
         rotateY(calc(var(--plain-release-base-y) + var(--plain-release-tilt-y)))
         rotateZ(var(--plain-release-roll));
@@ -1410,7 +1467,7 @@
     .plain-release-panel.is-open .plain-release-panel__scene {
       opacity: 1;
       transform:
-        translate3d(var(--plain-release-shift-x), var(--plain-release-shift-y), 108px)
+        translate3d(calc(var(--plain-release-panel-shift-x) + var(--plain-release-shift-x)), var(--plain-release-shift-y), 0)
         rotateX(calc(var(--plain-release-base-x) + var(--plain-release-tilt-x)))
         rotateY(calc(var(--plain-release-base-y) + var(--plain-release-tilt-y)))
         rotateZ(var(--plain-release-roll));
@@ -1459,7 +1516,7 @@
       z-index: 3;
       will-change: transform;
       transform-style: flat;
-      overflow: hidden;
+      overflow: visible;
     }
     .plain-release-panel__nav[disabled] {
       opacity: 0.26;
@@ -1467,14 +1524,14 @@
       pointer-events: none;
     }
     .plain-release-panel__nav--prev {
-      left: calc(50% - var(--plain-release-panel-width) / 2 - var(--plain-release-icon-size) - 16px);
+      left: calc(50% + var(--plain-release-panel-shift-x) - var(--plain-release-panel-width) / 2 - var(--plain-release-icon-size) - 16px);
       transform:
-        translate3d(var(--plain-release-nav-shift-x), calc(-50% + var(--plain-release-nav-shift-y)), 18px);
+        translate3d(var(--plain-release-nav-shift-x), calc(-50% + var(--plain-release-nav-shift-y)), 0);
     }
     .plain-release-panel__nav--next {
-      left: calc(50% + var(--plain-release-panel-width) / 2 + 16px);
+      left: calc(50% + var(--plain-release-panel-shift-x) + var(--plain-release-panel-width) / 2 + 16px);
       transform:
-        translate3d(calc(var(--plain-release-nav-shift-x) * -1), calc(-50% + var(--plain-release-nav-shift-y)), 18px);
+        translate3d(calc(var(--plain-release-nav-shift-x) * -1), calc(-50% + var(--plain-release-nav-shift-y)), 0);
     }
     .plain-release-panel__edge {
       display: none;
@@ -1522,12 +1579,12 @@
       color: #f3f1ea;
       border-radius: 22px;
       transform:
-        translate3d(0, 0, 18px)
+        translate3d(0, 0, 0)
         rotateX(var(--plain-release-card-tilt-x))
         rotateY(var(--plain-release-card-tilt-y))
         rotateZ(var(--plain-release-card-roll));
       transform-origin: 50% 16%;
-      transform-style: preserve-3d;
+      transform-style: flat;
       filter:
         drop-shadow(0 18px 20px rgba(0, 0, 0, 0.12))
         drop-shadow(0 42px 56px rgba(0, 0, 0, 0.14));
@@ -1619,9 +1676,9 @@
       z-index: 1;
       will-change: transform, opacity;
       transform:
-        translate3d(var(--plain-release-content-shift-x), var(--plain-release-content-shift-y), 28px);
+        translate3d(var(--plain-release-content-shift-x), var(--plain-release-content-shift-y), 0);
     }
-    .plain-release-panel__card > :not(.plain-release-panel__surface):not(.plain-release-panel__close):not(.plain-release-panel__content) {
+    .plain-release-panel__card > :not(.plain-release-panel__surface):not(.plain-release-panel__top-actions):not(.plain-release-panel__close):not(.plain-release-panel__sphere-toggle):not(.plain-release-panel__sphere-toggle-input):not(.plain-release-panel__content) {
       position: relative;
       z-index: 1;
     }
@@ -1657,6 +1714,27 @@
       width: 0;
       height: 0;
     }
+    .plain-release-panel__top-actions {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 10;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      pointer-events: auto;
+    }
+    .plain-release-panel__top-actions .plain-release-panel__close,
+    .plain-release-panel__top-actions .plain-release-panel__sphere-toggle {
+      position: static !important;
+      top: auto;
+      right: auto;
+      left: auto;
+      z-index: auto;
+      flex: 0 0 var(--plain-release-button-size);
+      border-radius: var(--plain-release-ui-radius);
+    }
     .plain-release-panel__close {
       position: absolute;
       top: 14px;
@@ -1678,6 +1756,39 @@
         0 10px 24px rgba(0, 0, 0, 0.22);
       transform: translate3d(0, 0, 0);
     }
+    .plain-release-panel__sphere-toggle {
+      position: absolute !important;
+      top: 14px;
+      right: calc(14px + var(--plain-release-button-size) + 8px);
+      z-index: 2;
+      display: inline-flex !important;
+      pointer-events: auto;
+      transform: translate3d(0, 0, 0);
+      transform-style: flat;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .plain-release-panel__sphere-toggle:hover {
+      transform: translate3d(0, 0, 0);
+    }
+    .plain-release-panel__sphere-toggle-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .plain-release-panel__sphere-toggle-icon--camera {
+      display: none !important;
+    }
+    .plain-release-panel__sphere-toggle-input:checked ~ .plain-release-panel__sphere-toggle .plain-release-panel__sphere-toggle-icon--sphere,
+    .plain-release-panel.is-artwork-sphere-open .plain-release-panel__sphere-toggle-icon--sphere {
+      display: none !important;
+    }
+    .plain-release-panel__sphere-toggle-input:checked ~ .plain-release-panel__sphere-toggle .plain-release-panel__sphere-toggle-icon--camera,
+    .plain-release-panel.is-artwork-sphere-open .plain-release-panel__sphere-toggle-icon--camera {
+      display: inline-flex !important;
+    }
     .plain-release-panel__artwork-frame {
       position: relative;
       z-index: 1;
@@ -1695,6 +1806,38 @@
         translate3d(var(--plain-release-artwork-shift-x), var(--plain-release-artwork-shift-y), 32px)
         scale(calc(1 + (var(--plain-release-grab-glow) * 0.012)));
       will-change: transform;
+    }
+    .plain-release-panel__floating-sphere {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      z-index: 7;
+      width: 210px;
+      height: 210px;
+      border-radius: 0;
+      overflow: visible;
+      background: transparent;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, calc(-50% - 172px)) scale(0.94);
+      transition: opacity 180ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+      filter:
+        drop-shadow(0 18px 30px rgba(0, 0, 0, 0.4))
+        drop-shadow(0 0 28px rgba(255, 255, 255, 0.08));
+    }
+    .plain-release-panel.is-artwork-sphere-open .plain-release-panel__floating-sphere {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, calc(-50% - 182px)) scale(1);
+    }
+    .plain-release-panel__floating-sphere .canvas-space--artwork-sphere {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 0;
+      overflow: visible;
+      background: transparent;
     }
     .plain-release-panel__artwork-frame[hidden] {
       display: none;
@@ -1719,10 +1862,10 @@
     }
     .plain-release-panel__artist {
       margin-top: 12px;
-      margin-bottom: 0;
+      margin-bottom: -0.18em;
       color: rgba(243, 241, 234, 0.82);
       font-size: 15px;
-      line-height: 1.3;
+      line-height: 0.9;
       font-weight: 500;
       text-transform: uppercase;
       position: relative;
@@ -1732,12 +1875,12 @@
       display: block;
       width: 100%;
       box-sizing: border-box;
-      margin-top: 6px;
+      margin-top: 0;
       padding-right: 28px;
       margin-bottom: 0;
       max-width: none;
       font-size: 12px;
-      line-height: 1.16;
+      line-height: 1.02;
       font-weight: 400;
       position: relative;
       z-index: 1;
@@ -1763,7 +1906,7 @@
     .plain-release-panel__actions .plain-release-panel__ui-button,
     .plain-release-panel__socials .plain-release-panel__ui-button {
       justify-self: start;
-      transform: translate3d(0, 0, -28px);
+      transform: translate3d(0, 0, 0);
       transform-style: flat;
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
@@ -1772,9 +1915,14 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: var(--plain-release-icon-size);
-      height: var(--plain-release-icon-size);
-      min-width: var(--plain-release-icon-size);
+      width: var(--plain-release-button-size);
+      height: var(--plain-release-button-size);
+      min-width: var(--plain-release-button-size);
+      max-width: var(--plain-release-button-size);
+      min-height: var(--plain-release-button-size);
+      max-height: var(--plain-release-button-size);
+      aspect-ratio: 1 / 1;
+      flex: 0 0 var(--plain-release-button-size);
       box-sizing: border-box;
       padding: 0;
       border: 0;
@@ -1809,6 +1957,26 @@
         box-shadow 180ms ease;
       --plain-release-link-accent: 255, 255, 255;
     }
+    .plain-release-panel__ui-button,
+    .plain-release-panel__ui-button *,
+    .plain-release-panel__ui-button::before,
+    .plain-release-panel__ui-button::after {
+      box-sizing: border-box;
+    }
+    .plain-release-panel__close,
+    .plain-release-panel__sphere-toggle,
+    .plain-release-panel__nav,
+    .plain-release-panel__actions .plain-release-panel__ui-button,
+    .plain-release-panel__socials .plain-release-panel__ui-button {
+      width: var(--plain-release-button-size);
+      height: var(--plain-release-button-size);
+      min-width: var(--plain-release-button-size);
+      max-width: var(--plain-release-button-size);
+      min-height: var(--plain-release-button-size);
+      max-height: var(--plain-release-button-size);
+      aspect-ratio: 1 / 1;
+      flex-basis: var(--plain-release-button-size);
+    }
     .plain-release-panel__ui-button:hover {
       background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(28, 32, 40, 0.22)),
@@ -1819,6 +1987,75 @@
         inset 0 1px 0 rgba(255, 255, 255, 0.24),
         inset 0 0 0 1px rgba(255, 255, 255, 0.16);
       color: #ffffff;
+    }
+    @keyframes release-card-metal-sheen {
+      0% {
+        transform: translate3d(-42%, -42%, 0) rotate(0deg);
+      }
+      100% {
+        transform: translate3d(-42%, -42%, 0) rotate(360deg);
+      }
+    }
+    .plain-release-panel.is-open .plain-release-panel__card :is(.plain-release-panel__actions, .plain-release-panel__socials) a.plain-release-panel__ui-button {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.22), rgba(180, 186, 193, 0.08) 27%, rgba(28, 31, 38, 0.34) 58%, rgba(255, 255, 255, 0.14)),
+        radial-gradient(circle at 26% 18%, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0) 34%),
+        rgba(28, 31, 38, 0.38);
+      box-shadow:
+        0 12px 26px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.36),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.26),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+    }
+    .plain-release-panel.is-open .plain-release-panel__card :is(.plain-release-panel__actions, .plain-release-panel__socials) a.plain-release-panel__ui-button::before {
+      content: none;
+      display: none;
+    }
+    .plain-release-panel.is-open .plain-release-panel__card :is(.plain-release-panel__actions, .plain-release-panel__socials) a.plain-release-panel__ui-button::after {
+      content: none;
+      display: none;
+    }
+    .plain-release-panel.is-open .plain-release-panel__card :is(.plain-release-panel__actions, .plain-release-panel__socials) a.plain-release-panel__ui-button:hover {
+      background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.32), rgba(196, 205, 214, 0.14) 26%, rgba(42, 47, 58, 0.4) 58%, rgba(255, 255, 255, 0.2)),
+        radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.46), rgba(255, 255, 255, 0) 36%),
+        rgba(38, 43, 54, 0.48);
+      box-shadow:
+        0 14px 30px rgba(0, 0, 0, 0.26),
+        inset 0 1px 0 rgba(255, 255, 255, 0.48),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.22),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.26);
+    }
+    .plain-release-panel.is-open .plain-release-panel__card :is(.plain-release-panel__actions, .plain-release-panel__socials) a.plain-release-panel__ui-button:hover::before {
+      content: none;
+      display: none;
+    }
+    .plain-release-panel.is-open .plain-release-panel__card .plain-release-panel__close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      left: auto;
+      z-index: 8;
+    }
+    .plain-release-panel.is-open .plain-release-panel__top-actions .plain-release-panel__close,
+    .plain-release-panel.is-open .plain-release-panel__top-actions .plain-release-panel__sphere-toggle,
+    body.is-release-panel-sphere .plain-release-panel__top-actions .plain-release-panel__close,
+    body.is-release-panel-sphere .plain-release-panel__top-actions .plain-release-panel__sphere-toggle {
+      position: static !important;
+      top: auto;
+      right: auto;
+      left: auto;
+      z-index: auto;
+      width: var(--plain-release-button-size);
+      height: var(--plain-release-button-size);
+      min-width: var(--plain-release-button-size);
+      max-width: var(--plain-release-button-size);
+      min-height: var(--plain-release-button-size);
+      max-height: var(--plain-release-button-size);
+      border-radius: var(--plain-release-ui-radius);
     }
     .cloth-release-footer__tags-list a {
       display: inline-flex;
@@ -1859,9 +2096,12 @@
       fill: currentColor;
     }
     .plain-release-panel__button-icon {
-      width: 100%;
-      height: 100%;
-      min-width: 100%;
+      width: var(--plain-release-button-size);
+      height: var(--plain-release-button-size);
+      min-width: var(--plain-release-button-size);
+      max-width: var(--plain-release-button-size);
+      min-height: var(--plain-release-button-size);
+      max-height: var(--plain-release-button-size);
       box-sizing: border-box;
       display: inline-flex;
       align-items: center;
@@ -1870,7 +2110,7 @@
       background: transparent;
       box-shadow: none;
       color: rgba(243, 241, 234, 0.96);
-      flex: 0 0 100%;
+      flex: 0 0 var(--plain-release-button-size);
     }
     .plain-release-panel__button-icon svg {
       width: var(--plain-release-ui-icon-size);
@@ -2056,7 +2296,8 @@
         padding: calc(var(--controls-h, 50px) + 8px) 10px 10px;
         --plain-release-card-pad-x: 9px;
         --plain-release-card-pad-bottom: 13px;
-        --plain-release-icon-size: 24px;
+        --plain-release-button-size: 24px;
+        --plain-release-icon-size: var(--plain-release-button-size);
         --plain-release-icon-gap: 4px;
         --plain-release-panel-width: min(
           calc(var(--plain-release-icon-row-width) + (var(--plain-release-card-pad-x) * 2)),
@@ -2087,7 +2328,7 @@
       }
       .plain-release-panel__artist {
         font-size: 14px;
-        line-height: 1.3;
+        line-height: 0.9;
       }
       .plain-release-panel__close {
         top: 14px;
@@ -2142,6 +2383,63 @@
       display: none;
       background: transparent;
       overflow: visible;
+      overscroll-behavior: none;
+      touch-action: none;
+    }
+    body.is-view-cards.canvas-active .canvas-mode,
+    body.is-release-panel-sphere .canvas-mode {
+      top: 0;
+    }
+    body.is-release-artwork-sphere-open .canvas-mode {
+      z-index: 7;
+    }
+    .canvas-mode::before,
+    .canvas-mode::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      z-index: 8;
+      display: none;
+      pointer-events: none;
+    }
+    body.is-view-cards.canvas-active .canvas-mode::before,
+    body.is-view-cards.canvas-active .canvas-mode::after,
+    body.is-release-panel-sphere .canvas-mode::before,
+    body.is-release-panel-sphere .canvas-mode::after {
+      display: block;
+      height: clamp(110px, 17vh, 250px);
+    }
+    body.is-view-cards.canvas-active .canvas-mode::before,
+    body.is-view-cards.canvas-active .canvas-mode::before {
+      top: 0;
+      background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.96) 0%,
+        rgba(0, 0, 0, 0.68) 42%,
+        rgba(0, 0, 0, 0) 100%
+      );
+    }
+    body.is-view-cards.canvas-active .canvas-mode::after,
+    body.is-view-cards.canvas-active .canvas-mode::after {
+      bottom: 0;
+      background: linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.92) 0%,
+        rgba(0, 0, 0, 0.58) 40%,
+        rgba(0, 0, 0, 0) 100%
+      );
+    }
+    body.is-release-panel-sphere .canvas-mode::before {
+      inset: 0;
+      z-index: 4;
+      height: auto;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.28) 68%, rgba(0, 0, 0, 0.46) 100%),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0.1) 42%, rgba(0, 0, 0, 0.34));
+    }
+    body.is-release-panel-sphere .canvas-mode::after {
+      display: none;
     }
     .canvas-mode.is-active {
       display: block;
@@ -2176,13 +2474,17 @@
       --canvas-3d-page-dot-size: 10px;
       --canvas-3d-page-dot-gap: 10px;
       --canvas-3d-page-progress-width: 10px;
-      --canvas-3d-page-progress-height: clamp(120px, 18vh, 220px);
+      --canvas-3d-page-rail-offset: 0px;
+      --canvas-3d-page-rail-width: var(--canvas-3d-page-progress-width);
+      --canvas-3d-release-root-pad-left: 15px;
+      --canvas-3d-release-rail-gap: clamp(18px, 1.35vw, 26px);
       display: grid;
-      grid-template-columns: 34px minmax(0, 1fr);
+      grid-template-columns: var(--canvas-3d-page-rail-width) minmax(0, 1fr);
       grid-template-areas: "rail shell";
       align-content: stretch;
-      gap: 10px;
+      gap: var(--canvas-3d-release-rail-gap);
       overflow: visible;
+      padding-left: var(--canvas-3d-release-root-pad-left);
     }
     .canvas-mode__release-shell {
       grid-area: shell;
@@ -2225,22 +2527,29 @@
     .canvas-mode__release-rail {
       grid-area: rail;
       display: grid;
-      grid-template-rows: auto 1fr;
-      align-items: start;
-      justify-items: start;
+      grid-template-rows: minmax(0, 1fr);
+      align-self: stretch;
+      align-items: stretch;
+      justify-items: center;
       gap: 8px;
+      width: var(--canvas-3d-page-rail-width);
+      height: 100%;
       min-height: 0;
       padding-top: 2px;
-      padding-left: 3px;
+      box-sizing: border-box;
+      transform: translateX(calc(var(--canvas-3d-page-rail-offset) * -1));
     }
     .canvas-mode__release-page-rail {
       display: grid;
-      grid-template-rows: auto 1fr;
-      align-items: start;
-      justify-items: start;
+      grid-template-rows: auto minmax(0, 1fr);
+      align-items: stretch;
+      justify-items: center;
       gap: var(--canvas-3d-page-rail-gap);
+      width: 100%;
+      height: 100%;
       min-height: 0;
       padding-top: 4px;
+      box-sizing: border-box;
     }
     .canvas-mode__release-page-label {
       color: rgba(255, 255, 255, 0.94);
@@ -2250,7 +2559,7 @@
       text-align: center;
       inline-size: var(--canvas-3d-page-label-inline-size);
       flex: 0 0 var(--canvas-3d-page-label-inline-size);
-      margin-inline-start: -4px;
+      margin: 0;
       font-variant-numeric: tabular-nums;
       text-shadow:
         0 0 6px rgba(0, 0, 0, 0.85),
@@ -2266,34 +2575,61 @@
       gap: var(--canvas-3d-page-dot-gap);
       align-content: start;
       margin-top: 20px;
-      margin-left: 3px;
+      margin-left: 0;
       box-sizing: border-box;
     }
     .canvas-mode__release-page-dots.is-progress {
       position: relative;
       display: block;
       width: var(--canvas-3d-page-progress-width);
-      height: var(--canvas-3d-page-progress-height);
-      margin-top: 16px;
-      margin-left: 10px;
+      height: 100%;
+      min-height: 120px;
+      margin: 0;
+      align-self: stretch;
+      justify-self: center;
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.08);
       box-shadow:
         inset 0 0 0 1px rgba(255, 255, 255, 0.12),
         0 0 0 1px rgba(0, 0, 0, 0.14);
       overflow: hidden;
+      cursor: ns-resize;
+      touch-action: none;
+      user-select: none;
+    }
+    .canvas-mode__release-page-dots.is-progress.is-dragging {
+      cursor: grabbing;
     }
     .canvas-mode__release-page-dots.is-progress .canvas-mode__release-page-progress-fill {
       position: absolute;
       left: 0;
       right: 0;
-      bottom: 0;
+      top: 0;
       height: var(--canvas-3d-page-progress-fill, 0%);
       border-radius: inherit;
       background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(185, 208, 255, 0.34));
       box-shadow:
         0 0 14px rgba(180, 208, 255, 0.22),
         inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .canvas-mode__release-page-segment {
+      appearance: none;
+      -webkit-appearance: none;
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc((100% / var(--canvas-3d-page-count, 1)) * var(--canvas-3d-page-segment-index, 0));
+      height: calc(100% / var(--canvas-3d-page-count, 1));
+      border: 0;
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+      z-index: 2;
+    }
+    .canvas-mode__release-page-segment:focus-visible {
+      outline: none;
     }
     .canvas-mode__release-page-dot {
       width: var(--canvas-3d-page-dot-size);
@@ -2343,6 +2679,35 @@
       box-sizing: border-box;
       will-change: transform;
     }
+    .canvas-mode__release-item::before {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      z-index: 0;
+      width: calc(100% - 4px);
+      aspect-ratio: 1 / 1;
+      border-radius: var(--release-card-radius);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateZ(0);
+      box-shadow:
+        0 0 24px rgba(255, 255, 255, 0.24),
+        0 0 56px rgba(108, 174, 255, 0.22),
+        0 0 92px rgba(255, 255, 255, 0.08),
+        0 14px 28px rgba(0, 0, 0, 0.24);
+      transition:
+        opacity 440ms ease,
+        filter 440ms ease;
+      filter: blur(0);
+      will-change: opacity, filter;
+    }
+    .canvas-mode__release-item:hover::before {
+      opacity: 0.42;
+    }
+    .canvas-mode__release-item.is-active::before {
+      opacity: 1;
+    }
     body[data-cards-size="2"] .canvas-mode__release-item {
       gap: 10px;
     }
@@ -2362,8 +2727,9 @@
       border: 1px solid rgba(255, 255, 255, 0.10);
       box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.10);
       transform: translateZ(0);
-      transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+      transition: filter 260ms ease;
       box-sizing: border-box;
+      z-index: 1;
     }
     @supports (corner-shape: squircle) {
       .canvas-mode__release-thumb {
@@ -2376,13 +2742,12 @@
       height: 100%;
       object-fit: cover;
       border-radius: 0;
-      transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), filter 220ms ease;
+      transition: filter 220ms ease;
     }
     .canvas-mode__release-item:hover .canvas-mode__release-thumb,
     .canvas-mode__release-item.is-active .canvas-mode__release-thumb {
-      transform: translateY(-1px);
+      transform: translateZ(0);
       filter: saturate(1.04) brightness(1.03);
-      box-shadow: none;
     }
     .canvas-mode__release-item:hover .canvas-mode__release-thumb img,
     .canvas-mode__release-item.is-active .canvas-mode__release-thumb img {
@@ -2391,13 +2756,8 @@
     }
     .canvas-mode__release-item.is-active .canvas-mode__release-thumb {
       z-index: 2;
-      transform: translateY(-2px) scale(1.01);
+      transform: translateZ(0);
       filter: saturate(1.08) brightness(1.08);
-      box-shadow:
-        0 0 24px rgba(255, 255, 255, 0.24),
-        0 0 56px rgba(108, 174, 255, 0.22),
-        0 0 92px rgba(255, 255, 255, 0.08),
-        0 14px 28px rgba(0, 0, 0, 0.24);
     }
     .canvas-mode__release-meta {
       display: grid;
@@ -2446,7 +2806,7 @@
       line-height: 1.16;
     }
     body[data-cards-size="1"] .canvas-mode__release-meta {
-      gap: 2px;
+      gap: 0;
     }
     body[data-cards-size="1"] .canvas-mode__release-artist {
       font-size: 8px;
@@ -2473,6 +2833,9 @@
     body.is-view-2016.canvas-active .canvas-tools {
       display: none;
     }
+    body.is-release-panel-open .canvas-tools {
+      display: none;
+    }
     .canvas-space {
       position: absolute;
       inset: 0;
@@ -2482,6 +2845,7 @@
       perspective-origin: 50% 50%;
       -webkit-perspective: 1100px;
       cursor: grab;
+      overscroll-behavior: none;
       touch-action: none;
     }
     .canvas-space.has-clickable-hover {
@@ -2489,6 +2853,249 @@
     }
     .canvas-space.is-dragging {
       cursor: grabbing;
+    }
+    .canvas-space--panel-sphere {
+      --panel-sphere-size: var(--release-panel-sphere-size, clamp(300px, 28vw, 500px));
+      inset: auto;
+      left: 50%;
+      top: 50%;
+      z-index: 7;
+      width: var(--panel-sphere-size);
+      height: var(--panel-sphere-size);
+      opacity: 1;
+      overflow: visible;
+      transform: translate(-50%, -50%);
+      filter:
+        drop-shadow(0 28px 42px rgba(0, 0, 0, 0.42))
+        drop-shadow(0 0 34px rgba(255, 255, 255, 0.08));
+      pointer-events: auto;
+      cursor: grab;
+    }
+    .canvas-space--panel-sphere.is-dragging {
+      cursor: grabbing;
+    }
+    .canvas-space--panel-sphere::before {
+      content: "";
+      position: absolute;
+      inset: -8%;
+      z-index: 0;
+      border-radius: 999px;
+      background:
+        radial-gradient(circle at 50% 45%,
+          rgba(255, 255, 255, 0.12) 0%,
+          rgba(255, 255, 255, 0.06) 34%,
+          rgba(0, 0, 0, 0.2) 62%,
+          rgba(0, 0, 0, 0) 76%
+        );
+      pointer-events: none;
+    }
+    .canvas-space--panel-sphere .canvas-camera,
+    .canvas-space--panel-sphere .canvas-core-sphere {
+      z-index: 1;
+    }
+    body.is-release-panel-sphere .canvas-space:not(.canvas-space--panel-sphere) {
+      opacity: 1;
+      pointer-events: none;
+    }
+    body.is-release-panel-sphere .canvas-space--panel-sphere {
+      display: none;
+    }
+    body.is-release-artwork-sphere-open .canvas-space--panel-sphere {
+      position: fixed;
+      inset: 0 0 clamp(280px, 32vh, 420px);
+      left: auto;
+      top: auto;
+      z-index: 7;
+      display: none;
+      width: auto;
+      height: auto;
+      overflow: visible;
+      transform: none;
+      background: transparent;
+      filter: drop-shadow(0 24px 42px rgba(0, 0, 0, 0.24));
+    }
+    body.is-release-artwork-sphere-open .canvas-space--panel-sphere::before {
+      content: none;
+    }
+    body.is-release-panel-sphere {
+      --release-panel-pair-shift: 0px;
+      --release-panel-sphere-size: 0px;
+    }
+    body.is-release-panel-sphere .plain-release-panel {
+      --plain-release-panel-width: min(380px, calc(100vw - 28px));
+      --plain-release-panel-shift-x: 0px;
+      --plain-release-button-size: 26px;
+      --plain-release-icon-size: var(--plain-release-button-size);
+      --plain-release-icon-gap: 5px;
+      --plain-release-ui-radius: 13px;
+      padding: 0 24px;
+    }
+    body.is-release-panel-sphere .plain-release-panel__backdrop {
+      background:
+        radial-gradient(ellipse at 50% 46%, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.12) 38%, rgba(0, 0, 0, 0.52) 78%, rgba(0, 0, 0, 0.82) 100%),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0.1) 20%, rgba(0, 0, 0, 0.1) 80%, rgba(0, 0, 0, 0.78)),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.66), rgba(0, 0, 0, 0.03) 28%, rgba(0, 0, 0, 0.08) 72%, rgba(0, 0, 0, 0.78));
+      pointer-events: none;
+    }
+    body.is-release-panel-sphere .plain-release-panel__scene {
+      --plain-release-panel-shift-x: 0px;
+      backdrop-filter: contrast(1.04) brightness(1.45) blur(10px);
+      -webkit-backdrop-filter: contrast(1.04) brightness(1.45) blur(10px);
+    }
+    body.is-release-panel-sphere .plain-release-panel__card {
+      min-height: 0;
+      max-height: min(238px, calc(100vh - 80px));
+      padding: 10px 8px;
+      border-radius: 18px;
+      overflow: hidden;
+    }
+    body.is-release-panel-sphere .plain-release-panel.is-artwork-sphere-open .plain-release-panel__scene {
+      z-index: 8;
+      transform:
+        translate3d(calc(var(--plain-release-panel-shift-x) + var(--plain-release-shift-x)), calc(174px + var(--plain-release-shift-y)), 0)
+        rotateX(calc(var(--plain-release-base-x) + var(--plain-release-tilt-x)))
+        rotateY(calc(var(--plain-release-base-y) + var(--plain-release-tilt-y)))
+        rotateZ(var(--plain-release-roll));
+    }
+    body.is-release-panel-sphere .plain-release-panel.is-artwork-sphere-open .plain-release-panel__floating-sphere {
+      position: fixed;
+      inset: auto;
+      left: 50%;
+      top: calc(50% - clamp(220px, 28vh, 360px));
+      z-index: 12;
+      width: min(calc(100vw - 24px), calc(100vh - 24px), clamp(920px, 78vw, 1280px));
+      height: min(calc(100vw - 24px), calc(100vh - 24px), clamp(920px, 78vw, 1280px));
+      border-radius: 0;
+      overflow: visible;
+      background: transparent;
+      transform: translate(-50%, -50%);
+      filter: drop-shadow(0 24px 42px rgba(0, 0, 0, 0.24));
+    }
+    body.is-release-panel-sphere .plain-release-panel.is-artwork-sphere-open .plain-release-panel__floating-sphere {
+      display: block;
+    }
+    body.is-release-panel-sphere .plain-release-panel.is-artwork-sphere-open .plain-release-panel__floating-sphere .canvas-space--artwork-sphere {
+      border-radius: 0 !important;
+      overflow: visible;
+      background: transparent;
+    }
+    body.is-release-panel-sphere .plain-release-panel.is-artwork-sphere-open .plain-release-panel__floating-sphere .canvas-space--artwork-sphere .canvas-field {
+      transform: scale(3) !important;
+      transform-origin: 0 0;
+    }
+    body.is-release-panel-sphere .canvas-space--panel-sphere .canvas-field {
+      transform: scale(3) !important;
+      transform-origin: 0 0;
+    }
+    body.is-release-panel-sphere .plain-release-panel__close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      left: auto;
+      z-index: 8;
+    }
+    body.is-release-panel-sphere .plain-release-panel__top-actions {
+      top: 12px;
+      right: 12px;
+      gap: 8px;
+      z-index: 10;
+    }
+    body.is-release-panel-sphere .plain-release-panel__sphere-toggle {
+      top: 12px;
+      right: calc(12px + var(--plain-release-button-size) + 8px);
+      z-index: 10;
+    }
+    body.is-release-panel-sphere .plain-release-panel__content {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+      grid-template-rows: 26px 24px 38px 1fr;
+      grid-template-areas:
+        "art artist"
+        "art title"
+        "art actions"
+        "art meta";
+      gap: 2px 10px;
+      align-items: start;
+      align-content: start;
+      padding-right: 62px;
+      min-height: 0;
+    }
+    body.is-release-panel-sphere .plain-release-panel__artwork-frame {
+      grid-area: art;
+      align-self: stretch;
+      width: 150px;
+      height: 150px;
+      min-height: 0;
+      aspect-ratio: 1 / 1;
+      border-radius: 14px;
+    }
+    body.is-release-panel-sphere .plain-release-panel__artwork-frame,
+    body.is-release-panel-sphere .plain-release-panel__artwork-frame .canvas-space--artwork-sphere {
+      border-radius: 14px !important;
+    }
+    body.is-release-panel-sphere .plain-release-panel__artist {
+      grid-area: artist;
+      align-self: start;
+      margin: 0;
+      font-size: clamp(18px, 1.45vw, 24px);
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: 0;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    body.is-release-panel-sphere .plain-release-panel__title {
+      grid-area: title;
+      align-self: start;
+      margin: 0;
+      padding-right: 0;
+      font-size: clamp(13px, 0.9vw, 16px);
+      line-height: 1;
+      color: rgba(243, 241, 234, 0.86);
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    body.is-release-panel-sphere .plain-release-panel__actions {
+      grid-area: actions;
+      align-self: start;
+      margin-top: 0;
+      grid-template-columns: repeat(6, var(--plain-release-icon-size));
+      width: min(100%, calc((var(--plain-release-icon-size) * 6) + (var(--plain-release-icon-gap) * 5)));
+    }
+    body.is-release-panel-sphere .plain-release-panel__meta {
+      grid-area: meta;
+      align-self: start;
+      margin-top: 0;
+      padding-top: 5px;
+    }
+    body.is-release-panel-sphere .plain-release-panel__meta-label {
+      margin-bottom: 4px;
+    }
+    body.is-release-panel-sphere .plain-release-panel__socials {
+      grid-template-columns: repeat(6, var(--plain-release-icon-size));
+      width: min(100%, calc((var(--plain-release-icon-size) * 6) + (var(--plain-release-icon-gap) * 5)));
+    }
+    @media (max-width: 1180px) {
+      body.is-release-panel-sphere {
+        --release-panel-pair-shift: 0px;
+        --release-panel-sphere-size: clamp(260px, 54vw, 430px);
+      }
+      body.is-release-panel-sphere .plain-release-panel {
+        --plain-release-panel-width: min(360px, calc(100vw - 24px));
+      }
+      .canvas-space--panel-sphere {
+        left: 50%;
+        top: calc(50% - clamp(250px, 34vh, 330px));
+      }
+      body.is-release-panel-sphere .plain-release-panel {
+        --plain-release-panel-width: min(450px, calc(100vw - 28px));
+      }
     }
     .canvas-space--2016 {
       perspective: none;
@@ -2591,7 +3198,7 @@
       position: relative;
       display: grid;
       grid-template-rows: minmax(0, 1fr) auto;
-      padding: 18px 16px 16px;
+      padding: 18px 12px 16px;
       gap: 12px;
     }
     body.is-view-3d.canvas-active .cloth-release-panel__stage {
@@ -2694,7 +3301,8 @@
       width: 100%;
       max-width: 100%;
       box-sizing: border-box;
-      align-self: stretch;
+      align-self: center;
+      justify-self: center;
       border: 1px solid rgba(255, 255, 255, 0.08);
       box-shadow: 0 18px 34px rgba(0, 0, 0, 0.18);
     }
@@ -2713,18 +3321,20 @@
       gap: 12px 0;
       min-width: 0;
       padding: 0 0 5px;
-      border-radius: 18px 18px 0 0;
+      border-radius: 18px;
       corner-shape: squircle;
       background: transparent;
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
       box-shadow: none;
       box-sizing: border-box;
+      justify-items: center;
     }
     .cloth-release-footer__orb {
       grid-area: orb;
       width: 100%;
-      height: 104px;
+      height: auto;
+      aspect-ratio: 16 / 9;
       flex: 0 0 auto;
       display: block;
       border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2740,7 +3350,8 @@
     .cloth-release-footer__orb-video {
       grid-area: orb;
       width: 100%;
-      height: 104px;
+      height: auto;
+      aspect-ratio: 16 / 9;
       display: block;
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 20px;
@@ -2988,12 +3599,14 @@
         --canvas-3d-page-dot-size: 9px;
         --canvas-3d-page-dot-gap: 8px;
         --canvas-3d-page-progress-width: 10px;
-        --canvas-3d-page-progress-height: clamp(100px, 16vh, 160px);
+        --canvas-3d-page-rail-offset: 0px;
+        --canvas-3d-release-root-pad-left: 10px;
+        --canvas-3d-release-rail-gap: clamp(14px, 3.2vw, 18px);
         padding: 8px 8px 10px 8px;
+        padding-left: var(--canvas-3d-release-root-pad-left);
       }
       .canvas-mode__release-page-dots.is-progress {
-        margin-top: 12px;
-        margin-left: 11px;
+        margin: 0;
       }
       .canvas-mode__release-page-rail {
         padding-top: 2px;
@@ -3041,16 +3654,21 @@
       .cloth-release-footer__player {
         gap: 6px;
         padding: 7px 6px;
+        border-radius: 16px 16px 0 0;
       }
       .cloth-release-footer__controls {
         gap: 9px 0;
         padding: 0 0 4px;
       }
       .cloth-release-footer__orb {
-        height: 84px;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 9;
       }
       .cloth-release-footer__orb-video {
-        height: 84px;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 9;
       }
       .cloth-release-footer__transport {
         gap: 8px;
@@ -3252,6 +3870,7 @@
       .plain-release-panel__card::before,
       .plain-release-panel__card::after,
       .plain-release-panel__close,
+      .plain-release-panel__sphere-toggle,
       .plain-release-panel__artwork-frame,
       .plain-release-panel__ui-button,
       .plain-release-panel__button-icon,
@@ -3275,6 +3894,7 @@
     html.canvas-active,
     body.canvas-active {
       overflow: hidden;
+      overscroll-behavior: none;
       scrollbar-gutter: auto;
       scrollbar-width: none;
       -ms-overflow-style: none;
@@ -3313,9 +3933,8 @@
 	      <span class="control-label">View</span>
 	      <div class="control-pill" role="radiogroup" aria-label="View">
 	        <button type="button" id="viewPlainBtn" class="is-active"><span>Plain</span></button>
-	        <button type="button" id="view3dBtn"><span>3D</span></button>
-	        <button type="button" id="viewCardsBtn"><span>Cards</span></button>
-	        <button type="button" id="viewSphereBtn"><span>Sphere</span></button>
+	        <button type="button" id="view3dBtn"><span>Player</span></button>
+	        <button type="button" id="viewCardsBtn"><span>Wave</span></button>
 	      </div>
 	    </div>
 	    <div class="control-cluster type-cluster" data-section="type">
@@ -3750,6 +4369,7 @@
       <img id="plainReleaseMorphImage" alt="">
       <div class="plain-release-panel__morph-overlay" id="plainReleaseMorphOverlay"></div>
     </div>
+    <div class="plain-release-panel__floating-sphere" id="plainReleaseFloatingSphere" aria-hidden="true"></div>
     <button type="button" class="plain-release-panel__ui-button plain-release-panel__nav plain-release-panel__nav--prev is-icon-only" id="plainReleasePrev" aria-label="Previous release">
       <span class="plain-release-panel__button-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path fill="currentColor" d="M14.62 19.59 8.03 13a1.41 1.41 0 0 1 0-2l6.59-6.59L16 5.79 10.41 11.38a.87.87 0 0 0 0 1.24L16 18.21z"></path></svg>
@@ -3761,11 +4381,22 @@
       <div class="plain-release-panel__edge plain-release-panel__edge--bottom" aria-hidden="true"></div>
       <section class="plain-release-panel__card" role="dialog" aria-modal="true" aria-labelledby="plainReleaseTitle">
         <div class="plain-release-panel__surface" aria-hidden="true"></div>
-        <button type="button" class="plain-release-panel__ui-button plain-release-panel__close is-icon-only" id="plainReleaseClose" aria-label="Close">
-          <span class="plain-release-panel__button-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41-6.3-6.29-6.3 6.29L2.88 18.29 9.17 12 2.88 5.71 4.29 4.29l6.3 6.3 6.29-6.3z"></path></svg>
-          </span>
-        </button>
+        <div class="plain-release-panel__top-actions" aria-label="Card actions">
+          <input type="checkbox" class="plain-release-panel__sphere-toggle-input" id="plainReleaseSphereToggleInput" aria-label="Show sphere in artwork">
+          <label class="plain-release-panel__ui-button plain-release-panel__sphere-toggle is-icon-only" id="plainReleaseSphereToggle" for="plainReleaseSphereToggleInput" aria-hidden="true">
+            <span class="plain-release-panel__button-icon plain-release-panel__sphere-toggle-icon plain-release-panel__sphere-toggle-icon--sphere" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2c1.18 0 2.5 1.2 3.22 3H8.78C9.5 5.2 10.82 4 12 4ZM4.26 11a7.95 7.95 0 0 1 1.05-3h1.55a15.26 15.26 0 0 0-.34 3H4.26Zm0 2h2.26c.06 1.08.18 2.1.34 3H5.31A7.95 7.95 0 0 1 4.26 13Zm7.74 7c-1.18 0-2.5-1.2-3.22-3h6.44C14.5 18.8 13.18 20 12 20Zm3.86-5H8.14A13.23 13.23 0 0 1 7.96 13h8.08c-.04.7-.1 1.38-.18 2Zm.18-4H7.96c.04-.7.1-1.38.18-2h7.72c.08.62.14 1.3.18 2Zm1.1 5c.16-.9.28-1.92.34-3h2.26a7.95 7.95 0 0 1-1.05 3h-1.55Zm.34-5a15.26 15.26 0 0 0-.34-3h1.55a7.95 7.95 0 0 1 1.05 3h-2.26Z"></path></svg>
+            </span>
+            <span class="plain-release-panel__button-icon plain-release-panel__sphere-toggle-icon plain-release-panel__sphere-toggle-icon--camera" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path fill="currentColor" d="M9.4 4 8.05 6H5a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3h-3.05L14.6 4H9.4ZM12 9a4 4 0 1 1 0 8 4 4 0 0 1 0-8Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm6.6-2.2a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2Z"></path></svg>
+            </span>
+          </label>
+          <button type="button" class="plain-release-panel__ui-button plain-release-panel__close is-icon-only" id="plainReleaseClose" aria-label="Close">
+            <span class="plain-release-panel__button-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41-6.3-6.29-6.3 6.29L2.88 18.29 9.17 12 2.88 5.71 4.29 4.29l6.3 6.3 6.29-6.3z"></path></svg>
+            </span>
+          </button>
+        </div>
         <div class="plain-release-panel__content" id="plainReleaseContent">
           <div class="plain-release-panel__artwork-frame" id="plainReleaseArtworkFrame" hidden>
             <img class="plain-release-panel__artwork" id="plainReleaseArtwork" alt="">
@@ -3796,7 +4427,7 @@
       <div class="cloth-release-panel__layout">
         <div class="cloth-release-panel__stage">
           <div class="cloth-release-panel__viewport" id="clothReleaseViewport"></div>
-          <div class="cloth-release-panel__status" id="clothReleaseStatus" hidden>Loading 3D card...</div>
+          <div class="cloth-release-panel__status" id="clothReleaseStatus" hidden>Loading player...</div>
         </div>
         <div class="cloth-release-footer__tags-page" id="clothFooterPage">#001</div>
         <div class="cloth-release-footer" id="clothReleaseFooter" hidden aria-hidden="true">
@@ -3850,6 +4481,7 @@
   </div>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <script src="./scripts/vendor/three.min.js"></script>
+  <script type="module" src="./scripts/sileo-hover.bundle.js?v=20260525n"></script>
   <script type="module">
     import {
       getAssignedAudioMap,
@@ -3857,7 +4489,7 @@
       renderReleaseTiles,
       syncPlainReleaseDetailsByIndex
     } from './scripts/releases-data.js?v=20260313a';
-    import { createYear2016Scene as createYear2016BlobScene } from './scripts/year-2016-effect.js?v=20260409b';
+    import { createYear2016Scene as createYear2016BlobScene } from './scripts/year-2016-effect.js?v=20260504d';
 
     (async function () {
       const releases = document.querySelector('.releases');
@@ -3870,7 +4502,6 @@
       const viewPlainBtn = document.getElementById('viewPlainBtn');
       const view3dBtn = document.getElementById('view3dBtn');
       const viewCardsBtn = document.getElementById('viewCardsBtn');
-      const viewSphereBtn = document.getElementById('viewSphereBtn');
       const sizeX4Btn = document.getElementById('sizeX4Btn');
       const sizeX3Btn = document.getElementById('sizeX3Btn');
       const sizeX2Btn = document.getElementById('sizeX2Btn');
@@ -3884,9 +4515,12 @@
       const plainReleaseMorph = document.getElementById('plainReleaseMorph');
       const plainReleaseMorphImage = document.getElementById('plainReleaseMorphImage');
       const plainReleaseMorphOverlay = document.getElementById('plainReleaseMorphOverlay');
+      const plainReleaseFloatingSphere = document.getElementById('plainReleaseFloatingSphere');
       const plainReleaseScene = document.getElementById('plainReleaseScene');
       const plainReleaseCard = plainReleasePanel ? plainReleasePanel.querySelector('.plain-release-panel__card') : null;
       const plainReleaseContent = document.getElementById('plainReleaseContent');
+      const plainReleaseSphereToggleInput = document.getElementById('plainReleaseSphereToggleInput');
+      const plainReleaseSphereToggle = document.getElementById('plainReleaseSphereToggle');
       const plainReleaseClose = document.getElementById('plainReleaseClose');
       const plainReleasePrev = document.getElementById('plainReleasePrev');
       const plainReleaseNext = document.getElementById('plainReleaseNext');
@@ -12020,6 +12654,8 @@
       let releasesLayoutStyleRule = null;
       let canvasLayoutStyleEl = document.getElementById('canvasLayoutStyle');
       let canvasLayoutStyleRule = null;
+      let releasePanelScrollLocked = false;
+      let releasePanelScrollLockY = 0;
 
       if (!releasesLayoutStyleEl) {
         releasesLayoutStyleEl = document.createElement('style');
@@ -12069,6 +12705,34 @@
         if (!canvasLayoutStyleRule) return;
         canvasLayoutStyleRule.setProperty('--canvas-3d-card-width', cardWidthVw.toFixed(4) + 'vw');
         canvasLayoutStyleRule.setProperty('--canvas-3d-card-gap', gapVw.toFixed(4) + 'vw');
+      }
+
+      function lockReleasePanelScroll() {
+        if (releasePanelScrollLocked) return;
+        releasePanelScrollLocked = true;
+        releasePanelScrollLockY = Math.max(0, Math.round(window.scrollY || window.pageYOffset || 0));
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.top = '-' + releasePanelScrollLockY + 'px';
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.width = '100%';
+        document.body.style.overflow = 'hidden';
+      }
+
+      function unlockReleasePanelScroll() {
+        if (!releasePanelScrollLocked) return;
+        const restoreY = releasePanelScrollLockY;
+        releasePanelScrollLocked = false;
+        releasePanelScrollLockY = 0;
+        document.documentElement.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, restoreY);
       }
 
       function initialize3dReleaseGooLayers() {}
@@ -12128,6 +12792,10 @@
       let sizeFactor = 3;
       let floatingScene = null;
       let floatingSceneType = '';
+      let releasePanelSphereScene = null;
+      let plainReleaseArtworkSphereScene = null;
+      let plainReleaseArtworkSphereOpen = false;
+      let releasePanelSphereOwnsCanvasMode = false;
       let controlsLayoutRafId = 0;
       let controlsLayoutTimeout = 0;
       let compactSectionSliderRafId = 0;
@@ -12139,6 +12807,10 @@
       let compactSection = 'view';
       let pageLoaderHidden = !pageLoader;
       let introScene = null;
+      let releaseHoverTitleTimer = 0;
+      let releaseHoverTitleIndex = '';
+      let releaseHoverTitleSource = null;
+      let activeSileoReleaseIndex = '';
       let activePlainReleaseIndex = '';
       let activePlainReleaseSourceTile = null;
       let activeClothReleaseSourceTile = null;
@@ -12337,7 +13009,7 @@
       }
 
       function shouldHideSizeControlsIn3dView() {
-        return viewMode === 'sphere';
+        return false;
       }
 
       function get3dGridTileMotionState(tile) {
@@ -12480,21 +13152,46 @@
 
       let releaseCanvasScene = null;
 
+      function scheduleReleaseCanvasLayoutSync(expectedSizeFactor) {
+        const targetSizeFactor = expectedSizeFactor || sizeFactor;
+        function syncOnce() {
+          if (viewMode !== '3d' || !releaseCanvasScene) return;
+          if (sizeFactor !== targetSizeFactor) return;
+          if (typeof releaseCanvasScene.setSizeFactor === 'function') {
+            releaseCanvasScene.setSizeFactor(targetSizeFactor);
+          } else if (typeof releaseCanvasScene.resize === 'function') {
+            releaseCanvasScene.resize();
+          }
+        }
+        window.requestAnimationFrame(function () {
+          syncOnce();
+          window.requestAnimationFrame(syncOnce);
+        });
+        window.setTimeout(syncOnce, 120);
+        window.setTimeout(syncOnce, 360);
+      }
+
       function setReleasePanelOpenState(isOpen) {
         const nextState = !!isOpen;
         document.body.classList.toggle('is-release-panel-open', nextState);
         document.documentElement.classList.toggle('is-release-panel-open', nextState);
+        if (nextState) {
+          lockReleasePanelScroll();
+        } else {
+          unlockReleasePanelScroll();
+        }
         if (floatingScene && typeof floatingScene.setPaused === 'function') {
           floatingScene.setPaused(nextState);
         }
         if (nextState) {
+          hideReleaseHoverTitle();
           if (viewMode !== '3d') {
             if (canvasModeBackdropEffect) canvasModeBackdropEffect.stop();
             if (controlsDotsEffect) controlsDotsEffect.stop();
           }
           return;
         }
-        if (viewMode === 'sphere' || viewMode === 'cards') {
+        if (viewMode === 'cards') {
           if (canvasModeBackdropEffect) canvasModeBackdropEffect.start();
           return;
         }
@@ -12523,6 +13220,9 @@
         const pageLabel = document.createElement('div');
         const pageDots = document.createElement('div');
         let pageProgressFill = null;
+        let pageProgressSegments = [];
+        let pageProgressPointerId = null;
+        let pageProgressDidDrag = false;
         const measureProbe = document.createElement('button');
         shell.className = 'canvas-mode__release-shell';
         rail.className = 'canvas-mode__release-rail';
@@ -12701,13 +13401,45 @@
           pageDots.classList.remove('is-progress');
           root.classList.remove('is-page-dots-split');
           pageDots.style.removeProperty('--canvas-3d-page-dot-rows');
+          pageDots.style.removeProperty('--canvas-3d-page-count');
           root.style.removeProperty('--canvas-3d-page-dot-size');
           root.style.removeProperty('--canvas-3d-page-dot-gap');
           root.style.removeProperty('--canvas-3d-page-rail-gap');
           root.style.removeProperty('--canvas-3d-page-label-font-size');
           pageDots.style.removeProperty('--canvas-3d-page-progress-fill');
+          for (let i = 0; i < pageProgressSegments.length; i += 1) {
+            const segment = pageProgressSegments[i];
+            if (segment && segment.parentNode === pageDots) {
+              pageDots.removeChild(segment);
+            }
+          }
+          pageProgressSegments = [];
           if (pageProgressFill && pageProgressFill.parentNode === pageDots) {
             pageDots.removeChild(pageProgressFill);
+          }
+        }
+
+        function buildPageProgressSegments() {
+          pageDots.style.setProperty('--canvas-3d-page-count', String(totalPages));
+          for (let i = 0; i < totalPages; i += 1) {
+            const segment = document.createElement('button');
+            segment.type = 'button';
+            segment.className = 'canvas-mode__release-page-segment';
+            segment.style.setProperty('--canvas-3d-page-segment-index', String(i));
+            segment.setAttribute('aria-label', 'Go to release page ' + String(i + 1) + ' of ' + String(totalPages));
+            segment.setAttribute('aria-current', i === pageIndex ? 'page' : 'false');
+            segment.classList.toggle('is-active', i === pageIndex);
+            segment.addEventListener('click', function (event) {
+              event.preventDefault();
+              event.stopPropagation();
+              if (pageProgressDidDrag) return;
+              if (i === pageIndex) return;
+              pageTransitionDirection = i >= pageIndex ? 1 : -1;
+              pageIndex = clamp(i, 0, totalPages - 1);
+              renderPage(true);
+            });
+            pageDots.appendChild(segment);
+            pageProgressSegments.push(segment);
           }
         }
 
@@ -12726,9 +13458,64 @@
           if (pageProgressFill.parentNode !== pageDots) {
             pageDots.appendChild(pageProgressFill);
           }
+          buildPageProgressSegments();
           const progress = totalPages > 1 ? pageIndex / (totalPages - 1) : 1;
           pageDots.style.setProperty('--canvas-3d-page-progress-fill', (progress * 100).toFixed(2) + '%');
         }
+
+        function setPageFromProgressClientY(clientY) {
+          if (totalPages <= 1) return;
+          const rect = pageDots.getBoundingClientRect();
+          const height = Math.max(1, rect.height || 1);
+          const localY = clamp(clientY - rect.top, 0, height);
+          const nextPageIndex = clamp(Math.floor((localY / height) * totalPages), 0, totalPages - 1);
+          if (nextPageIndex === pageIndex) return;
+          pageTransitionDirection = nextPageIndex >= pageIndex ? 1 : -1;
+          pageIndex = nextPageIndex;
+          renderPage(true);
+        }
+
+        pageDots.addEventListener('pointerdown', function (event) {
+          if (!pageDots.classList.contains('is-progress') || totalPages <= 1) return;
+          pageProgressPointerId = event.pointerId;
+          pageProgressDidDrag = false;
+          pageDots.classList.add('is-dragging');
+          if (pageDots.setPointerCapture) {
+            try {
+              pageDots.setPointerCapture(event.pointerId);
+            } catch {}
+          }
+          setPageFromProgressClientY(event.clientY);
+          event.preventDefault();
+          event.stopPropagation();
+        });
+
+        pageDots.addEventListener('pointermove', function (event) {
+          if (pageProgressPointerId !== event.pointerId) return;
+          pageProgressDidDrag = true;
+          setPageFromProgressClientY(event.clientY);
+          event.preventDefault();
+          event.stopPropagation();
+        });
+
+        function releasePageProgressPointer(event) {
+          if (pageProgressPointerId !== event.pointerId) return;
+          pageProgressPointerId = null;
+          pageDots.classList.remove('is-dragging');
+          if (pageDots.releasePointerCapture) {
+            try {
+              pageDots.releasePointerCapture(event.pointerId);
+            } catch {}
+          }
+          window.setTimeout(function () {
+            pageProgressDidDrag = false;
+          }, 0);
+          event.preventDefault();
+          event.stopPropagation();
+        }
+
+        pageDots.addEventListener('pointerup', releasePageProgressPointer);
+        pageDots.addEventListener('pointercancel', releasePageProgressPointer);
 
         function schedulePageDotsOverflowLayout() {
           if (pageDotsOverflowRafId) window.cancelAnimationFrame(pageDotsOverflowRafId);
@@ -13028,7 +13815,7 @@
           const nextPageIndex = Math.floor(entryIndex / pageSize);
           if (nextPageIndex === pageIndex) return;
           pageIndex = clamp(nextPageIndex, 0, totalPages - 1);
-          renderPage();
+          renderPage(false);
         }
 
         function activateIndex(index, sourceTile, animate) {
@@ -13040,7 +13827,7 @@
             const nextPageIndex = Math.floor(entryIndex / pageSize);
             if (nextPageIndex !== pageIndex) {
               pageIndex = clamp(nextPageIndex, 0, totalPages - 1);
-              renderPage();
+              renderPage(!!animate);
             }
           }
           openClothReleasePanel(index, sourceTile || getPlainReleaseTileByIndex(index), {
@@ -13076,9 +13863,10 @@
           return true;
         }
 
-        function renderPage() {
+        function renderPage(animate) {
           const transitionId = ++pageTransitionToken;
           const direction = pageTransitionDirection || 1;
+          const shouldAnimate = animate === true;
           list.textContent = '';
           items.length = 0;
           const ordered = entries.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize);
@@ -13127,8 +13915,14 @@
           updatePageDotsOverflowLayout();
           schedulePageDotsOverflowLayout();
           list.style.setProperty('--page-transition-direction', String(direction));
-          list.style.opacity = '0';
-          list.style.transform = 'translate3d(' + (direction > 0 ? '16px' : '-16px') + ', 0, 0)';
+          list.style.transition = shouldAnimate
+            ? ''
+            : 'none';
+          list.style.opacity = shouldAnimate ? '0' : '1';
+          list.style.transform = shouldAnimate
+            ? 'translate3d(' + (direction > 0 ? '16px' : '-16px') + ', 0, 0)'
+            : 'translate3d(0, 0, 0)';
+          if (!shouldAnimate) return;
           window.requestAnimationFrame(function () {
             if (pageTransitionToken !== transitionId) return;
             list.style.transition = 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease';
@@ -13181,7 +13975,7 @@
           } else {
             pageIndex = clamp(pageIndex, 0, totalPages - 1);
           }
-          renderPage();
+          renderPage(false);
           return true;
         }
 
@@ -13203,7 +13997,7 @@
           if (selectedEntryIndex !== -1) {
             pageIndex = clamp(Math.floor(selectedEntryIndex / pageSize), 0, totalPages - 1);
           }
-          renderPage();
+          renderPage(false);
         }
 
         root.addEventListener('wheel', function (event) {
@@ -13218,6 +14012,18 @@
         }, { passive: false });
 
         return {
+          start: function (nextSizeFactor) {
+            currentSizeFactor = nextSizeFactor || sizeFactor;
+            isActive = true;
+            root.hidden = false;
+            root.setAttribute('aria-hidden', 'false');
+            if (!activeIndex) activeIndex = getReleaseCanvasPrimaryIndex();
+            const selectedEntryIndex = getEntryIndex(activeIndex);
+            if (selectedEntryIndex !== -1) {
+              pageIndex = clamp(Math.floor(selectedEntryIndex / pageSize), 0, totalPages - 1);
+            }
+            rebuild();
+          },
           resize: function () {
             rebuild();
           },
@@ -13241,7 +14047,7 @@
               if (selectedEntryIndex !== -1) {
                 pageIndex = clamp(Math.floor(selectedEntryIndex / pageSize), 0, totalPages - 1);
               }
-              renderPage();
+              renderPage(false);
             } else {
               resetPageDotsOverflowLayout();
             }
@@ -13317,10 +14123,11 @@
 
         const panelRect = plainReleasePanel.getBoundingClientRect();
         const sceneRect = plainReleaseScene.getBoundingClientRect();
+        const cardRect = plainReleaseCard ? plainReleaseCard.getBoundingClientRect() : sceneRect;
         const prevRect = plainReleasePrev.getBoundingClientRect();
         const nextRect = plainReleaseNext.getBoundingClientRect();
 
-        if (!panelRect.width || !sceneRect.width || !sceneRect.height) return;
+        if (!panelRect.width || !cardRect.width || !cardRect.height) return;
 
         const navGap = window.innerWidth <= COMPACT_CONTROLS_BREAKPOINT ? 10 : 12;
         const viewportInset = window.innerWidth <= COMPACT_CONTROLS_BREAKPOINT ? 8 : 12;
@@ -13328,11 +14135,12 @@
         const prevHeight = prevRect.height || 38;
         const nextWidth = nextRect.width || 38;
         const nextHeight = nextRect.height || 38;
-        const navCenterY = sceneRect.top - panelRect.top + sceneRect.height / 2;
+        const navVisualOffsetY = plainReleasePanel.classList.contains('is-artwork-sphere-open') ? 0 : 12;
+        const navCenterY = cardRect.top - panelRect.top + cardRect.height / 2 + navVisualOffsetY;
         const prevTop = Math.max(viewportInset, Math.min(navCenterY - prevHeight / 2, panelRect.height - prevHeight - viewportInset));
         const nextTop = Math.max(viewportInset, Math.min(navCenterY - nextHeight / 2, panelRect.height - nextHeight - viewportInset));
-        const prevLeft = Math.max(viewportInset, Math.min(sceneRect.left - panelRect.left - prevWidth - navGap, panelRect.width - prevWidth - viewportInset));
-        const nextLeft = Math.max(viewportInset, Math.min(sceneRect.right - panelRect.left + navGap, panelRect.width - nextWidth - viewportInset));
+        const prevLeft = Math.max(viewportInset, Math.min(cardRect.left - panelRect.left - prevWidth - navGap, panelRect.width - prevWidth - viewportInset));
+        const nextLeft = Math.max(viewportInset, Math.min(cardRect.right - panelRect.left + navGap, panelRect.width - nextWidth - viewportInset));
 
         plainReleasePrev.style.top = prevTop + 'px';
         plainReleasePrev.style.left = prevLeft + 'px';
@@ -13407,6 +14215,38 @@
         window.scrollTo({
           top: nextScrollTop,
           behavior: 'smooth'
+        });
+      }
+
+      function scrollPlainReleaseTileClearOfSileo(tile) {
+        if (!tile || typeof tile.getBoundingClientRect !== 'function') return;
+        const toast = document.querySelector('.bassfunk-sileo-toast[data-expanded="true"]');
+        if (!toast || typeof toast.getBoundingClientRect !== 'function') return;
+        const tileRect = tile.getBoundingClientRect();
+        const toastRect = toast.getBoundingClientRect();
+        if ((!tileRect.width && !tileRect.height) || (!toastRect.width && !toastRect.height)) return;
+
+        const safeGap = 18;
+        const preemptiveRowHeight = Math.max(1, tileRect.height);
+        const safeTop = toastRect.top - safeGap - preemptiveRowHeight;
+        const crossesToastRow = tileRect.bottom > safeTop && tileRect.top < toastRect.bottom;
+        if (!crossesToastRow) return;
+
+        const scrollDelta = Math.ceil(tileRect.bottom - safeTop);
+        if (scrollDelta <= 0) return;
+        window.scrollTo({
+          top: Math.max(0, window.scrollY + scrollDelta),
+          behavior: 'smooth'
+        });
+      }
+
+      function scheduleSileoReleaseTileClearance(tile) {
+        if (!tile) return;
+        window.requestAnimationFrame(function () {
+          scrollPlainReleaseTileClearOfSileo(tile);
+          window.setTimeout(function () {
+            scrollPlainReleaseTileClearOfSileo(tile);
+          }, 220);
         });
       }
 
@@ -13503,6 +14343,7 @@
           plainReleaseNavigationLayoutRafId = 0;
         }
         resetPlainReleaseTilt();
+        destroyPlainReleaseArtworkSphere();
         stopPlainReleaseMorph();
         clearPlainReleaseSourceTile();
         updatePlainReleaseNavigation();
@@ -13519,6 +14360,7 @@
           plainReleaseNext.style.top = '';
           plainReleaseNext.style.left = '';
         }
+        hideReleasePanelSphereBackdrop();
         if (!clothReleasePanel || !clothReleasePanel.classList.contains('is-open')) {
           setReleasePanelOpenState(false);
         }
@@ -13763,6 +14605,83 @@
         return plainReleaseDetailsByIndex[resolvedIndex] || buildPlainReleaseFallbackDetail(resolvedIndex, sourceTile || getPlainReleaseTileByIndex(resolvedIndex));
       }
 
+      function clearReleaseHoverTitleTimer() {
+        if (!releaseHoverTitleTimer) return;
+        window.clearTimeout(releaseHoverTitleTimer);
+        releaseHoverTitleTimer = 0;
+      }
+
+      function hideReleaseHoverTitle(options) {
+        clearReleaseHoverTitleTimer();
+        if (window.BassfunkSileoHover && typeof window.BassfunkSileoHover.hide === 'function') {
+          window.BassfunkSileoHover.hide();
+        } else {
+          document.dispatchEvent(new CustomEvent('bassfunk:sileo-hide'));
+        }
+        if (!options || !options.keepHoverIndex) {
+          releaseHoverTitleIndex = '';
+          releaseHoverTitleSource = null;
+        }
+      }
+
+      function getReleaseHoverTileStateIndex(tileState) {
+        if (!tileState) return '';
+        if (tileState.index != null && tileState.index !== '') return String(tileState.index);
+        if (tileState.el && tileState.el.getAttribute) return tileState.el.getAttribute('data-index') || '';
+        if (tileState.srcTile && tileState.srcTile.getAttribute) return tileState.srcTile.getAttribute('data-index') || '';
+        return '';
+      }
+
+      function getReleaseHoverTileStateSource(tileState) {
+        if (!tileState) return null;
+        return tileState.srcTile || tileState.el || null;
+      }
+
+      function showReleaseHoverTitle(index, sourceTile) {
+        const resolvedIndex = resolvePlainReleaseIndex(index, sourceTile);
+        const normalizedIndex = String(resolvedIndex || index || '').trim();
+        if (!normalizedIndex) {
+          hideReleaseHoverTitle();
+          return;
+        }
+        const nextSource = sourceTile || null;
+        if (releaseHoverTitleIndex === normalizedIndex && releaseHoverTitleSource === nextSource) return;
+        const detail = getPlainReleaseDetail(normalizedIndex, sourceTile);
+        const artistName = detail && detail.artistName ? detail.artistName : '';
+        const releaseTitle = detail && detail.releaseTitle ? detail.releaseTitle : '';
+        if (!artistName && !releaseTitle) {
+          hideReleaseHoverTitle();
+          return;
+        }
+
+        clearReleaseHoverTitleTimer();
+        releaseHoverTitleIndex = normalizedIndex;
+        releaseHoverTitleSource = nextSource;
+        if (window.BassfunkSileoHover && typeof window.BassfunkSileoHover.show === 'function') {
+          window.BassfunkSileoHover.show({ artistName: artistName, releaseTitle: releaseTitle });
+        } else {
+          document.dispatchEvent(new CustomEvent('bassfunk:sileo-show', {
+            detail: { artistName: artistName, releaseTitle: releaseTitle }
+          }));
+        }
+      }
+
+      function showReleaseHoverTitleForTile(tile) {
+        if (!tile || !tile.getAttribute) {
+          hideReleaseHoverTitle();
+          return;
+        }
+        showReleaseHoverTitle(tile.getAttribute('data-index') || '', tile);
+      }
+
+      function showReleaseHoverTitleForTileState(tileState) {
+        if (!tileState) {
+          hideReleaseHoverTitle();
+          return;
+        }
+        showReleaseHoverTitle(getReleaseHoverTileStateIndex(tileState), getReleaseHoverTileStateSource(tileState));
+      }
+
       function getPlainReleaseSourceText(detail) {
         const sourceLabel = detail && detail.sourceLabel ? detail.sourceLabel : '';
         if (sourceLabel === 'VK') return 'Open VK post';
@@ -13909,6 +14828,63 @@
         return sortPlainReleaseLinks(links);
       }
 
+      function buildSileoReleaseCardPayload(index, sourceTile) {
+        const resolvedIndex = resolvePlainReleaseIndex(index, sourceTile);
+        const resolvedTile = sourceTile || getPlainReleaseTileByIndex(resolvedIndex);
+        const detail = getPlainReleaseDetail(resolvedIndex, resolvedTile);
+        if (!detail) return null;
+        const sourceImage = resolvedTile ? resolvedTile.querySelector('img') : null;
+        const artworkUrl = sourceImage
+          ? normalizePlainReleaseAssetUrl(sourceImage.currentSrc || sourceImage.src || (sourceImage.getAttribute ? (sourceImage.getAttribute('src') || '') : ''))
+          : '';
+        return {
+          index: resolvedIndex,
+          artistName: detail.artistName || '',
+          releaseTitle: detail.releaseTitle || '',
+          artworkUrl: artworkUrl,
+          releaseLinks: buildReleaseLinksForPanel(detail),
+          artistLinks: buildPlainReleaseArtistLinks(detail),
+          canGoPrev: !!getPlainReleaseIndexOffset(resolvedIndex, -1),
+          canGoNext: !!getPlainReleaseIndexOffset(resolvedIndex, 1),
+          onClose: function () {
+            activeSileoReleaseIndex = '';
+            clearPlainReleaseSourceTile();
+            if (window.BassfunkSileoHover && typeof window.BassfunkSileoHover.close === 'function') {
+              window.BassfunkSileoHover.close();
+            }
+          },
+          onPrev: function () {
+            navigateSileoReleaseCard(-1);
+          },
+          onNext: function () {
+            navigateSileoReleaseCard(1);
+          }
+        };
+      }
+
+      function openSileoReleaseCard(index, sourceTile) {
+        const payload = buildSileoReleaseCardPayload(index, sourceTile);
+        if (!payload) return;
+        activeSileoReleaseIndex = payload.index;
+        const resolvedTile = sourceTile || getPlainReleaseTileByIndex(payload.index);
+        setPlainReleaseSourceTile(resolvedTile);
+        hideReleaseHoverTitle({ keepHoverIndex: true });
+        if (window.BassfunkSileoHover && typeof window.BassfunkSileoHover.open === 'function') {
+          window.BassfunkSileoHover.open(payload);
+        } else {
+          document.dispatchEvent(new CustomEvent('bassfunk:sileo-open', { detail: payload }));
+        }
+      }
+
+      function navigateSileoReleaseCard(offset) {
+        if (!activeSileoReleaseIndex) return;
+        const nextIndex = getPlainReleaseIndexOffset(activeSileoReleaseIndex, offset);
+        if (!nextIndex) return;
+        const nextTile = getPlainReleaseTileByIndex(nextIndex);
+        openSileoReleaseCard(nextIndex, nextTile);
+        scheduleSileoReleaseTileClearance(nextTile);
+      }
+
       function renderPlainReleaseSocials(detail) {
         if (!plainReleaseSocials) return;
         plainReleaseSocials.textContent = '';
@@ -13932,6 +14908,7 @@
 
       function fillPlainReleasePanel(detail, sourceTile) {
         if (!detail) return;
+        destroyPlainReleaseArtworkSphere();
         const sourceImage = sourceTile ? sourceTile.querySelector('img') : null;
         const artworkSrc = sourceImage ? (sourceImage.currentSrc || sourceImage.src) : '';
         if (plainReleaseArtworkFrame) plainReleaseArtworkFrame.hidden = !artworkSrc;
@@ -13949,6 +14926,8 @@
         }
         if (plainReleaseSource) plainReleaseSource.hidden = false;
         renderPlainReleaseSocials(detail);
+        if (plainReleaseSphereToggleInput) plainReleaseSphereToggleInput.checked = false;
+        window.requestAnimationFrame(ensurePlainReleaseArtworkSphereScene);
         schedulePlainReleaseNavigationLayout();
       }
 
@@ -14149,6 +15128,7 @@
         const detail = getPlainReleaseDetail(resolvedIndex, sourceTile);
         if (!detail || !plainReleasePanel) return;
         setReleasePanelOpenState(true);
+        showReleasePanelSphereBackdrop();
         const token = plainReleaseAnimationToken + 1;
         plainReleaseAnimationToken = token;
         stopPlainReleaseMorph();
@@ -14159,9 +15139,14 @@
         updatePlainReleaseNavigation();
         plainReleasePanel.hidden = false;
         plainReleasePanel.classList.add('is-open');
-        plainReleasePanel.classList.add('is-morphing');
         plainReleasePanel.setAttribute('aria-hidden', 'false');
         resetPlainReleaseTilt();
+        if (document.body.classList.contains('is-release-panel-sphere')) {
+          plainReleasePanel.classList.remove('is-morphing');
+          schedulePlainReleaseNavigationLayout();
+          return;
+        }
+        plainReleasePanel.classList.add('is-morphing');
         await animatePlainReleaseMorph(sourceTile, token);
         if (plainReleaseAnimationToken !== token) return;
         plainReleasePanel.classList.remove('is-morphing');
@@ -14472,7 +15457,7 @@
         }
         fillClothReleasePanel(detail);
         updateClothReleaseNavigation();
-        updateClothReleaseStatus(panelWasOpen ? 'Loading 3D card...' : '', false);
+        updateClothReleaseStatus(panelWasOpen ? 'Loading player...' : '', false);
 
         try {
           const experience = await ensureClothReleaseExperience();
@@ -14480,6 +15465,7 @@
           clothReleasePanel.hidden = false;
           clothReleasePanel.classList.add('is-open');
           clothReleasePanel.setAttribute('aria-hidden', 'false');
+          scheduleReleaseCanvasLayoutSync(sizeFactor);
           experience.resize();
           await experience.setCard(buildClothReleaseCardPayload(detail, resolvedTile), {
             animate: !!(panelWasOpen && settings.animate),
@@ -14489,6 +15475,7 @@
           if (clothReleaseAnimationToken !== token) return;
           experience.resize();
           experience.setActive(true);
+          scheduleReleaseCanvasLayoutSync(sizeFactor);
           updateClothReleaseStatus('', false);
           updateClothReleaseFooter();
         } catch (error) {
@@ -14497,7 +15484,7 @@
           clothReleasePanel.hidden = false;
           clothReleasePanel.classList.add('is-open');
           clothReleasePanel.setAttribute('aria-hidden', 'false');
-          updateClothReleaseStatus('Failed to load 3D card', true);
+          updateClothReleaseStatus('Failed to load player', true);
           updateClothReleaseFooter();
         }
       }
@@ -14624,7 +15611,8 @@
         if (event.defaultPrevented || event.button !== 0) return;
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
         const target = event.target;
-        const tile = target && target.closest ? target.closest('a[data-index]') : null;
+        const tile = (target && target.closest ? target.closest('a[data-index]') : null) ||
+          (releaseHoverTitleSource && releaseHoverTitleSource.getAttribute ? releaseHoverTitleSource : null);
         if (!tile) return;
         const tileIndex = tile.getAttribute('data-index') || '';
         if (!tileIndex) return;
@@ -14633,12 +15621,18 @@
           openClothReleasePanel(tileIndex, tile);
           return;
         }
-        openPlainReleasePanel(tileIndex, tile);
+        openSileoReleaseCard(tileIndex, tile);
       });
 
       releases.addEventListener('pointermove', function (event) {
         if ((viewMode !== '3d' && viewMode !== 'plain') || isCoarsePointer) return;
         if (releases.classList.contains('has-cloth-release-focus')) return;
+        const releaseHoverTarget = event.target && event.target.closest ? event.target.closest('a[data-index]') : null;
+        if (releaseHoverTarget) {
+          showReleaseHoverTitleForTile(releaseHoverTarget);
+        } else {
+          hideReleaseHoverTitle();
+        }
         grid3dPointerInside = true;
         grid3dPointerX = event.clientX;
         grid3dPointerY = event.clientY;
@@ -14656,12 +15650,14 @@
         if (viewMode !== '3d' && viewMode !== 'plain') return;
         grid3dPointerInside = false;
         schedule3dGridPointerEffect();
+        hideReleaseHoverTitle();
         if (viewMode === 'plain') resetPlainReleaseHoverTile();
       });
       releases.addEventListener('pointerout', function (event) {
         if (viewMode !== 'plain' || isCoarsePointer) return;
         const relatedTarget = event.relatedTarget;
         if (relatedTarget && releases.contains(relatedTarget)) return;
+        hideReleaseHoverTitle();
         resetPlainReleaseHoverTile();
       });
       window.addEventListener('scroll', function () {
@@ -14671,9 +15667,19 @@
       window.addEventListener('resize', function () {
         if (!activePlainReleaseIndex) return;
         schedulePlainReleaseNavigationLayout();
+        if (plainReleaseArtworkSphereScene && typeof plainReleaseArtworkSphereScene.resize === 'function') {
+          plainReleaseArtworkSphereScene.resize();
+        }
       });
 
       if (plainReleaseClose) plainReleaseClose.addEventListener('click', closePlainReleasePanel);
+      if (plainReleaseSphereToggleInput) {
+        plainReleaseSphereToggleInput.addEventListener('change', function () {
+          plainReleaseArtworkSphereOpen = !!plainReleaseSphereToggleInput.checked;
+          if (plainReleaseArtworkSphereOpen) ensurePlainReleaseArtworkSphereScene();
+          updatePlainReleaseArtworkSphereToggle();
+        });
+      }
       if (plainReleasePrev) plainReleasePrev.addEventListener('click', function () {
         navigatePlainRelease(-1);
       });
@@ -14784,6 +15790,20 @@
           updatePlainReleaseHoverTile(target, event.clientX, event.clientY);
         });
       }
+      document.addEventListener('click', function (event) {
+        if (viewMode !== 'plain' || isCoarsePointer) return;
+        if (event.defaultPrevented || event.button !== 0) return;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        const target = event.target;
+        if (target && target.closest && target.closest('.bassfunk-sileo-toast[data-expanded="true"], [data-sileo-toast][data-expanded="true"], .controls, .plain-release-panel, .cloth-release-panel')) return;
+        const tile = target && target.closest ? target.closest('a[data-index]') : null;
+        const sourceTile = tile || (releaseHoverTitleSource && releaseHoverTitleSource.getAttribute ? releaseHoverTitleSource : null);
+        if (!sourceTile || !sourceTile.getAttribute) return;
+        const tileIndex = sourceTile.getAttribute('data-index') || '';
+        if (!tileIndex) return;
+        event.preventDefault();
+        openSileoReleaseCard(tileIndex, sourceTile);
+      }, true);
       document.addEventListener('keydown', function (event) {
         const target = event.target;
         if (target && target.closest && target.closest('input, textarea, select, [contenteditable="true"]')) return;
@@ -14834,7 +15854,7 @@
         window.requestAnimationFrame(function () {
           window.requestAnimationFrame(function () {
             refreshControlsLayout();
-            if (viewMode === 'sphere' || viewMode === 'cards') {
+            if (viewMode === 'cards') {
               if (floatingScene) floatingScene.resize();
               return;
             }
@@ -14882,11 +15902,11 @@
       }
 
       function updateSizeControlsVisibility() {
-        const isSphereView = viewMode === 'sphere';
+        const isCardsView = viewMode === 'cards';
         const hideLgIn3dView = shouldHideLgIn3dView();
         const hideSmIn3dView = shouldHideSmIn3dView();
         const hideXsIn3dView = shouldHideXsIn3dView();
-        const hideSizeControlsInCurrentView = shouldHideSizeControlsIn3dView();
+        const hideSizeControlsInCurrentView = isCardsView || shouldHideSizeControlsIn3dView();
         if (hideSizeControlsInCurrentView && compactSection === 'size') {
           compactSection = 'view';
         }
@@ -14904,7 +15924,7 @@
           sizeX4Btn.setAttribute('aria-disabled', sizeX4Btn.hidden ? 'true' : 'false');
         }
         if (sizeX3Btn) {
-          sizeX3Btn.hidden = isSphereView;
+          sizeX3Btn.hidden = false;
           sizeX3Btn.classList.remove('is-size-locked');
           sizeX3Btn.setAttribute('aria-disabled', sizeX3Btn.hidden ? 'true' : 'false');
         }
@@ -14914,7 +15934,7 @@
           sizeX2Btn.setAttribute('aria-disabled', sizeX2Btn.hidden ? 'true' : 'false');
         }
         if (sizeX1Btn) {
-          sizeX1Btn.hidden = isSphereView || hideXsIn3dView;
+          sizeX1Btn.hidden = hideXsIn3dView;
           sizeX1Btn.classList.remove('is-size-locked');
           sizeX1Btn.setAttribute('aria-disabled', sizeX1Btn.hidden ? 'true' : 'false');
         }
@@ -15137,21 +16157,35 @@
         return createYear2016Scene(pageLoaderIntro);
       }
 
-      function createSphereScene() {
-        if (!canvasMode) return null;
-        const tilesForCanvas = sampleTilesForCanvas();
+      function createSphereScene(options) {
+        const settings = options || {};
+        const targetRoot = settings.targetRoot || canvasMode;
+        const isInteractive = settings.interactive !== false;
+        const clickAction = settings.clickAction || 'open';
+        if (!targetRoot) return null;
+        let tilesForCanvas = sampleTilesForCanvas();
+        if (settings.maxTiles && tilesForCanvas.length > settings.maxTiles) {
+          const stride = tilesForCanvas.length / settings.maxTiles;
+          const sampledTiles = [];
+          for (let i = 0; i < settings.maxTiles; i += 1) {
+            const tile = tilesForCanvas[Math.floor(i * stride)];
+            if (tile) sampledTiles.push(tile);
+          }
+          tilesForCanvas = sampledTiles;
+        }
         const space = document.createElement('div');
         const camera = document.createElement('div');
         const field = document.createElement('div');
         const coreSphere = document.createElement('div');
         space.className = 'canvas-space canvas-space--sphere';
+        if (settings.className) space.className += ' ' + settings.className;
         camera.className = 'canvas-camera';
         field.className = 'canvas-field';
         coreSphere.className = 'canvas-core-sphere';
         camera.appendChild(field);
         space.appendChild(coreSphere);
         space.appendChild(camera);
-        canvasMode.prepend(space);
+        targetRoot.prepend(space);
 
         const tileStates = [];
         const PERSPECTIVE = 1100;
@@ -15172,7 +16206,7 @@
         const PINCH_ZOOM_FACTOR = 2.8;
         let tileSize = 58;
         let sphereRadius = 360;
-        let currentCanvasSizeFactor = sizeFactor;
+        let currentCanvasSizeFactor = settings.sizeFactor || sizeFactor;
         let rotX = -14;
         let rotY = 18;
         let zoom = -920;
@@ -15199,7 +16233,16 @@
         let hoverPointerY = 0;
         let hasHoverPointer = false;
         let suppressNextClick = false;
+        let smoothRotation = false;
         const trackedPointers = new Map();
+
+        function getSphereViewportSize() {
+          if (typeof settings.viewportSize === 'function') {
+            return settings.viewportSize() || getSceneViewportSize();
+          }
+          if (settings.viewportSize) return settings.viewportSize;
+          return getSceneViewportSize();
+        }
 
         function clamp(value, min, max) {
           return Math.max(min, Math.min(max, value));
@@ -15214,6 +16257,21 @@
 
         function snap(value) {
           return Math.round(value * 10) / 10;
+        }
+
+        function spinSphereFromPoint(clientX, clientY) {
+          const rect = space.getBoundingClientRect();
+          const centerX = rect.left + rect.width * 0.5;
+          const centerY = rect.top + rect.height * 0.5;
+          const offsetX = clientX - centerX;
+          const offsetY = clientY - centerY;
+          const directionX = offsetX >= 0 ? 1 : -1;
+          const directionY = offsetY >= 0 ? 1 : -1;
+          targetRotY = normalizeAngle(targetRotY + directionX * 38);
+          targetRotX = normalizeAngle(targetRotX - directionY * 10);
+          smoothRotation = true;
+          hoverNeedsRender = true;
+          ensureRender();
         }
 
         function setTrackedPointer(event) {
@@ -15252,7 +16310,7 @@
         }
 
         function sizeScaleForCanvas(nextSizeFactor) {
-          return SIZE_TO_CANVAS_SCALE[nextSizeFactor] || 1;
+          return Number(settings.tileScale || 1) * (SIZE_TO_CANVAS_SCALE[nextSizeFactor] || 1);
         }
 
         function sizeFillForCanvas(nextSizeFactor) {
@@ -15276,7 +16334,7 @@
         }
 
         function overlapLimitForCanvas(nextSizeFactor) {
-          return SIZE_TO_CANVAS_OVERLAP[nextSizeFactor] || 0.8;
+          return Number(settings.overlapLimit || 0) || SIZE_TO_CANVAS_OVERLAP[nextSizeFactor] || 0.8;
         }
 
         function radiusMultiplierForCanvas(nextSizeFactor) {
@@ -15444,7 +16502,7 @@
           field.innerHTML = '';
           tileStates.length = 0;
           hoverNeedsRender = true;
-          const viewport = getSceneViewportSize();
+          const viewport = getSphereViewportSize();
           const viewportWidth = viewport.width;
           const viewportHeight = viewport.height;
           lastViewport = viewport;
@@ -15482,8 +16540,8 @@
           const zoomBias = sizeZoomBiasForCanvas(currentCanvasSizeFactor);
           const fitDistance = requiredDistance + 430 - zoomBias;
           const fitZoom = -clamp(fitDistance - INITIAL_ZOOM_PULL, Math.abs(zoomNearLimit) + 8, Math.abs(zoomFarLimit));
-          zoom = fitZoom;
-          targetZoom = fitZoom;
+          zoom = clamp(fitZoom + (Number(settings.zoomOffset || 0) || 0), zoomFarLimit, zoomNearLimit);
+          targetZoom = zoom;
           rotX = -6;
           rotY = 0;
           targetRotX = rotX;
@@ -15537,10 +16595,16 @@
           tile.setAttribute('data-index', tileIndex);
           tile.target = '_blank';
           tile.rel = 'noreferrer noopener';
-          tile.addEventListener('click', function (event) {
+          if (isInteractive) tile.addEventListener('click', function (event) {
               if (didDrag || isDragging || pinchActive) {
                 event.preventDefault();
                 event.stopPropagation();
+                return;
+              }
+              if (clickAction === 'spin') {
+                event.preventDefault();
+                event.stopPropagation();
+                spinSphereFromPoint(event.clientX, event.clientY);
                 return;
               }
               if (!tileIndex) return;
@@ -15573,7 +16637,7 @@
             };
             tileStates.push(state);
 
-            if (enableSceneHover) {
+            if (isInteractive && enableSceneHover) {
               tile.addEventListener('pointerenter', function () {
                 state.targetHover = 1;
                 state.isPointerOver = true;
@@ -15732,8 +16796,21 @@
             rafId = 0;
             return;
           }
-          rotX = targetRotX;
-          rotY = targetRotY;
+          const rotXDelta = normalizeAngle(targetRotX - rotX);
+          const rotYDelta = normalizeAngle(targetRotY - rotY);
+          if (smoothRotation) {
+            if (Math.abs(rotXDelta) < 0.04 && Math.abs(rotYDelta) < 0.04) {
+              rotX = targetRotX;
+              rotY = targetRotY;
+              smoothRotation = false;
+            } else {
+              rotX = normalizeAngle(rotX + rotXDelta * 0.22);
+              rotY = normalizeAngle(rotY + rotYDelta * 0.22);
+            }
+          } else {
+            rotX = targetRotX;
+            rotY = targetRotY;
+          }
           const zoomDelta = targetZoom - zoom;
           if (Math.abs(zoomDelta) < 0.06) {
             zoom = targetZoom;
@@ -15743,13 +16820,14 @@
 
           updateCamera();
           const cameraAnimating = Math.abs(targetZoom - zoom) > 0.1;
+          const rotationAnimating = smoothRotation;
           let hoverAnimating = false;
-          if (hoverNeedsRender || cameraAnimating) {
-            hoverAnimating = renderTiles(cameraAnimating);
+          if (hoverNeedsRender || cameraAnimating || rotationAnimating) {
+            hoverAnimating = renderTiles(cameraAnimating || rotationAnimating);
             hoverNeedsRender = hoverAnimating;
           }
 
-          if (hoverAnimating || cameraAnimating) {
+          if (hoverAnimating || cameraAnimating || rotationAnimating) {
             rafId = window.requestAnimationFrame(frame);
             return;
           }
@@ -15841,6 +16919,12 @@
           }
           if (activePointerId !== null && event.pointerId !== activePointerId) return;
           const shouldOpenTile = !didDrag;
+          if (shouldOpenTile && clickAction === 'spin') {
+            endDrag(event.pointerId);
+            suppressNextClick = true;
+            spinSphereFromPoint(event.clientX, event.clientY);
+            return;
+          }
           const pickedTile = shouldOpenTile ? pickTileAt(event.clientX, event.clientY) : null;
           endDrag(event.pointerId);
           if (pickedTile && openTileLink(pickedTile)) {
@@ -15885,6 +16969,12 @@
             event.stopPropagation();
             return;
           }
+          if (clickAction === 'spin' && !didDrag) {
+            event.preventDefault();
+            event.stopPropagation();
+            spinSphereFromPoint(event.clientX, event.clientY);
+            return;
+          }
           if (!didDrag) return;
           didDrag = false;
           event.preventDefault();
@@ -15892,7 +16982,7 @@
         }
 
         function resize() {
-          const nextViewport = getSceneViewportSize();
+          const nextViewport = getSphereViewportSize();
           if (!sceneNeedsFullRebuild(lastViewport, nextViewport)) {
             return;
           }
@@ -15906,15 +16996,17 @@
         updateCamera();
         renderTiles(true);
         hoverNeedsRender = false;
-        space.addEventListener('pointerdown', onPointerDown);
-        space.addEventListener('pointermove', onSpacePointerMove);
-        space.addEventListener('pointerleave', onSpacePointerLeave);
-        window.addEventListener('pointermove', onPointerMove);
-        window.addEventListener('pointerup', onPointerUp);
-        window.addEventListener('pointercancel', onPointerCancel);
-        window.addEventListener('blur', onWindowBlur);
-        space.addEventListener('wheel', onWheel, { passive: false });
-        space.addEventListener('click', onClickCapture, true);
+        if (isInteractive) {
+          space.addEventListener('pointerdown', onPointerDown);
+          space.addEventListener('pointermove', onSpacePointerMove);
+          space.addEventListener('pointerleave', onSpacePointerLeave);
+          window.addEventListener('pointermove', onPointerMove);
+          window.addEventListener('pointerup', onPointerUp);
+          window.addEventListener('pointercancel', onPointerCancel);
+          window.addEventListener('blur', onWindowBlur);
+          space.addEventListener('wheel', onWheel, { passive: false });
+          space.addEventListener('click', onClickCapture, true);
+        }
 
         return {
           resize: resize,
@@ -15948,19 +17040,156 @@
             stopped = true;
             if (rafId) window.cancelAnimationFrame(rafId);
             endDrag(activePointerId);
-            space.removeEventListener('pointerdown', onPointerDown);
-            space.removeEventListener('pointermove', onSpacePointerMove);
-            space.removeEventListener('pointerleave', onSpacePointerLeave);
-            window.removeEventListener('pointermove', onPointerMove);
-            window.removeEventListener('pointerup', onPointerUp);
-            window.removeEventListener('pointercancel', onPointerCancel);
-            window.removeEventListener('blur', onWindowBlur);
-            space.removeEventListener('wheel', onWheel);
-            space.removeEventListener('click', onClickCapture, true);
+            if (isInteractive) {
+              space.removeEventListener('pointerdown', onPointerDown);
+              space.removeEventListener('pointermove', onSpacePointerMove);
+              space.removeEventListener('pointerleave', onSpacePointerLeave);
+              window.removeEventListener('pointermove', onPointerMove);
+              window.removeEventListener('pointerup', onPointerUp);
+              window.removeEventListener('pointercancel', onPointerCancel);
+              window.removeEventListener('blur', onWindowBlur);
+              space.removeEventListener('wheel', onWheel);
+              space.removeEventListener('click', onClickCapture, true);
+            }
             if (space.parentNode) space.parentNode.removeChild(space);
           }
         };
       }
+
+      function showReleasePanelSphereBackdrop() {
+        if (!canvasMode || viewMode === '3d') return;
+        const canvasWasActive = canvasMode.classList.contains('is-active') && !canvasMode.hidden;
+        releasePanelSphereOwnsCanvasMode = !canvasWasActive;
+        canvasMode.hidden = false;
+        canvasMode.classList.add('is-active');
+        canvasMode.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('is-release-panel-sphere');
+        document.documentElement.classList.add('is-release-panel-sphere');
+        if (!releasePanelSphereScene) {
+          releasePanelSphereScene = createSphereScene({
+            className: 'canvas-space--panel-sphere',
+            interactive: true,
+            sizeFactor: 2,
+            tileScale: 1.62,
+            overlapLimit: 0.88,
+            zoomOffset: 620,
+            maxTiles: 160,
+            clickAction: 'spin',
+            viewportSize: function () {
+              const sphereEl = canvasMode ? canvasMode.querySelector('.canvas-space--panel-sphere') : null;
+              const rect = sphereEl ? sphereEl.getBoundingClientRect() : null;
+              const size = Math.round(Math.max(280, Math.min(rect && rect.width ? rect.width : 460, rect && rect.height ? rect.height : 460)));
+              return { width: size, height: size };
+            }
+          });
+        }
+        if (releasePanelSphereScene) {
+          if (typeof releasePanelSphereScene.setPaused === 'function') releasePanelSphereScene.setPaused(false);
+          if (typeof releasePanelSphereScene.resize === 'function') {
+            window.requestAnimationFrame(function () {
+              if (releasePanelSphereScene && typeof releasePanelSphereScene.resize === 'function') {
+                releasePanelSphereScene.resize();
+              }
+            });
+          }
+        }
+      }
+
+      function hideReleasePanelSphereBackdrop() {
+        if (releasePanelSphereScene) {
+          releasePanelSphereScene.destroy();
+          releasePanelSphereScene = null;
+        }
+        document.body.classList.remove('is-release-artwork-sphere-open');
+        document.documentElement.classList.remove('is-release-artwork-sphere-open');
+        document.body.classList.remove('is-release-panel-sphere');
+        document.documentElement.classList.remove('is-release-panel-sphere');
+        if (releasePanelSphereOwnsCanvasMode && canvasMode && viewMode !== 'cards' && viewMode !== '3d') {
+          canvasMode.classList.remove('is-active');
+          canvasMode.setAttribute('aria-hidden', 'true');
+          canvasMode.hidden = true;
+        }
+        releasePanelSphereOwnsCanvasMode = false;
+      }
+
+      function updatePlainReleaseArtworkSphereToggle() {
+        if (!plainReleasePanel || !plainReleaseArtworkFrame || !plainReleaseSphereToggle) return;
+        const isOpen = !!plainReleaseArtworkSphereOpen;
+        plainReleasePanel.classList.toggle('is-artwork-sphere-open', isOpen);
+        document.body.classList.toggle('is-release-artwork-sphere-open', isOpen);
+        document.documentElement.classList.toggle('is-release-artwork-sphere-open', isOpen);
+        if (plainReleaseFloatingSphere) plainReleaseFloatingSphere.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+        if (plainReleaseSphereToggleInput) plainReleaseSphereToggleInput.checked = isOpen;
+        plainReleaseSphereToggle.setAttribute('aria-pressed', isOpen ? 'true' : 'false');
+        plainReleaseSphereToggle.setAttribute('aria-label', isOpen ? 'Show artwork image' : 'Show sphere in artwork');
+        schedulePlainReleaseNavigationLayout();
+        window.setTimeout(schedulePlainReleaseNavigationLayout, 180);
+        if (isOpen && releasePanelSphereScene && typeof releasePanelSphereScene.resize === 'function') {
+          window.requestAnimationFrame(function () {
+            if (releasePanelSphereScene && typeof releasePanelSphereScene.resize === 'function') {
+              releasePanelSphereScene.resize();
+            }
+          });
+        }
+      }
+
+      function destroyPlainReleaseArtworkSphere() {
+        if (plainReleaseArtworkSphereScene) {
+          plainReleaseArtworkSphereScene.destroy();
+          plainReleaseArtworkSphereScene = null;
+        }
+        plainReleaseArtworkSphereOpen = false;
+        updatePlainReleaseArtworkSphereToggle();
+      }
+
+      function ensurePlainReleaseArtworkSphereScene() {
+        if (!plainReleaseFloatingSphere || plainReleaseArtworkSphereScene) return;
+        plainReleaseArtworkSphereScene = createSphereScene({
+          targetRoot: plainReleaseFloatingSphere,
+          className: 'canvas-space--artwork-sphere',
+          interactive: true,
+          sizeFactor: 3,
+          tileScale: 1.44,
+          overlapLimit: 0.86,
+          zoomOffset: 1200,
+          maxTiles: 160,
+          clickAction: 'spin',
+          viewportSize: function () {
+            const rect = plainReleaseFloatingSphere ? plainReleaseFloatingSphere.getBoundingClientRect() : null;
+            const size = Math.round(Math.max(180, Math.min(rect && rect.width ? rect.width : 210, rect && rect.height ? rect.height : 210)));
+            return { width: size, height: size };
+          }
+        });
+        if (plainReleaseArtworkSphereScene && typeof plainReleaseArtworkSphereScene.setPaused === 'function') {
+          plainReleaseArtworkSphereScene.setPaused(false);
+        }
+      }
+
+      function setPlainReleaseArtworkSphereOpen(nextOpen) {
+        if (!plainReleaseArtworkFrame || plainReleaseArtworkFrame.hidden) return;
+        const shouldOpen = !!nextOpen;
+        if (!shouldOpen) {
+          destroyPlainReleaseArtworkSphere();
+          return;
+        }
+        plainReleaseArtworkSphereOpen = true;
+        if (!plainReleaseArtworkSphereScene) {
+          ensurePlainReleaseArtworkSphereScene();
+        }
+        updatePlainReleaseArtworkSphereToggle();
+        if (plainReleaseArtworkSphereScene && typeof plainReleaseArtworkSphereScene.resize === 'function') {
+          window.requestAnimationFrame(function () {
+            if (plainReleaseArtworkSphereScene && typeof plainReleaseArtworkSphereScene.resize === 'function') {
+              plainReleaseArtworkSphereScene.resize();
+            }
+          });
+        }
+      }
+
+      function togglePlainReleaseArtworkSphere() {
+        setPlainReleaseArtworkSphereOpen(!plainReleaseArtworkSphereOpen);
+      }
+      window.togglePlainReleaseArtworkSphere = togglePlainReleaseArtworkSphere;
 
       function createCardsSceneDomLegacy() {
         if (!canvasMode) return null;
@@ -16493,7 +17722,12 @@
           if (hoveredTileState === nextState) return;
           if (hoveredTileState) hoveredTileState.targetHover = 0;
           hoveredTileState = nextState || null;
-          if (hoveredTileState) hoveredTileState.targetHover = 1;
+          if (hoveredTileState) {
+            hoveredTileState.targetHover = 1;
+            showReleaseHoverTitleForTileState(hoveredTileState);
+          } else {
+            hideReleaseHoverTitle();
+          }
           hoverNeedsRender = true;
         }
 
@@ -17455,7 +18689,12 @@
           if (hoveredTileState === nextState) return;
           if (hoveredTileState) hoveredTileState.targetHover = 0;
           hoveredTileState = nextState || null;
-          if (hoveredTileState) hoveredTileState.targetHover = 1;
+          if (hoveredTileState) {
+            hoveredTileState.targetHover = 1;
+            showReleaseHoverTitleForTileState(hoveredTileState);
+          } else {
+            hideReleaseHoverTitle();
+          }
           hoverNeedsRender = true;
         }
 
@@ -17973,6 +19212,7 @@
             ensureRender();
           },
           setSizeFactor: function (nextSizeFactor) {
+            void nextSizeFactor;
             currentCardsSizeFactor = nextSizeFactor;
             buildTiles();
             updateCamera();
@@ -18054,7 +19294,32 @@
         const root = new THREE.Group();
         const raycaster = new THREE.Raycaster();
         const pointerNdc = new THREE.Vector2();
-        const sharedGeometry = new THREE.PlaneGeometry(1, 1);
+        function createRoundedCardGeometry() {
+          const radius = 0.04;
+          const x = -0.5;
+          const y = -0.5;
+          const width = 1;
+          const height = 1;
+          const shape = new THREE.Shape();
+          shape.moveTo(x + radius, y);
+          shape.lineTo(x + width - radius, y);
+          shape.quadraticCurveTo(x + width, y, x + width, y + radius);
+          shape.lineTo(x + width, y + height - radius);
+          shape.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+          shape.lineTo(x + radius, y + height);
+          shape.quadraticCurveTo(x, y + height, x, y + height - radius);
+          shape.lineTo(x, y + radius);
+          shape.quadraticCurveTo(x, y, x + radius, y);
+          const geometry = new THREE.ShapeGeometry(shape, 5);
+          const position = geometry.getAttribute('position');
+          const uvs = [];
+          for (let i = 0; i < position.count; i += 1) {
+            uvs.push(position.getX(i) + 0.5, position.getY(i) + 0.5);
+          }
+          geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+          return geometry;
+        }
+        const sharedGeometry = createRoundedCardGeometry();
         const scratchVector = new THREE.Vector3();
         const scratchCorners = [
           new THREE.Vector3(),
@@ -18066,19 +19331,38 @@
         raycaster.params.Mesh = { threshold: 0 };
 
         const tileStates = [];
-        const SIZE_TO_CARDS_SCALE = { 4: 3.6, 3: 2.7, 2: 1.82, 1: 1.18 };
-        const SIZE_TO_CARDS_SPREAD = { 4: 1.18, 3: 1.08, 2: 0.98, 1: 0.88 };
-        const SIZE_TO_CARDS_MIN_GAP = { 4: 24, 3: 18, 2: 14, 1: 10 };
-        const PERSPECTIVE = 1100;
-        const CARDS_FRONT_FOCUS_DEPTH_FACTOR = 0.28;
-        const BUTTON_ZOOM_STEP = 650;
+        const CARDS_FIXED_SIZE_FACTOR = 2;
+        const SIZE_TO_CARDS_SCALE = { 2: 2.45 };
+        const SIZE_TO_CARDS_VIEWPORT_DIVISOR = { 2: 7.5 };
+        const SIZE_TO_CARDS_SPREAD = { 2: 1.0 };
+        const SIZE_TO_CARDS_MIN_GAP = { 2: 15 };
+        const SIZE_TO_CARDS_MIN_SIZE = { 2: 96 };
+        const SIZE_TO_CARDS_MAX_SIZE = { 2: 165 };
+        const SIZE_TO_CARDS_MAX_COLUMNS = { 2: 32 };
+        const SIZE_TO_CARDS_COLUMN_FILL = { 2: 2.2 };
+        const CARDS_REPEAT_RADIUS_X = 2;
+        const CARDS_REPEAT_RADIUS_Y = 2;
+        const CARDS_VISUAL_SCALE = 1.0;
+        const CARDS_BASE_ROT_X = -2;
+        const BUTTON_ZOOM_STEP = 1280;
+        const INITIAL_CARDS_ZOOM = -7200;
         const PINCH_ZOOM_FACTOR = 4.8;
-        const CLICKABLE_ALPHA_THRESHOLD = 0.02;
-        let currentCardsSizeFactor = sizeFactor;
+        const CLICKABLE_ALPHA_THRESHOLD = 0.08;
+        let currentCardsSizeFactor = CARDS_FIXED_SIZE_FACTOR;
         let tileSize = 72;
         let cloudSpreadX = 1600;
         let cloudSpreadY = 1200;
         let cloudSpreadZ = 2200;
+        let galleryGap = 16;
+        let galleryColumns = 1;
+        let galleryRows = 1;
+        let galleryWidth = 1;
+        let galleryHeight = 1;
+        let galleryDepth = 1;
+        let gallerySpanX = 1;
+        let gallerySpanY = 1;
+        let nearCameraDistance = 620;
+        let farCameraDistance = 2100;
         let fadeStartSizePx = 520;
         let fadeEndSizePx = 760;
         let camX = 0;
@@ -18172,12 +19456,32 @@
           return SIZE_TO_CARDS_SCALE[nextSizeFactor] || 1;
         }
 
+        function sizeViewportDivisorForCards(nextSizeFactor) {
+          return SIZE_TO_CARDS_VIEWPORT_DIVISOR[nextSizeFactor] || 8;
+        }
+
         function sizeSpreadForCards(nextSizeFactor) {
           return SIZE_TO_CARDS_SPREAD[nextSizeFactor] || 1;
         }
 
         function minGapForCards(nextSizeFactor) {
           return SIZE_TO_CARDS_MIN_GAP[nextSizeFactor] || 12;
+        }
+
+        function minSizeForCards(nextSizeFactor) {
+          return SIZE_TO_CARDS_MIN_SIZE[nextSizeFactor] || 64;
+        }
+
+        function maxSizeForCards(nextSizeFactor) {
+          return SIZE_TO_CARDS_MAX_SIZE[nextSizeFactor] || 160;
+        }
+
+        function maxColumnsForCards(nextSizeFactor) {
+          return SIZE_TO_CARDS_MAX_COLUMNS[nextSizeFactor] || 18;
+        }
+
+        function columnFillForCards(nextSizeFactor) {
+          return SIZE_TO_CARDS_COLUMN_FILL[nextSizeFactor] || 1.3;
         }
 
         function createTileMipCanvas(image, targetSize) {
@@ -18201,40 +19505,38 @@
 
         function getTileTextureSource(tileState, bucket) {
           if (!tileState || !tileState.imageEl) return null;
-          if (bucket <= 0) return tileState.texture;
-          if (!tileState.textureMipCache) tileState.textureMipCache = {};
-          const targetSize = bucket === 1
-            ? Math.max(22, Math.min(72, Math.round(tileSize * 0.38)))
-            : Math.max(10, Math.min(26, Math.round(tileSize * 0.14)));
-          const cacheKey = String(targetSize);
-          if (!tileState.textureMipCache[cacheKey]) {
-            const mipCanvas = createTileMipCanvas(tileState.imageEl, targetSize);
-            if (!mipCanvas) {
-              tileState.textureMipCache[cacheKey] = tileState.texture;
-            } else {
-              const mipTexture = new THREE.CanvasTexture(mipCanvas);
-              if ('colorSpace' in mipTexture) {
-                mipTexture.colorSpace = THREE.SRGBColorSpace;
-              } else if ('encoding' in mipTexture) {
-                mipTexture.encoding = THREE.sRGBEncoding;
-              }
-              mipTexture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1);
-              mipTexture.minFilter = THREE.LinearFilter;
-              mipTexture.magFilter = THREE.LinearFilter;
-              mipTexture.generateMipmaps = false;
-              mipTexture.needsUpdate = true;
-              tileState.textureMipCache[cacheKey] = mipTexture;
+          void bucket;
+          return tileState.texture;
+        }
+
+        function wrapWorldCoordinate(value, cameraOffset, span) {
+          if (!span || span <= 1) return value;
+          return value + Math.round((-cameraOffset - value) / span) * span;
+        }
+
+        function normalizeInfinitePanOffsets() {
+          const normalizeThresholdX = gallerySpanX * 8;
+          const normalizeThresholdY = gallerySpanY * 8;
+          if (gallerySpanX > 1 && Math.abs(targetCamX) > normalizeThresholdX) {
+            const shiftX = Math.trunc(targetCamX / gallerySpanX) * gallerySpanX;
+            if (shiftX) {
+              targetCamX -= shiftX;
+              camX -= shiftX;
             }
           }
-          return tileState.textureMipCache[cacheKey] || tileState.texture;
+          if (gallerySpanY > 1 && Math.abs(targetCamY) > normalizeThresholdY) {
+            const shiftY = Math.trunc(targetCamY / gallerySpanY) * gallerySpanY;
+            if (shiftY) {
+              targetCamY -= shiftY;
+              camY -= shiftY;
+            }
+          }
         }
 
         function cameraDistanceForZoom(nextZoom) {
           const zoomRange = Math.max(1, zoomNearLimit - zoomFarLimit);
           const zoomProgress = clamp((nextZoom - zoomFarLimit) / zoomRange, 0, 1);
-          const maxDistance = Math.max(2600, cloudSpreadZ * 2.9);
-          const minDistance = Math.max(120, tileSize * 0.92);
-          return maxDistance - (maxDistance - minDistance) * zoomProgress;
+          return farCameraDistance - (farCameraDistance - nearCameraDistance) * zoomProgress;
         }
 
         function startPinchGesture() {
@@ -18287,7 +19589,7 @@
           if (tileState.material) {
             tileState.material.dispose();
           }
-          if (tileState.texture) {
+          if (tileState.texture && tileState.ownsTexture !== false) {
             tileState.texture.dispose();
           }
           if (tileState.textureMipCache) {
@@ -18312,6 +19614,7 @@
           }
           tileStates.length = 0;
           hoveredTileState = null;
+          currentCardsSizeFactor = CARDS_FIXED_SIZE_FACTOR;
           hoverNeedsRender = true;
           motionNeedsRender = true;
           motionTime = 0;
@@ -18323,43 +19626,65 @@
           const minViewport = Math.max(280, Math.min(viewportWidth, viewportHeight));
           const releaseCount = Math.max(1, tilesForCards.length);
           const spreadFactor = sizeSpreadForCards(currentCardsSizeFactor);
-          const densitySize = minViewport / (Math.sqrt(releaseCount) * 1.2);
-          tileSize = Math.round(clamp(densitySize * sizeScaleForCards(currentCardsSizeFactor), 18, 220));
+          const viewportAspect = viewportWidth / Math.max(1, viewportHeight);
+          const viewportDivisor = sizeViewportDivisorForCards(currentCardsSizeFactor);
+          const widthSizedTile = viewportWidth / viewportDivisor;
+          const heightSizedTile = viewportHeight / Math.max(4.2, viewportDivisor * 0.62);
+          const densityGuardTile = minViewport / (Math.sqrt(releaseCount) * 0.72) * sizeScaleForCards(currentCardsSizeFactor);
+          tileSize = Math.round(clamp(
+            Math.min(widthSizedTile, heightSizedTile, densityGuardTile),
+            minSizeForCards(currentCardsSizeFactor),
+            maxSizeForCards(currentCardsSizeFactor)
+          ));
           updateCanvasTileSize(tileSize);
-          cloudSpreadX = clamp(viewportWidth * 2.3 * spreadFactor, 900, 3600);
-          cloudSpreadY = clamp(viewportHeight * 1.95 * spreadFactor, 760, 2800);
-          cloudSpreadZ = clamp(Math.sqrt(releaseCount) * 92 * spreadFactor, 980, 4200);
-          fadeStartSizePx = clamp(minViewport * 0.2, 140, 300);
-          fadeEndSizePx = clamp(minViewport * 0.32, fadeStartSizePx + 90, 460);
-          zoomNearLimit = Math.max(tileSize * 4.4, cloudSpreadZ * 1.28);
-          zoomFarLimit = -Math.max(18000, cloudSpreadZ * 4.2);
-          zoom = zoomFarLimit;
+          galleryGap = Math.round(clamp(tileSize * 0.18, minGapForCards(currentCardsSizeFactor), 34));
+          const cellStep = tileSize + galleryGap;
+          const preferredColumns = Math.round(Math.sqrt(releaseCount * Math.max(1.05, viewportAspect * 1.08)));
+          const viewportColumns = Math.round((viewportWidth / Math.max(1, cellStep)) * columnFillForCards(currentCardsSizeFactor));
+          const maxGalleryColumns = Math.max(1, Math.min(releaseCount, maxColumnsForCards(currentCardsSizeFactor)));
+          const minGalleryColumns = Math.max(1, Math.min(maxGalleryColumns, Math.max(5, viewportColumns)));
+          galleryColumns = clamp(preferredColumns, minGalleryColumns, maxGalleryColumns);
+          galleryRows = Math.max(1, Math.ceil(releaseCount / galleryColumns));
+          galleryWidth = Math.max(1, (galleryColumns - 1) * cellStep);
+          galleryHeight = Math.max(1, (galleryRows - 1) * cellStep * 0.88);
+          gallerySpanX = Math.max(cellStep, galleryColumns * cellStep);
+          gallerySpanY = Math.max(cellStep, galleryRows * cellStep * 0.88);
+          galleryDepth = clamp(galleryWidth * 0.16 * spreadFactor, tileSize * 2.6, 860);
+          cloudSpreadX = galleryWidth;
+          cloudSpreadY = galleryHeight;
+          cloudSpreadZ = galleryDepth;
+          fadeStartSizePx = clamp(minViewport * 0.52, 390, 820);
+          fadeEndSizePx = clamp(minViewport * 0.7, fadeStartSizePx + 150, 1040);
+          nearCameraDistance = clamp(tileSize * 7.2, 880, 1360);
+          farCameraDistance = clamp(tileSize * 22 + galleryDepth * 2.8, 3600, 9800);
+          zoomNearLimit = 1000;
+          zoomFarLimit = -16000;
+          zoom = INITIAL_CARDS_ZOOM;
           targetZoom = zoom;
           camX = 0;
           camY = 0;
           targetCamX = camX;
           targetCamY = camY;
-          rotX = -4;
+          rotX = CARDS_BASE_ROT_X;
           rotY = 0;
           targetRotX = rotX;
           targetRotY = rotY;
 
           const preparedTiles = [];
-          let centroidX = 0;
-          let centroidY = 0;
-          let centroidZ = 0;
 
-          for (let i = 0; i < tilesForCards.length; i += 1) {
-            const srcTile = tilesForCards[i];
+          const layoutSlotCount = galleryRows * galleryColumns;
+          for (let i = 0; i < layoutSlotCount; i += 1) {
+            const srcTile = tilesForCards[i % tilesForCards.length];
             const img = srcTile.querySelector('img');
             if (!img) continue;
-            const phi = hash(i * 17.33 + 1) * Math.PI * 2;
-            const cosTheta = hash(i * 19.79 + 2) * 2 - 1;
-            const sinTheta = Math.sqrt(Math.max(0, 1 - cosTheta * cosTheta));
-            const r = Math.cbrt(hash(i * 23.41 + 3));
-            const baseX = Math.cos(phi) * sinTheta * r * cloudSpreadX * 0.5;
-            const baseY = cosTheta * r * cloudSpreadY * 0.5;
-            const baseZ = Math.sin(phi) * sinTheta * r * cloudSpreadZ * 0.5;
+            const col = i % galleryColumns;
+            const row = Math.floor(i / galleryColumns);
+            const normalizedX = galleryColumns <= 1 ? 0 : (col / (galleryColumns - 1)) * 2 - 1;
+            const normalizedY = galleryRows <= 1 ? 0 : (row / (galleryRows - 1)) * 2 - 1;
+            const rowShift = ((row % 2) - 0.5) * cellStep * 0.22;
+            const baseX = (col - (galleryColumns - 1) * 0.5) * cellStep + rowShift;
+            const baseY = ((galleryRows - 1) * 0.5 - row) * cellStep * 0.88;
+            const baseZ = Math.sin(row * 0.73 + col * 0.41) * tileSize * 0.055;
             const tileIndex = srcTile.getAttribute('data-index') || '';
             preparedTiles.push({
               srcTile: srcTile,
@@ -18370,61 +19695,18 @@
               baseX: baseX,
               baseY: baseY,
               baseZ: baseZ,
-              rotX: (hash(i * 7.17 + 4) - 0.5) * 24,
-              rotY: (hash(i * 9.91 + 5) - 0.5) * 26,
-              rotZ: (hash(i * 11.63 + 6) - 0.5) * 12,
+              rotX: normalizedY * 1.8 + (hash(i * 7.17 + 4) - 0.5) * 2.4,
+              rotY: (hash(i * 9.91 + 5) - 0.5) * 3.2,
+              rotZ: (hash(i * 11.63 + 6) - 0.5) * 2.8,
               motionPhase: hash(i * 5.49 + 7) * Math.PI * 2,
-              motionSpeed: 0.2 + hash(i * 8.77 + 8) * 0.24,
-              motionAmpX: enableSceneIdleMotion ? (7 + hash(i * 13.41 + 9) * 14) : 0,
-              motionAmpY: enableSceneIdleMotion ? (5 + hash(i * 15.23 + 10) * 11) : 0,
-              motionAmpZ: enableSceneIdleMotion ? (8 + hash(i * 21.19 + 11) * 18) : 0,
+              motionSpeed: 0.14 + hash(i * 8.77 + 8) * 0.18,
+              motionAmpX: enableSceneIdleMotion ? (1.5 + hash(i * 13.41 + 9) * 2.5) : 0,
+              motionAmpY: enableSceneIdleMotion ? (1.2 + hash(i * 15.23 + 10) * 2.1) : 0,
+              motionAmpZ: enableSceneIdleMotion ? (1.4 + hash(i * 21.19 + 11) * 2.7) : 0,
               texture: null,
               textureBucket: -1,
               textureMipCache: null
             });
-            centroidX += baseX;
-            centroidY += baseY;
-            centroidZ += baseZ;
-          }
-
-          if (preparedTiles.length) {
-            const offsetX = centroidX / preparedTiles.length;
-            const offsetY = centroidY / preparedTiles.length;
-            const offsetZ = centroidZ / preparedTiles.length;
-            for (let i = 0; i < preparedTiles.length; i += 1) {
-              preparedTiles[i].baseX -= offsetX;
-              preparedTiles[i].baseY -= offsetY;
-              preparedTiles[i].baseZ -= offsetZ;
-            }
-          }
-
-          const minGap = minGapForCards(currentCardsSizeFactor);
-          const minDistance = tileSize + minGap;
-          const minDistanceSq = minDistance * minDistance;
-          const relaxIterations = preparedTiles.length > 180 ? 2 : 3;
-          for (let iteration = 0; iteration < relaxIterations; iteration += 1) {
-            for (let i = 0; i < preparedTiles.length; i += 1) {
-              const leftTile = preparedTiles[i];
-              for (let j = i + 1; j < preparedTiles.length; j += 1) {
-                const rightTile = preparedTiles[j];
-                const dx = rightTile.baseX - leftTile.baseX;
-                const dy = rightTile.baseY - leftTile.baseY;
-                const distanceSq = dx * dx + dy * dy;
-                if (distanceSq >= minDistanceSq) continue;
-                const distance = Math.sqrt(distanceSq);
-                const fallbackAngle = (i * 37.2 + j * 17.7) * Math.PI / 180;
-                const safeDx = distance > 0.001 ? dx : Math.cos(fallbackAngle);
-                const safeDy = distance > 0.001 ? dy : Math.sin(fallbackAngle);
-                const safeDistance = distance > 0.001 ? distance : 1;
-                const overlap = (minDistance - safeDistance) * 0.5;
-                const pushX = (safeDx / safeDistance) * overlap;
-                const pushY = (safeDy / safeDistance) * overlap;
-                leftTile.baseX -= pushX;
-                leftTile.baseY -= pushY;
-                rightTile.baseX += pushX;
-                rightTile.baseY += pushY;
-              }
-            }
           }
 
           const maxAnisotropy = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1;
@@ -18441,58 +19723,69 @@
             texture.magFilter = THREE.LinearFilter;
             texture.generateMipmaps = false;
             texture.needsUpdate = true;
-            const material = new THREE.MeshBasicMaterial({
-              map: texture,
-              transparent: true,
-              opacity: 1,
-              depthWrite: false,
-              side: THREE.DoubleSide
-            });
-            const mesh = new THREE.Mesh(sharedGeometry, material);
-            mesh.frustumCulled = false;
-            mesh.position.set(prepared.baseX, prepared.baseY, prepared.baseZ);
-            mesh.rotation.order = 'YXZ';
-            root.add(mesh);
-            const tileState = {
-              srcTile: prepared.srcTile,
-              imageEl: prepared.imageEl,
-              imageSrc: prepared.imageSrc,
-              href: prepared.href,
-              index: prepared.index,
-              baseX: prepared.baseX,
-              baseY: prepared.baseY,
-              baseZ: prepared.baseZ,
-              rotX: prepared.rotX,
-              rotY: prepared.rotY,
-              rotZ: prepared.rotZ,
-              motionPhase: prepared.motionPhase,
-              motionSpeed: prepared.motionSpeed,
-              motionAmpX: prepared.motionAmpX,
-              motionAmpY: prepared.motionAmpY,
-              motionAmpZ: prepared.motionAmpZ,
-              hover: 0,
-              targetHover: 0,
-              screenAlpha: 1,
-              pointerEnabled: true,
-              depthRank: -1,
-              projectedSize: 0,
-              farProgress: 0,
-              projectedBounds: null,
-              mesh: mesh,
-              material: material,
-              texture: texture,
-              textureBucket: 0,
-              textureMipCache: null
-            };
-            mesh.userData.tileState = tileState;
-            tileStates.push(tileState);
+            for (let copyY = -CARDS_REPEAT_RADIUS_Y; copyY <= CARDS_REPEAT_RADIUS_Y; copyY += 1) {
+              for (let copyX = -CARDS_REPEAT_RADIUS_X; copyX <= CARDS_REPEAT_RADIUS_X; copyX += 1) {
+                const material = new THREE.MeshBasicMaterial({
+                  map: texture,
+                  transparent: true,
+                  opacity: 1,
+                  depthWrite: false,
+                  side: THREE.DoubleSide
+                });
+                const mesh = new THREE.Mesh(sharedGeometry, material);
+                mesh.frustumCulled = false;
+                mesh.position.set(
+                  prepared.baseX + copyX * gallerySpanX,
+                  prepared.baseY + copyY * gallerySpanY,
+                  prepared.baseZ
+                );
+                mesh.rotation.order = 'YXZ';
+                root.add(mesh);
+                const tileState = {
+                  srcTile: prepared.srcTile,
+                  imageEl: prepared.imageEl,
+                  imageSrc: prepared.imageSrc,
+                  href: prepared.href,
+                  index: prepared.index,
+                  baseX: prepared.baseX,
+                  baseY: prepared.baseY,
+                  baseZ: prepared.baseZ,
+                  copyX: copyX,
+                  copyY: copyY,
+                  rotX: prepared.rotX,
+                  rotY: prepared.rotY,
+                  rotZ: prepared.rotZ,
+                  motionPhase: prepared.motionPhase,
+                  motionSpeed: prepared.motionSpeed,
+                  motionAmpX: prepared.motionAmpX,
+                  motionAmpY: prepared.motionAmpY,
+                  motionAmpZ: prepared.motionAmpZ,
+                  hover: 0,
+                  targetHover: 0,
+                  screenAlpha: 1,
+                  pointerEnabled: true,
+                  depthRank: -1,
+                  projectedSize: 0,
+                  farProgress: 0,
+                  projectedBounds: null,
+                  mesh: mesh,
+                  material: material,
+                  texture: texture,
+                  ownsTexture: copyX === -CARDS_REPEAT_RADIUS_X && copyY === -CARDS_REPEAT_RADIUS_Y,
+                  textureBucket: 0,
+                  textureMipCache: null
+                };
+                mesh.userData.tileState = tileState;
+                tileStates.push(tileState);
+              }
+            }
           }
         }
 
         function updateProjectedBounds(tileState, rect) {
           if (!tileState || !tileState.mesh) return null;
           const bounds = tileState.projectedBounds || { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
-          const halfSize = Math.max(1, tileSize * (1 + tileState.hover * 0.22) * 0.5);
+          const halfSize = Math.max(1, tileSize * CARDS_VISUAL_SCALE * (tileState.renderScale || (1 + tileState.hover * 0.22)) * 0.5);
           const points = scratchCorners;
           points[0].set(-halfSize, -halfSize, 0);
           points[1].set(halfSize, -halfSize, 0);
@@ -18525,13 +19818,28 @@
         function syncPanelSourceProxy(tileState) {
           const bounds = updateProjectedBounds(tileState);
           if (!bounds || !bounds.width || !bounds.height) return false;
+          const viewRect = renderer.domElement.getBoundingClientRect();
+          const centerX = clamp(
+            bounds.left + bounds.width * 0.5,
+            viewRect.left,
+            viewRect.right
+          );
+          const centerY = clamp(
+            bounds.top + bounds.height * 0.5,
+            viewRect.top,
+            viewRect.bottom
+          );
+          const maxMorphSize = Math.max(42, Math.min(viewRect.width, viewRect.height) * 0.18);
+          const fallbackSize = clamp(tileState.projectedSize || tileSize, 36, maxMorphSize);
+          const proxyWidth = bounds.width > maxMorphSize ? fallbackSize : clamp(bounds.width, 24, maxMorphSize);
+          const proxyHeight = bounds.height > maxMorphSize ? fallbackSize : clamp(bounds.height, 24, maxMorphSize);
           panelSourceProxy.href = tileState.href || '#';
           panelSourceProxy.setAttribute('data-index', tileState.index || '');
           panelSourceImage.src = tileState.imageSrc || '';
-          panelSourceProxy.style.left = bounds.left.toFixed(2) + 'px';
-          panelSourceProxy.style.top = bounds.top.toFixed(2) + 'px';
-          panelSourceProxy.style.width = bounds.width.toFixed(2) + 'px';
-          panelSourceProxy.style.height = bounds.height.toFixed(2) + 'px';
+          panelSourceProxy.style.left = (centerX - proxyWidth * 0.5).toFixed(2) + 'px';
+          panelSourceProxy.style.top = (centerY - proxyHeight * 0.5).toFixed(2) + 'px';
+          panelSourceProxy.style.width = proxyWidth.toFixed(2) + 'px';
+          panelSourceProxy.style.height = proxyHeight.toFixed(2) + 'px';
           return true;
         }
 
@@ -18598,7 +19906,12 @@
           if (hoveredTileState === nextState) return;
           if (hoveredTileState) hoveredTileState.targetHover = 0;
           hoveredTileState = nextState || null;
-          if (hoveredTileState) hoveredTileState.targetHover = 1;
+          if (hoveredTileState) {
+            hoveredTileState.targetHover = 1;
+            showReleaseHoverTitleForTileState(hoveredTileState);
+          } else {
+            hideReleaseHoverTitle();
+          }
           hoverNeedsRender = true;
         }
 
@@ -18621,15 +19934,15 @@
           const shouldRenderMotion = !!motionNeedsRender;
           const currentRendererHeight = Math.max(1, renderer.domElement.height || 1);
           const focalLength = (currentRendererHeight * 0.5) / Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
-          const focusViewZ = -clamp(
-            Math.abs(zoom) * CARDS_FRONT_FOCUS_DEPTH_FACTOR,
-            tileSize * 0.5,
-            cloudSpreadZ * 0.2
-          );
-          const farBuffer = clamp(tileSize * 0.8, 48, 92);
-          const farStartViewZ = focusViewZ - farBuffer;
-          const focusFarRange = clamp(cloudSpreadZ * 0.45 + tileSize * 1.4, 360, 1500);
-          const maxDistance = Math.max(1, camera.position.z);
+          const cameraDistance = Math.max(1, camera.position.z);
+          const viewportHalfHeight = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5)) * cameraDistance;
+          const viewportHalfWidth = viewportHalfHeight * camera.aspect;
+          const horizontalFadePadding = Math.max(tileSize * 2.75, viewportHalfWidth * 0.18);
+          const fadeStartX = viewportHalfWidth + horizontalFadePadding;
+          const fadeEndX = fadeStartX + Math.max(tileSize * 2.25, horizontalFadePadding * 0.55);
+          const fadeStartY = Math.max(tileSize * 2.55, viewportHalfHeight * 1.02);
+          const fadeEndY = viewportHalfHeight + tileSize * 1.72;
+          const focusRange = Math.max(1, farCameraDistance - nearCameraDistance);
           const rendererRect = renderer.domElement.getBoundingClientRect();
           scene.updateMatrixWorld(true);
 
@@ -18646,25 +19959,22 @@
             const driftY = t.motionAmpY ? Math.sin(p * 1.13) * t.motionAmpY : 0;
             const driftZ = t.motionAmpZ ? Math.sin(p * 0.79) * t.motionAmpZ : 0;
             const hoverLift = t.hover * tileSize * 0.42;
-            const worldX = t.baseX + driftX;
-            const worldY = t.baseY + driftY;
+            const wrappedBaseX = wrapWorldCoordinate(t.baseX, camX, gallerySpanX) + (t.copyX || 0) * gallerySpanX;
+            const wrappedBaseY = wrapWorldCoordinate(t.baseY, camY, gallerySpanY) + (t.copyY || 0) * gallerySpanY;
+            const worldX = wrappedBaseX + driftX;
+            const worldY = wrappedBaseY + driftY;
+            const screenCenterX = worldX + camX;
+            const screenCenterY = worldY + camY;
             const worldZ = t.baseZ + driftZ + hoverLift;
             const scale = 1 + t.hover * 0.22;
 
             t.mesh.position.set(worldX, worldY, worldZ);
             t.mesh.rotation.set(
-              THREE.MathUtils.degToRad(t.rotX * 0.28),
-              THREE.MathUtils.degToRad(t.rotY * 0.32),
+              THREE.MathUtils.degToRad(t.rotX * 0.08),
+              THREE.MathUtils.degToRad(t.rotY * 0.08),
               THREE.MathUtils.degToRad(t.rotZ)
             );
-            t.mesh.scale.setScalar(tileSize * scale);
-            const nextTextureBucket = t.hover > 0.015
-              ? 0
-              : t.farProgress > 0.44 || t.projectedSize < tileSize * 1.18
-                ? 2
-                : t.farProgress > 0.18 || t.projectedSize < tileSize * 1.82
-                  ? 1
-                  : 0;
+            const nextTextureBucket = 0;
             if (nextTextureBucket !== t.textureBucket) {
               const nextTexture = getTileTextureSource(t, nextTextureBucket);
               if (nextTexture && t.material.map !== nextTexture) {
@@ -18676,21 +19986,36 @@
 
             scratchVector.set(worldX, worldY, worldZ).applyMatrix4(root.matrixWorld).applyMatrix4(camera.matrixWorldInverse);
             const viewZ = scratchVector.z;
-            const worldDistance = scratchVector.length();
-            const projectedSize = tileSize * scale * focalLength / Math.max(1, worldDistance);
+            const referenceDistance = Math.max(1, cameraDistance);
+            const rawProjectedSize = tileSize * CARDS_VISUAL_SCALE * scale * focalLength / referenceDistance;
+            const projectedSizeLimit = clamp(
+              Math.min(fadeStartSizePx, Math.min(rendererRect.width, rendererRect.height) * 0.36, tileSize * 2.55),
+              tileSize * 1.78,
+              fadeStartSizePx
+            );
+            const renderScale = rawProjectedSize > projectedSizeLimit
+              ? scale * (projectedSizeLimit / Math.max(1, rawProjectedSize))
+              : scale;
+            const projectedSize = Math.min(rawProjectedSize, projectedSizeLimit);
+            t.renderScale = renderScale;
+            t.mesh.scale.setScalar(tileSize * CARDS_VISUAL_SCALE * renderScale);
             let alpha = 1;
             if (projectedSize > fadeStartSizePx) {
               const fadeSpan = Math.max(1, fadeEndSizePx - fadeStartSizePx);
               alpha = 1 - (projectedSize - fadeStartSizePx) / fadeSpan;
               alpha = clamp(alpha, 0, 1);
             }
-            const farProgress = clamp((farStartViewZ - viewZ) / focusFarRange, 0, 1);
-            alpha *= 1 - farProgress * 0.12;
+            const distanceProgress = clamp(((-viewZ) - nearCameraDistance) / focusRange, 0, 1);
+            const edgeX = clamp((Math.abs(screenCenterX) - fadeStartX) / Math.max(1, fadeEndX - fadeStartX), 0, 1);
+            const edgeY = clamp((Math.abs(screenCenterY) - fadeStartY) / Math.max(1, fadeEndY - fadeStartY), 0, 1);
+            const edgeFade = Math.max(edgeX, edgeY);
+            alpha *= Math.pow(1 - edgeFade, 1.08);
+            alpha *= 1 - distanceProgress * 0.08;
             alpha = clamp(alpha, 0, 1);
             t.screenAlpha = alpha;
             t.pointerEnabled = alpha > CLICKABLE_ALPHA_THRESHOLD;
             t.projectedSize = projectedSize;
-            t.farProgress = farProgress;
+            t.farProgress = Math.max(distanceProgress, edgeFade);
             if (!t.pointerEnabled) t.targetHover = 0;
             t.material.opacity = alpha;
             t.material.transparent = alpha < 0.999;
@@ -18699,7 +20024,7 @@
             } else {
               t.mesh.visible = true;
             }
-            t.depthRank = Math.round((viewZ + maxDistance + 4000) * 1000) + i;
+            t.depthRank = Math.round((viewZ + cameraDistance + 4000) * 1000) + i;
             updateProjectedBounds(t, rendererRect);
           }
           renderer.render(scene, camera);
@@ -18747,6 +20072,7 @@
 
         function onPointerDown(event) {
           if (event.pointerType === 'mouse' && event.button !== 0) return;
+          if (event.cancelable) event.preventDefault();
           setTrackedPointer(event);
           trySetPointerCapture(event.pointerId);
           if (trackedPointers.size >= 2) {
@@ -18768,6 +20094,7 @@
 
         function onPointerMove(event) {
           if (!trackedPointers.has(event.pointerId)) return;
+          if (event.cancelable) event.preventDefault();
           setTrackedPointer(event);
           if (trackedPointers.size >= 2) {
             if (!pinchActive) startPinchGesture();
@@ -18788,10 +20115,14 @@
             startY = event.clientY;
             return;
           }
-          targetCamX = 0;
-          targetCamY = 0;
-          targetRotY += dx * 0.045;
-          targetRotX = clamp(targetRotX + dy * 0.04, -40, 40);
+          const zoomRange = Math.max(1, zoomNearLimit - zoomFarLimit);
+          const zoomProgress = clamp((targetZoom - zoomFarLimit) / zoomRange, 0, 1);
+          const panSpeed = 1.1 + (1 - zoomProgress) * 0.62;
+          targetCamX += dx * panSpeed;
+          targetCamY -= dy * panSpeed;
+          targetRotY = 0;
+          targetRotX = CARDS_BASE_ROT_X;
+          normalizeInfinitePanOffsets();
           startX = event.clientX;
           startY = event.clientY;
           ensureRender();
@@ -18853,8 +20184,18 @@
         function onWheel(event) {
           event.preventDefault();
           const wheelUnit = event.deltaMode === 1 ? 16 : (event.deltaMode === 2 ? window.innerHeight : 1);
-          const wheelDelta = event.deltaY * wheelUnit;
-          targetZoom = clamp(targetZoom - wheelDelta * 3.6, zoomFarLimit, zoomNearLimit);
+          const wheelDeltaX = event.deltaX * wheelUnit;
+          const wheelDeltaY = event.deltaY * wheelUnit;
+          if (event.ctrlKey || event.metaKey) {
+            targetZoom = clamp(targetZoom - wheelDeltaY * 3.6, zoomFarLimit, zoomNearLimit);
+          } else {
+            const zoomRange = Math.max(1, zoomNearLimit - zoomFarLimit);
+            const zoomProgress = clamp((targetZoom - zoomFarLimit) / zoomRange, 0, 1);
+            const wheelPanSpeed = 0.82 + (1 - zoomProgress) * 0.46;
+            targetCamX -= wheelDeltaX * wheelPanSpeed;
+            targetCamY -= wheelDeltaY * wheelPanSpeed;
+            normalizeInfinitePanOffsets();
+          }
           ensureRender();
         }
 
@@ -18894,7 +20235,7 @@
           const nextViewport = getSceneViewportSize();
           const nextWidth = Math.max(1, Math.round(nextViewport.width || 1));
           const nextHeight = Math.max(1, Math.round(nextViewport.height || 1));
-          const dpr = Math.min(window.devicePixelRatio || 1, usePerformanceMode ? 1.25 : 1.5);
+          const dpr = Math.min(window.devicePixelRatio || 1, usePerformanceMode ? 1.25 : 2);
           const pixelWidth = Math.max(1, Math.round(nextWidth * dpr));
           const pixelHeight = Math.max(1, Math.round(nextHeight * dpr));
           if (renderer.domElement.width !== pixelWidth) renderer.domElement.width = pixelWidth;
@@ -18978,7 +20319,8 @@
             ensureRender();
           },
           setSizeFactor: function (nextSizeFactor) {
-            currentCardsSizeFactor = nextSizeFactor;
+            void nextSizeFactor;
+            currentCardsSizeFactor = CARDS_FIXED_SIZE_FACTOR;
             buildTiles();
             updateCamera();
             renderTiles(true);
@@ -19002,15 +20344,14 @@
       }
 
       function createSceneByMode(nextMode) {
-        if (nextMode === 'cards') return createCardsSceneWebGL() || createCardsSceneDomLegacy();
-        return createSphereScene();
+        void nextMode;
+        return createCardsSceneWebGL() || createCardsSceneDomLegacy();
       }
 
       function enterCanvasMode(nextMode) {
         if (!canvasMode) return;
         document.documentElement.classList.add('canvas-active');
         document.body.classList.add('canvas-active');
-        document.body.classList.toggle('canvas-sphere-active', nextMode === 'sphere');
         canvasMode.hidden = false;
         canvasMode.classList.add('is-active');
         canvasMode.setAttribute('aria-hidden', 'false');
@@ -19037,7 +20378,6 @@
       function leaveCanvasMode() {
         document.documentElement.classList.remove('canvas-active');
         document.body.classList.remove('canvas-active');
-        document.body.classList.remove('canvas-sphere-active');
         if (canvasModeBackdropEffect) canvasModeBackdropEffect.stop();
         if (canvasModeBackdropEffect) canvasModeBackdropEffect.start();
         if (canvasMode) {
@@ -19061,6 +20401,11 @@
           releases.style.setProperty('visibility', 'hidden', 'important');
           releases.style.setProperty('pointer-events', 'none', 'important');
         }
+        const initialIndex = getReleaseCanvasPrimaryIndex();
+        const initialTile = initialIndex ? getPlainReleaseTileByIndex(initialIndex) : getRandomPlainReleaseTileWithDetails();
+        if (initialIndex && initialTile) {
+          setReleasePanelOpenState(true);
+        }
         canvasMode.hidden = false;
         canvasMode.classList.add('is-active');
         canvasMode.classList.add('is-release-mode');
@@ -19075,22 +20420,15 @@
           releaseCanvasRoot.setAttribute('aria-hidden', 'false');
         }
         if (releaseCanvasScene) {
-          releaseCanvasScene.setActive(true);
-          if (typeof releaseCanvasScene.setSizeFactor === 'function') {
+          if (typeof releaseCanvasScene.start === 'function') {
+            releaseCanvasScene.start(sizeFactor);
+          } else if (typeof releaseCanvasScene.setSizeFactor === 'function') {
             releaseCanvasScene.setSizeFactor(sizeFactor);
+            releaseCanvasScene.setActive(true);
+          } else {
+            releaseCanvasScene.setActive(true);
           }
-          releaseCanvasScene.resize();
         }
-        updateGrid();
-        window.requestAnimationFrame(function () {
-          if (viewMode !== '3d' || !releaseCanvasScene) return;
-          updateGrid();
-          if (typeof releaseCanvasScene.resize === 'function') {
-            releaseCanvasScene.resize();
-          }
-        });
-        const initialIndex = getReleaseCanvasPrimaryIndex();
-        const initialTile = initialIndex ? getPlainReleaseTileByIndex(initialIndex) : getRandomPlainReleaseTileWithDetails();
         if (initialIndex && initialTile) {
           openClothReleasePanel(initialIndex, initialTile, { animate: false, direction: 1 });
         }
@@ -19207,9 +20545,9 @@
         if (viewPlainBtn) viewPlainBtn.classList.toggle('is-active', viewMode === 'plain');
         if (view3dBtn) view3dBtn.classList.toggle('is-active', viewMode === '3d');
         if (viewCardsBtn) viewCardsBtn.classList.toggle('is-active', viewMode === 'cards');
-        if (viewSphereBtn) viewSphereBtn.classList.toggle('is-active', viewMode === 'sphere');
         document.body.classList.toggle('is-view-plain', viewMode === 'plain');
         document.body.classList.toggle('is-view-3d', viewMode === '3d');
+        document.body.classList.toggle('is-view-cards', viewMode === 'cards');
         if (viewMode !== 'plain') resetPlainReleaseHoverTile();
         if (viewMode !== '3d' && viewMode !== 'plain') {
           reset3dGridPointerEffect();
@@ -19293,9 +20631,20 @@
       }
 
       function setViewMode(nextMode, triggerButton) {
+        if (nextMode === 'sphere') nextMode = 'cards';
         if (viewMode === nextMode) return;
         suppressButtonHoverFill(triggerButton);
-        const nextSizeFactor = sizeFactor;
+        hideReleaseHoverTitle();
+        if (activeSileoReleaseIndex) {
+          activeSileoReleaseIndex = '';
+          clearPlainReleaseSourceTile();
+          if (window.BassfunkSileoHover && typeof window.BassfunkSileoHover.close === 'function') {
+            window.BassfunkSileoHover.close();
+          } else {
+            document.dispatchEvent(new CustomEvent('bassfunk:sileo-close'));
+          }
+        }
+        let nextSizeFactor = sizeFactor;
         compactSection = 'view';
         clothReleaseAutoOpenToken += 1;
         if (nextMode !== 'plain') closePlainReleasePanel();
@@ -19303,15 +20652,13 @@
         if (viewMode === '3d' && nextMode !== '3d') {
           leaveReleaseCanvasMode();
         }
-        const wasCanvasMode = viewMode === 'sphere' || viewMode === 'cards';
-        const isCanvasMode = nextMode === 'sphere' || nextMode === 'cards';
+        const wasCanvasMode = viewMode === 'cards';
+        const isCanvasMode = nextMode === 'cards';
         if (wasCanvasMode && !isCanvasMode) leaveCanvasMode();
         viewMode = nextMode;
-        if (nextMode === 'sphere' && sizeFactor !== 4 && sizeFactor !== 2) {
-          setSize(4);
-        }
         if (nextMode === '3d' && shouldUseTwoSizeModeIn3dView() && sizeFactor !== 4) {
           setSize(4, sizeX3Btn || null);
+          nextSizeFactor = sizeFactor;
         }
         updateViewButtons();
         updateSizeControlsVisibility();
@@ -19347,7 +20694,6 @@
       if (typeNormalBtn) typeNormalBtn.addEventListener('click', function () { setTypeMode('normal', typeNormalBtn); });
       if (viewPlainBtn) viewPlainBtn.addEventListener('click', function () { setViewMode('plain', viewPlainBtn); });
       if (view3dBtn) view3dBtn.addEventListener('click', function () { setViewMode('3d', view3dBtn); });
-      if (viewSphereBtn) viewSphereBtn.addEventListener('click', function () { setViewMode('sphere', viewSphereBtn); });
       if (viewCardsBtn) viewCardsBtn.addEventListener('click', function () { setViewMode('cards', viewCardsBtn); });
       if (canvasZoomInBtn) canvasZoomInBtn.addEventListener('click', function () { if (floatingScene) floatingScene.zoomIn(); });
       if (canvasZoomOutBtn) canvasZoomOutBtn.addEventListener('click', function () { if (floatingScene) floatingScene.zoomOut(); });
@@ -19361,15 +20707,14 @@
         suppressButtonHoverFill(triggerButton);
         if (triggerButton) compactSection = 'size';
         if (viewMode === '3d' && shouldHideLgIn3dView() && nextFactor === 4) nextFactor = 3;
-        if (viewMode === 'sphere' && nextFactor !== 4 && nextFactor !== 2) return;
         sizeFactor = nextFactor;
         document.body.setAttribute('data-cards-size', String(sizeFactor));
         if (sizeX4Btn) sizeX4Btn.classList.toggle('is-active', sizeFactor === 4);
-        if (sizeX3Btn) sizeX3Btn.classList.toggle('is-active', viewMode === 'sphere' ? sizeFactor === 3 : sizeFactor === 4);
-        if (sizeX2Btn) sizeX2Btn.classList.toggle('is-active', viewMode === 'sphere' ? sizeFactor === 2 : sizeFactor === 3);
+        if (sizeX3Btn) sizeX3Btn.classList.toggle('is-active', viewMode === 'cards' ? sizeFactor === 3 : sizeFactor === 4);
+        if (sizeX2Btn) sizeX2Btn.classList.toggle('is-active', viewMode === 'cards' ? sizeFactor === 2 : sizeFactor === 3);
         if (sizeX1Btn) sizeX1Btn.classList.toggle('is-active', sizeFactor === 1);
         syncAllPillSliders();
-        if (viewMode !== 'sphere' && viewMode !== 'cards') {
+        if (viewMode !== 'cards') {
           updateGrid();
           if (viewMode === '3d' && releaseCanvasScene && typeof releaseCanvasScene.setSizeFactor === 'function') {
             releaseCanvasScene.setSizeFactor(sizeFactor);
@@ -19384,8 +20729,8 @@
       }
 
       if (sizeX4Btn) sizeX4Btn.addEventListener('click', function () { setSize(4, sizeX4Btn); });
-      if (sizeX3Btn) sizeX3Btn.addEventListener('click', function () { setSize(viewMode === 'sphere' ? 3 : 4, sizeX3Btn); });
-      if (sizeX2Btn) sizeX2Btn.addEventListener('click', function () { setSize(viewMode === 'sphere' ? 2 : 3, sizeX2Btn); });
+      if (sizeX3Btn) sizeX3Btn.addEventListener('click', function () { setSize(viewMode === 'cards' ? 3 : 4, sizeX3Btn); });
+      if (sizeX2Btn) sizeX2Btn.addEventListener('click', function () { setSize(viewMode === 'cards' ? 2 : 3, sizeX2Btn); });
       if (sizeX1Btn) sizeX1Btn.addEventListener('click', function () { setSize(1, sizeX1Btn); });
       if (compactTypeBtn) compactTypeBtn.addEventListener('click', function () { setCompactSection('type', compactTypeBtn); });
       if (compactViewBtn) compactViewBtn.addEventListener('click', function () { setCompactSection('view', compactViewBtn); });
@@ -19399,7 +20744,9 @@
         const nextSize = Number(initialSearchParams.get('size') || '0');
         const hasIntroGate = !!pageLoader;
         if (nextType === 'normal' || nextType === 'shuffle') setTypeMode(nextType);
-        if (!hasIntroGate && (nextView === 'plain' || nextView === '3d' || nextView === 'cards' || nextView === 'sphere')) setViewMode(nextView);
+        if (!hasIntroGate && (nextView === 'plain' || nextView === '3d' || nextView === 'cards' || nextView === 'sphere')) {
+          setViewMode(nextView === 'sphere' ? 'cards' : nextView);
+        }
         if (nextSize >= 1 && nextSize <= 4) setSize(nextSize);
       }
 
@@ -19446,7 +20793,7 @@
         if (viewMode === '3d' && releaseCanvasScene && typeof releaseCanvasScene.resize === 'function') {
           releaseCanvasScene.resize();
         }
-        if (viewMode === 'sphere' || viewMode === 'cards') {
+        if (viewMode === 'cards') {
           if (floatingScene) floatingScene.resize();
           if (canvasModeBackdropEffect) canvasModeBackdropEffect.resize();
           return;

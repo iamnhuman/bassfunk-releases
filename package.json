@@ -1,0 +1,17 @@
+{
+  "name": "bassfunk-releases",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:sileo-hover": "esbuild scripts/sileo-hover.jsx --bundle --format=esm --minify --outfile=scripts/sileo-hover.bundle.js"
+  },
+  "dependencies": {
+    "motion": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "sileo": "0.1.5"
+  },
+  "devDependencies": {
+    "esbuild": "latest"
+  }
+}
