@@ -14733,6 +14733,10 @@
       }
 
       function showReleaseHoverTitleForTileState(tileState) {
+        if (viewMode === 'cards') {
+          hideReleaseHoverTitle();
+          return;
+        }
         if (!tileState) {
           hideReleaseHoverTitle();
           return;
@@ -19408,6 +19412,7 @@
           new THREE.Vector3(),
           new THREE.Vector3()
         ];
+        const lensProjectionVector = new THREE.Vector3();
         scene.add(root);
         raycaster.params.Mesh = { threshold: 0 };
 
@@ -19424,9 +19429,11 @@
         const CARDS_REPEAT_RADIUS_X = 2;
         const CARDS_REPEAT_RADIUS_Y = 2;
         const CARDS_VISUAL_SCALE = 1.0;
+        const CARDS_VISUAL_SCALE_X = 0.64;
+        const CARDS_VISUAL_SCALE_Y = 1.1;
         const CARDS_BASE_ROT_X = -2;
         const BUTTON_ZOOM_STEP = 1280;
-        const INITIAL_CARDS_ZOOM = -7200;
+        const INITIAL_CARDS_ZOOM = -9000;
         const PINCH_ZOOM_FACTOR = 4.8;
         const CLICKABLE_ALPHA_THRESHOLD = 0.08;
         let currentCardsSizeFactor = CARDS_FIXED_SIZE_FACTOR;
@@ -19480,6 +19487,12 @@
         let hoverPointerY = 0;
         let hasHoverPointer = false;
         let hoveredTileState = null;
+        let lensActivity = 0;
+        let lensCenterX = 0;
+        let lensCenterY = 0;
+        let lensCenterCol = 0;
+        let lensCenterRow = 0;
+        let lensHasCenter = false;
         const trackedPointers = new Map();
 
         function clamp(value, min, max) {
@@ -19588,6 +19601,71 @@
           if (!tileState || !tileState.imageEl) return null;
           void bucket;
           return tileState.texture;
+        }
+
+        function createCardsTileMaterial(texture, seed) {
+          return new THREE.ShaderMaterial({
+            uniforms: {
+              map: { value: texture },
+              uOpacity: { value: 1 },
+              uLens: { value: 0 },
+              uFar: { value: 0 },
+              uTime: { value: 0 },
+              uSeed: { value: seed || 0 }
+            },
+            vertexShader: [
+              'varying vec2 vUv;',
+              'void main() {',
+              '  vUv = uv;',
+              '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+              '}'
+            ].join('\n'),
+            fragmentShader: [
+              'precision highp float;',
+              'uniform sampler2D map;',
+              'uniform float uOpacity;',
+              'uniform float uLens;',
+              'uniform float uFar;',
+              'uniform float uTime;',
+              'uniform float uSeed;',
+              'varying vec2 vUv;',
+              'float hash12(vec2 p) {',
+              '  vec3 p3 = fract(vec3(p.xyx) * 0.1031);',
+              '  p3 += dot(p3, p3.yzx + 33.33);',
+              '  return fract((p3.x + p3.y) * p3.z);',
+              '}',
+              'float roundedMask(vec2 uv, vec2 halfSize, float radius) {',
+              '  vec2 q = abs(uv - 0.5) - halfSize + radius;',
+              '  return 1.0 - smoothstep(0.0, 0.012, length(max(q, 0.0)) - radius);',
+              '}',
+              'void main() {',
+              '  vec2 sampleUv = vec2((vUv.x - 0.5) * 0.52 + 0.5, vUv.y);',
+              '  vec4 tex = texture2D(map, sampleUv);',
+              '  float lum = dot(tex.rgb, vec3(0.299, 0.587, 0.114));',
+              '  float grain = hash12(vUv * vec2(180.0, 260.0) + vec2(uSeed, uTime * 0.015));',
+              '  float vertical = 0.88 + 0.18 * sin((vUv.x + uSeed) * 72.0);',
+              '  float scan = 0.92 + 0.08 * sin((vUv.y + uTime * 0.012) * 210.0);',
+              '  vec3 graded = mix(vec3(lum), tex.rgb, 0.58 + uLens * 0.28);',
+              '  graded = pow(max(graded, 0.0), vec3(1.26 - uLens * 0.28));',
+              '  graded = (graded - 0.5) * (1.36 + uLens * 0.5) + 0.5;',
+              '  graded *= vertical * scan;',
+              '  graded += (grain - 0.5) * (0.12 + uLens * 0.06);',
+              '  graded = mix(graded, max(graded, vec3(0.08)) + vec3(0.08), uLens * 0.38);',
+              '  float vignette = smoothstep(0.82, 0.2, length(vUv - 0.5));',
+              '  float edge = roundedMask(vUv, vec2(0.46, 0.485), 0.07);',
+              '  float rim = 1.0 - smoothstep(0.34, 0.5, length(vUv - 0.5));',
+              '  float distant = mix(0.52, 0.78, uLens);',
+              '  graded *= mix(distant, 1.22, uLens) * mix(0.86, 1.07, vignette);',
+              '  graded *= 0.72 + rim * 0.28;',
+              '  float alpha = uOpacity * edge * mix(0.88, 1.0, uLens);',
+              '  alpha *= mix(0.62, 1.0, tex.a);',
+              '  gl_FragColor = vec4(clamp(graded, 0.0, 1.0), alpha);',
+              '}'
+            ].join('\n'),
+            transparent: true,
+            depthWrite: false,
+            side: THREE.DoubleSide
+          });
         }
 
         function wrapWorldCoordinate(value, cameraOffset, span) {
@@ -19720,16 +19798,18 @@
           updateCanvasTileSize(tileSize);
           galleryGap = Math.round(clamp(tileSize * 0.18, minGapForCards(currentCardsSizeFactor), 34));
           const cellStep = tileSize + galleryGap;
+          const cellStepX = tileSize * 0.58;
+          const cellStepY = tileSize * 0.64;
           const preferredColumns = Math.round(Math.sqrt(releaseCount * Math.max(1.05, viewportAspect * 1.08)));
-          const viewportColumns = Math.round((viewportWidth / Math.max(1, cellStep)) * columnFillForCards(currentCardsSizeFactor));
+          const viewportColumns = Math.round((viewportWidth / Math.max(1, cellStepX)) * columnFillForCards(currentCardsSizeFactor));
           const maxGalleryColumns = Math.max(1, Math.min(releaseCount, maxColumnsForCards(currentCardsSizeFactor)));
           const minGalleryColumns = Math.max(1, Math.min(maxGalleryColumns, Math.max(5, viewportColumns)));
           galleryColumns = clamp(preferredColumns, minGalleryColumns, maxGalleryColumns);
           galleryRows = Math.max(1, Math.ceil(releaseCount / galleryColumns));
-          galleryWidth = Math.max(1, (galleryColumns - 1) * cellStep);
-          galleryHeight = Math.max(1, (galleryRows - 1) * cellStep * 0.88);
-          gallerySpanX = Math.max(cellStep, galleryColumns * cellStep);
-          gallerySpanY = Math.max(cellStep, galleryRows * cellStep * 0.88);
+          galleryWidth = Math.max(1, (galleryColumns - 1) * cellStepX);
+          galleryHeight = Math.max(1, (galleryRows - 1) * cellStepY);
+          gallerySpanX = Math.max(cellStepX, galleryColumns * cellStepX);
+          gallerySpanY = Math.max(cellStepY, galleryRows * cellStepY);
           galleryDepth = clamp(galleryWidth * 0.16 * spreadFactor, tileSize * 2.6, 860);
           cloudSpreadX = galleryWidth;
           cloudSpreadY = galleryHeight;
@@ -19737,9 +19817,9 @@
           fadeStartSizePx = clamp(minViewport * 0.52, 390, 820);
           fadeEndSizePx = clamp(minViewport * 0.7, fadeStartSizePx + 150, 1040);
           nearCameraDistance = clamp(tileSize * 7.2, 880, 1360);
-          farCameraDistance = clamp(tileSize * 22 + galleryDepth * 2.8, 3600, 9800);
+          farCameraDistance = clamp(tileSize * 28 + galleryDepth * 3.6, 5600, 12000);
           zoomNearLimit = 1000;
-          zoomFarLimit = -16000;
+          zoomFarLimit = -18000;
           zoom = INITIAL_CARDS_ZOOM;
           targetZoom = zoom;
           camX = 0;
@@ -19762,9 +19842,9 @@
             const row = Math.floor(i / galleryColumns);
             const normalizedX = galleryColumns <= 1 ? 0 : (col / (galleryColumns - 1)) * 2 - 1;
             const normalizedY = galleryRows <= 1 ? 0 : (row / (galleryRows - 1)) * 2 - 1;
-            const rowShift = ((row % 2) - 0.5) * cellStep * 0.22;
-            const baseX = (col - (galleryColumns - 1) * 0.5) * cellStep + rowShift;
-            const baseY = ((galleryRows - 1) * 0.5 - row) * cellStep * 0.88;
+            const rowShift = ((row % 2) - 0.5) * cellStepX * 0.22;
+            const baseX = (col - (galleryColumns - 1) * 0.5) * cellStepX + rowShift;
+            const baseY = ((galleryRows - 1) * 0.5 - row) * cellStepY;
             const baseZ = Math.sin(row * 0.73 + col * 0.41) * tileSize * 0.055;
             const tileIndex = srcTile.getAttribute('data-index') || '';
             preparedTiles.push({
@@ -19776,6 +19856,8 @@
               baseX: baseX,
               baseY: baseY,
               baseZ: baseZ,
+              col: col,
+              row: row,
               rotX: normalizedY * 1.8 + (hash(i * 7.17 + 4) - 0.5) * 2.4,
               rotY: (hash(i * 9.91 + 5) - 0.5) * 3.2,
               rotZ: (hash(i * 11.63 + 6) - 0.5) * 2.8,
@@ -19806,13 +19888,7 @@
             texture.needsUpdate = true;
             for (let copyY = -CARDS_REPEAT_RADIUS_Y; copyY <= CARDS_REPEAT_RADIUS_Y; copyY += 1) {
               for (let copyX = -CARDS_REPEAT_RADIUS_X; copyX <= CARDS_REPEAT_RADIUS_X; copyX += 1) {
-                const material = new THREE.MeshBasicMaterial({
-                  map: texture,
-                  transparent: true,
-                  opacity: 1,
-                  depthWrite: false,
-                  side: THREE.DoubleSide
-                });
+                const material = createCardsTileMaterial(texture, hash(i * 17.31 + copyX * 3.7 + copyY * 5.9));
                 const mesh = new THREE.Mesh(sharedGeometry, material);
                 mesh.frustumCulled = false;
                 mesh.position.set(
@@ -19833,6 +19909,8 @@
                   baseZ: prepared.baseZ,
                   copyX: copyX,
                   copyY: copyY,
+                  col: prepared.col,
+                  row: prepared.row,
                   rotX: prepared.rotX,
                   rotY: prepared.rotY,
                   rotZ: prepared.rotZ,
@@ -19863,15 +19941,66 @@
           }
         }
 
+        function getTileWorldLattice(tileState, driftX, driftY) {
+          const wrappedBaseX = wrapWorldCoordinate(tileState.baseX, camX, gallerySpanX);
+          const wrappedBaseY = wrapWorldCoordinate(tileState.baseY, camY, gallerySpanY);
+          const wrapCopyX = gallerySpanX > 1 ? Math.round((wrappedBaseX - tileState.baseX) / gallerySpanX) : 0;
+          const wrapCopyY = gallerySpanY > 1 ? Math.round((wrappedBaseY - tileState.baseY) / gallerySpanY) : 0;
+          const copyX = (tileState.copyX || 0) + wrapCopyX;
+          const copyY = (tileState.copyY || 0) + wrapCopyY;
+          return {
+            x: wrappedBaseX + (tileState.copyX || 0) * gallerySpanX + driftX,
+            y: wrappedBaseY + (tileState.copyY || 0) * gallerySpanY + driftY,
+            col: tileState.col + copyX * galleryColumns,
+            row: tileState.row + copyY * galleryRows
+          };
+        }
+
+        function findLensPrimaryCell(rendererRect) {
+          if (!rendererRect || !rendererRect.width || !rendererRect.height) return null;
+          let best = null;
+          let bestDistance = Infinity;
+          const maxDistance = Math.max(rendererRect.width, rendererRect.height) * 0.42;
+          scene.updateMatrixWorld(true);
+          for (let i = 0; i < tileStates.length; i += 1) {
+            const t = tileStates[i];
+            const p = motionTime * t.motionSpeed + t.motionPhase;
+            const driftX = t.motionAmpX ? Math.cos(p) * t.motionAmpX : 0;
+            const driftY = t.motionAmpY ? Math.sin(p * 1.13) * t.motionAmpY : 0;
+            const driftZ = t.motionAmpZ ? Math.sin(p * 0.79) * t.motionAmpZ : 0;
+            const lattice = getTileWorldLattice(t, driftX, driftY);
+            const worldZ = t.baseZ + driftZ;
+            lensProjectionVector.set(lattice.x, lattice.y, worldZ).applyMatrix4(root.matrixWorld).project(camera);
+            if (lensProjectionVector.z < -1 || lensProjectionVector.z > 1) continue;
+            const projectedCenterX = rendererRect.left + ((lensProjectionVector.x + 1) * 0.5 * rendererRect.width);
+            const projectedCenterY = rendererRect.top + ((1 - lensProjectionVector.y) * 0.5 * rendererRect.height);
+            const dx = projectedCenterX - hoverPointerX;
+            const dy = projectedCenterY - hoverPointerY;
+            const distance = dx * dx + dy * dy;
+            if (distance < bestDistance) {
+              bestDistance = distance;
+              best = {
+                x: lattice.x,
+                y: lattice.y,
+                col: lattice.col,
+                row: lattice.row
+              };
+            }
+          }
+          return best && Math.sqrt(bestDistance) <= maxDistance ? best : null;
+        }
+
         function updateProjectedBounds(tileState, rect) {
           if (!tileState || !tileState.mesh) return null;
           const bounds = tileState.projectedBounds || { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
-          const halfSize = Math.max(1, tileSize * CARDS_VISUAL_SCALE * (tileState.renderScale || (1 + tileState.hover * 0.22)) * 0.5);
+          const renderScale = tileState.renderScale || (1 + tileState.hover * 0.22);
+          const halfWidth = Math.max(1, tileSize * CARDS_VISUAL_SCALE * CARDS_VISUAL_SCALE_X * renderScale * 0.5);
+          const halfHeight = Math.max(1, tileSize * CARDS_VISUAL_SCALE * CARDS_VISUAL_SCALE_Y * renderScale * 0.5);
           const points = scratchCorners;
-          points[0].set(-halfSize, -halfSize, 0);
-          points[1].set(halfSize, -halfSize, 0);
-          points[2].set(halfSize, halfSize, 0);
-          points[3].set(-halfSize, halfSize, 0);
+          points[0].set(-halfWidth, -halfHeight, 0);
+          points[1].set(halfWidth, -halfHeight, 0);
+          points[2].set(halfWidth, halfHeight, 0);
+          points[3].set(-halfWidth, halfHeight, 0);
           let left = Infinity;
           let right = -Infinity;
           let top = Infinity;
@@ -20013,6 +20142,7 @@
         function renderTiles(forceAll) {
           let hoverAnimating = false;
           const shouldRenderMotion = !!motionNeedsRender;
+          const lensActive = enableSceneHover && hasHoverPointer && !isCoarsePointer && !isDragging && !pinchActive;
           const currentRendererHeight = Math.max(1, renderer.domElement.height || 1);
           const focalLength = (currentRendererHeight * 0.5) / Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
           const cameraDistance = Math.max(1, camera.position.z);
@@ -20025,6 +20155,30 @@
           const fadeEndY = viewportHalfHeight + tileSize * 1.72;
           const focusRange = Math.max(1, farCameraDistance - nearCameraDistance);
           const rendererRect = renderer.domElement.getBoundingClientRect();
+          const lensPrimaryCell = lensActive ? findLensPrimaryCell(rendererRect) : null;
+          const targetLensActivity = lensPrimaryCell ? 1 : 0;
+          const nextLensActivity = lensActivity + (targetLensActivity - lensActivity) * (targetLensActivity > lensActivity ? 0.22 : 0.16);
+          const lensAnimating = Math.abs(nextLensActivity - lensActivity) > 0.003;
+          lensActivity = nextLensActivity < 0.003 ? 0 : nextLensActivity;
+          if (lensPrimaryCell) {
+            if (!lensHasCenter) {
+              lensCenterX = lensPrimaryCell.x;
+              lensCenterY = lensPrimaryCell.y;
+              lensCenterCol = lensPrimaryCell.col;
+              lensCenterRow = lensPrimaryCell.row;
+              lensHasCenter = true;
+            } else {
+              lensCenterX += (lensPrimaryCell.x - lensCenterX) * 0.34;
+              lensCenterY += (lensPrimaryCell.y - lensCenterY) * 0.34;
+              lensCenterCol += (lensPrimaryCell.col - lensCenterCol) * 0.34;
+              lensCenterRow += (lensPrimaryCell.row - lensCenterRow) * 0.34;
+            }
+          } else if (!lensActivity) {
+            lensHasCenter = false;
+          }
+          const lensMaxLevelsX = Math.max(10, Math.min(galleryColumns * 0.72, 26));
+          const lensMaxLevelsY = Math.max(7, Math.min(galleryRows * 0.72, 18));
+          const lensPushRadius = Math.max(5, Math.min(lensMaxLevelsX * 0.72, lensMaxLevelsY * 1.18));
           scene.updateMatrixWorld(true);
 
           for (let i = 0; i < tileStates.length; i += 1) {
@@ -20033,33 +20187,61 @@
             t.hover += hoverDelta * 0.24;
             if (Math.abs(hoverDelta) > 0.002) hoverAnimating = true;
             const hoverActive = Math.abs(hoverDelta) > 0.002 || t.hover > 0.001;
-            if (!forceAll && !shouldRenderMotion && !hoverActive) continue;
+            if (!forceAll && !shouldRenderMotion && !hoverActive && !lensActivity && !lensAnimating) continue;
 
             const p = motionTime * t.motionSpeed + t.motionPhase;
             const driftX = t.motionAmpX ? Math.cos(p) * t.motionAmpX : 0;
             const driftY = t.motionAmpY ? Math.sin(p * 1.13) * t.motionAmpY : 0;
             const driftZ = t.motionAmpZ ? Math.sin(p * 0.79) * t.motionAmpZ : 0;
             const hoverLift = t.hover * tileSize * 0.42;
-            const wrappedBaseX = wrapWorldCoordinate(t.baseX, camX, gallerySpanX) + (t.copyX || 0) * gallerySpanX;
-            const wrappedBaseY = wrapWorldCoordinate(t.baseY, camY, gallerySpanY) + (t.copyY || 0) * gallerySpanY;
-            const worldX = wrappedBaseX + driftX;
-            const worldY = wrappedBaseY + driftY;
+            const lattice = getTileWorldLattice(t, driftX, driftY);
+            let worldX = lattice.x;
+            let worldY = lattice.y;
             const screenCenterX = worldX + camX;
             const screenCenterY = worldY + camY;
-            const worldZ = t.baseZ + driftZ + hoverLift;
-            const scale = 1 + t.hover * 0.22;
+            let worldZ = t.baseZ + driftZ + hoverLift;
+            let lensStrength = 0;
+            let lensShell = 0;
+            if (lensActivity && lensHasCenter) {
+              const colDx = lattice.col - lensCenterCol;
+              const rowDy = lattice.row - lensCenterRow;
+              const absCol = Math.abs(colDx);
+              const absRow = Math.abs(rowDy);
+              const radialLevel = Math.sqrt(colDx * colDx + rowDy * rowDy * 1.5 * 1.5);
+              const pushFalloff = clamp(1 - radialLevel / lensPushRadius, 0, 1);
+              lensStrength = pushFalloff * pushFalloff * (3 - 2 * pushFalloff) * lensActivity;
+              const shellN = clamp(radialLevel / lensPushRadius, 0, 1);
+              lensShell = Math.sin(shellN * Math.PI) * lensActivity * (shellN < 1 ? 1 : 0);
+              const safeLevel = Math.max(0.001, radialLevel);
+              const dirX = colDx / safeLevel;
+              const dirY = (rowDy * 1.5) / safeLevel;
+              const centerXStretch = absCol > 0 && absCol < lensMaxLevelsX && absRow < lensMaxLevelsY
+                ? 0.72 * (absCol / lensMaxLevelsX) * (1 - absRow / lensMaxLevelsY)
+                : 0;
+              const pushDistance = tileSize * lensStrength * 2.92;
+              const shellDistance = tileSize * lensShell * 0.58;
+              worldX += dirX * (pushDistance * (1.04 + centerXStretch) + shellDistance);
+              worldY += dirY * (pushDistance * 1.05 + shellDistance * 0.58);
+              worldY += (lensCenterY - worldY) * lensStrength * 0.045;
+              worldZ += lensStrength * tileSize * 3.2 + lensShell * tileSize * 0.48;
+            }
+            const scale = 1 + t.hover * 0.08 + lensStrength * 0.48 + lensShell * 0.08;
 
             t.mesh.position.set(worldX, worldY, worldZ);
             t.mesh.rotation.set(
-              THREE.MathUtils.degToRad(t.rotX * 0.08),
-              THREE.MathUtils.degToRad(t.rotY * 0.08),
+              THREE.MathUtils.degToRad(t.rotX * 0.05 - lensStrength * 0.7),
+              THREE.MathUtils.degToRad(t.rotY * 0.05 + lensStrength * 0.55),
               THREE.MathUtils.degToRad(t.rotZ)
             );
             const nextTextureBucket = 0;
             if (nextTextureBucket !== t.textureBucket) {
               const nextTexture = getTileTextureSource(t, nextTextureBucket);
               if (nextTexture && t.material.map !== nextTexture) {
-                t.material.map = nextTexture;
+                if (t.material.uniforms && t.material.uniforms.map) {
+                  t.material.uniforms.map.value = nextTexture;
+                } else {
+                  t.material.map = nextTexture;
+                }
                 t.material.needsUpdate = true;
               }
               t.textureBucket = nextTextureBucket;
@@ -20068,7 +20250,7 @@
             scratchVector.set(worldX, worldY, worldZ).applyMatrix4(root.matrixWorld).applyMatrix4(camera.matrixWorldInverse);
             const viewZ = scratchVector.z;
             const referenceDistance = Math.max(1, cameraDistance);
-            const rawProjectedSize = tileSize * CARDS_VISUAL_SCALE * scale * focalLength / referenceDistance;
+            const rawProjectedSize = tileSize * CARDS_VISUAL_SCALE * CARDS_VISUAL_SCALE_Y * scale * focalLength / referenceDistance;
             const projectedSizeLimit = clamp(
               Math.min(fadeStartSizePx, Math.min(rendererRect.width, rendererRect.height) * 0.36, tileSize * 2.55),
               tileSize * 1.78,
@@ -20079,7 +20261,11 @@
               : scale;
             const projectedSize = Math.min(rawProjectedSize, projectedSizeLimit);
             t.renderScale = renderScale;
-            t.mesh.scale.setScalar(tileSize * CARDS_VISUAL_SCALE * renderScale);
+            t.mesh.scale.set(
+              tileSize * CARDS_VISUAL_SCALE * CARDS_VISUAL_SCALE_X * renderScale,
+              tileSize * CARDS_VISUAL_SCALE * CARDS_VISUAL_SCALE_Y * renderScale,
+              1
+            );
             let alpha = 1;
             if (projectedSize > fadeStartSizePx) {
               const fadeSpan = Math.max(1, fadeEndSizePx - fadeStartSizePx);
@@ -20091,6 +20277,9 @@
             const edgeY = clamp((Math.abs(screenCenterY) - fadeStartY) / Math.max(1, fadeEndY - fadeStartY), 0, 1);
             const edgeFade = Math.max(edgeX, edgeY);
             alpha *= Math.pow(1 - edgeFade, 1.08);
+            alpha *= lensActivity
+              ? (0.42 + Math.pow(Math.max(lensStrength, lensShell * 0.55), 0.72) * 0.86)
+              : 0.84;
             alpha *= 1 - distanceProgress * 0.08;
             alpha = clamp(alpha, 0, 1);
             t.screenAlpha = alpha;
@@ -20098,8 +20287,15 @@
             t.projectedSize = projectedSize;
             t.farProgress = Math.max(distanceProgress, edgeFade);
             if (!t.pointerEnabled) t.targetHover = 0;
-            t.material.opacity = alpha;
-            t.material.transparent = alpha < 0.999;
+            if (t.material.uniforms) {
+              if (t.material.uniforms.uOpacity) t.material.uniforms.uOpacity.value = alpha;
+              if (t.material.uniforms.uLens) t.material.uniforms.uLens.value = Math.max(lensStrength, lensShell * 0.55);
+              if (t.material.uniforms.uFar) t.material.uniforms.uFar.value = t.farProgress;
+              if (t.material.uniforms.uTime) t.material.uniforms.uTime.value = motionTime;
+            } else {
+              t.material.opacity = alpha;
+              t.material.transparent = alpha < 0.999;
+            }
             if (alpha <= 0.001) {
               t.mesh.visible = false;
             } else {
@@ -20109,7 +20305,7 @@
             updateProjectedBounds(t, rendererRect);
           }
           renderer.render(scene, camera);
-          return hoverAnimating;
+          return hoverAnimating || lensAnimating;
         }
 
         function frame() {
