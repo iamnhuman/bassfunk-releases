@@ -12,6 +12,7 @@ let pinnedDetailOpen = false;
 let activeDetail = null;
 let setSileoToastState = null;
 let pendingSileoToast = null;
+let activeHoverLetters = null;
 void Toaster;
 
 const LINK_ICON_META = {
@@ -51,6 +52,255 @@ function getProviderName(link) {
 function publishSileoToast(nextToast) {
   pendingSileoToast = nextToast;
   if (setSileoToastState) setSileoToastState(nextToast);
+}
+
+function injectReleaseLetterHoverStyles() {
+  if (document.getElementById('bassfunk-release-letter-hover-style')) return;
+  const style = document.createElement('style');
+  style.id = 'bassfunk-release-letter-hover-style';
+  style.textContent = `
+    .bassfunk-release-letter-stage {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 6;
+      display: block;
+      width: 100%;
+      height: max(92px, calc(13vh + env(safe-area-inset-bottom, 0px)));
+      pointer-events: none;
+      overflow: hidden;
+      opacity: 1;
+      transform: translateZ(0);
+    }
+    .bassfunk-release-letter-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      mix-blend-mode: screen;
+      opacity: 1;
+      transform: translateZ(0);
+    }
+    body.is-release-panel-open .bassfunk-release-letter-stage {
+      display: none;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function getReleaseLetterHoverKey(detail) {
+  const sourceTile = detail && (detail.sourceTile || detail.tile || detail.sourceElement || detail.element);
+  if (sourceTile && sourceTile.nodeType === 1 && sourceTile.getAttribute) {
+    return sourceTile.getAttribute('data-index') || sourceTile.getAttribute('href') || '';
+  }
+  const index = sourceTile && typeof sourceTile === 'object' ? sourceTile.index : '';
+  return String(index || '');
+}
+
+function splitHoverText(value) {
+  const normalized = String(value || '').replace(/\s+/g, ' ').trim().toUpperCase();
+  if (!normalized) return [];
+  const words = normalized.split(' ');
+  const lines = [];
+  let current = '';
+
+  for (let i = 0; i < words.length; i += 1) {
+    const next = current ? `${current} ${words[i]}` : words[i];
+    if (next.length <= 18 || !current) {
+      current = next;
+      continue;
+    }
+    lines.push(current);
+    current = words[i];
+    if (lines.length >= 2) break;
+  }
+
+  if (current && lines.length < 2) lines.push(current);
+  return lines.slice(0, 2);
+}
+
+function createReleaseLetterHover({ artistName = '', releaseTitle = '', key = '' }) {
+  injectReleaseLetterHoverStyles();
+
+  const stage = document.createElement('div');
+  stage.className = 'bassfunk-release-letter-stage';
+  stage.setAttribute('aria-hidden', 'true');
+  const canvas = document.createElement('canvas');
+  canvas.className = 'bassfunk-release-letter-canvas';
+  stage.appendChild(canvas);
+  document.body.appendChild(stage);
+
+  const context = canvas.getContext('2d');
+  const artistLines = splitHoverText(artistName);
+  const titleLines = splitHoverText(releaseTitle);
+  const lines = artistLines.length ? artistLines : titleLines;
+  const startedAt = performance.now();
+  const letters = [];
+  let frame = 0;
+  let canvasWidth = 0;
+  let canvasHeight = 0;
+  let cssWidth = 0;
+  let cssHeight = 0;
+  let closing = false;
+  let closedAt = 0;
+
+  function rebuild() {
+    letters.length = 0;
+    if (!context || !lines.length || !cssWidth || !cssHeight) return;
+
+    const maxFontSize = lines.length > 1 ? 32 : 40;
+    const fontSize = Math.max(16, Math.min(maxFontSize, cssWidth * (lines.length > 1 ? 0.036 : 0.044)));
+    const lineHeight = fontSize * 0.82;
+    const family = '"Saira", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    context.font = `800 ${fontSize}px ${family}`;
+    context.textBaseline = 'middle';
+
+    const totalHeight = lineHeight * Math.max(1, lines.length - 1);
+    const startY = Math.max(
+      fontSize * 0.62,
+      cssHeight - Math.max(13, cssHeight * 0.2) - totalHeight
+    );
+
+    lines.forEach((line, lineIndex) => {
+      const chars = Array.from(line);
+      const centerCharIndex = (chars.length - 1) * 0.5;
+      const measured = context.measureText(line).width;
+      const scale = measured > cssWidth * 0.82 ? (cssWidth * 0.82) / measured : 1;
+      const scaledFontSize = Math.max(15, fontSize * scale);
+      context.font = `800 ${scaledFontSize}px ${family}`;
+      const y = startY + lineIndex * lineHeight;
+      let x = (cssWidth - context.measureText(line).width) * 0.5;
+
+      chars.forEach((char, charIndex) => {
+        const metrics = context.measureText(char);
+        const width = metrics.width;
+        letters.push({
+          char,
+          x: x + width * 0.5,
+          y,
+          width,
+          fontSize: scaledFontSize,
+          lineIndex,
+          delay: (lineIndex * 34) + (charIndex * 8) + ((charIndex % 5) * 3),
+          spreadX: (charIndex - centerCharIndex) * Math.min(16, scaledFontSize * 0.42),
+          spreadY: (((charIndex + lineIndex) % 2) ? 1 : -1) * Math.min(8, scaledFontSize * 0.18),
+          phase: (charIndex * 0.71) + (lineIndex * 1.9)
+        });
+        x += width;
+      });
+    });
+  }
+
+  function resize() {
+    const rect = stage.getBoundingClientRect();
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    const nextCssWidth = Math.max(1, rect.width);
+    const nextCssHeight = Math.max(1, rect.height);
+    const nextWidth = Math.max(1, Math.round(nextCssWidth * ratio));
+    const nextHeight = Math.max(1, Math.round(nextCssHeight * ratio));
+    if (nextWidth === canvasWidth && nextHeight === canvasHeight) return;
+    cssWidth = nextCssWidth;
+    cssHeight = nextCssHeight;
+    canvasWidth = nextWidth;
+    canvasHeight = nextHeight;
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    if (context) context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    rebuild();
+  }
+
+  function easeOutCubic(value) {
+    return 1 - Math.pow(1 - value, 3);
+  }
+
+  function draw(time) {
+    resize();
+    if (!context) return;
+
+    const elapsed = time - startedAt;
+    const closeElapsed = closing ? time - closedAt : 0;
+    const closeProgress = closing ? Math.min(1, closeElapsed / 180) : 0;
+    const exitOpacity = 1 - closeProgress;
+
+    context.clearRect(0, 0, cssWidth, cssHeight);
+    context.save();
+    context.globalCompositeOperation = 'source-over';
+    const shade = context.createLinearGradient(0, cssHeight * 0.38, 0, cssHeight);
+    shade.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    shade.addColorStop(0.38, 'rgba(0, 0, 0, 0.42)');
+    shade.addColorStop(1, 'rgba(0, 0, 0, 0.86)');
+    context.fillStyle = shade;
+    context.fillRect(0, 0, cssWidth, cssHeight);
+    context.restore();
+
+    context.save();
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.shadowColor = 'rgba(255, 255, 255, 0.28)';
+    context.shadowBlur = 10;
+
+    letters.forEach((letter) => {
+      const raw = Math.min(1, Math.max(0, (elapsed - letter.delay) / 175));
+      const progress = easeOutCubic(raw);
+      const jitter = Math.sin((elapsed * 0.006) + letter.phase) * (1.8 - progress);
+      const scatter = Math.pow(1 - progress, 1.35);
+      const scatterX = letter.spreadX * scatter;
+      const scatterY = letter.spreadY * scatter;
+      const bottomStart = cssHeight + letter.fontSize * 0.95 - letter.y;
+      const rise = bottomStart * (1 - progress);
+      const sink = closeProgress * (cssHeight * 0.28);
+      const alpha = Math.min(1, progress * 1.25) * exitOpacity;
+      if (alpha <= 0) return;
+
+      context.font = `800 ${letter.fontSize}px "Saira", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+      context.fillStyle = `rgba(255, 255, 255, ${0.86 * alpha})`;
+      context.fillText(letter.char, letter.x + jitter + scatterX, letter.y + rise + sink + scatterY);
+    });
+
+    context.restore();
+
+    if (closing && closeProgress >= 1) {
+      stage.remove();
+      return;
+    }
+
+    frame = window.requestAnimationFrame(draw);
+  }
+
+  frame = window.requestAnimationFrame(draw);
+
+  return {
+    key,
+    close() {
+      if (closing) return;
+      closing = true;
+      closedAt = performance.now();
+    },
+    destroy() {
+      window.cancelAnimationFrame(frame);
+      stage.remove();
+    }
+  };
+}
+
+function showReleaseLetterHover(detail = {}) {
+  const title = detail.artistName || detail.releaseTitle || '';
+  if (!title) return;
+  const key = getReleaseLetterHoverKey(detail) || title;
+  if (activeHoverLetters && activeHoverLetters.key === key) return;
+  if (activeHoverLetters) activeHoverLetters.destroy();
+  activeHoverLetters = createReleaseLetterHover({
+    key,
+    artistName: detail.artistName,
+    releaseTitle: detail.releaseTitle
+  });
+}
+
+function hideReleaseLetterHover() {
+  if (!activeHoverLetters) return;
+  const hover = activeHoverLetters;
+  activeHoverLetters = null;
+  hover.close();
 }
 
 function ReleaseDetail({ detail }) {
@@ -843,23 +1093,21 @@ function mountSileoHover() {
   injectSileoOverrides();
 
   window.BassfunkSileoHover = {
-    show({ artistName = '', releaseTitle = '' } = {}) {
+    show(detail = {}) {
+      const { artistName = '', releaseTitle = '' } = detail;
       document.documentElement.dataset.sileoLastAction = 'show';
       if (pinnedDetailOpen) return;
       stopKeepingDetailExpanded();
       const title = artistName || releaseTitle;
       if (!title) return;
-      publishSileoToast({
-        id: HOVER_TOAST_ID,
-        title,
-        description: null,
-        expanded: false
-      });
+      publishSileoToast(null);
+      showReleaseLetterHover(detail);
     },
     open(detail = {}) {
       document.documentElement.dataset.sileoLastAction = 'open';
       pinnedDetailOpen = true;
       activeDetail = detail;
+      hideReleaseLetterHover();
       const title = detail.artistName || detail.releaseTitle || 'Release';
       publishSileoToast({
         id: HOVER_TOAST_ID,
@@ -873,6 +1121,7 @@ function mountSileoHover() {
       document.documentElement.dataset.sileoLastAction = 'hide';
       if (pinnedDetailOpen) return;
       stopKeepingDetailExpanded();
+      hideReleaseLetterHover();
       publishSileoToast(null);
     },
     clear() {
@@ -880,6 +1129,7 @@ function mountSileoHover() {
       pinnedDetailOpen = false;
       activeDetail = null;
       stopKeepingDetailExpanded();
+      hideReleaseLetterHover();
       publishSileoToast(null);
     },
     close() {
@@ -887,6 +1137,7 @@ function mountSileoHover() {
       pinnedDetailOpen = false;
       activeDetail = null;
       stopKeepingDetailExpanded();
+      hideReleaseLetterHover();
       publishSileoToast(null);
     }
   };

@@ -1107,6 +1107,7 @@
       padding: 16px 16px 24px 16px;
       padding-right: calc(var(--canvas-3d-sidebar-width) + 16px);
       overflow: hidden;
+      cursor: pointer;
     }
     body.is-view-3d .releases a {
       width: var(--releases-3d-card-width, clamp(136px, 9vw, 168px));
@@ -1129,6 +1130,7 @@
         filter 180ms ease,
         box-shadow 220ms ease;
       will-change: transform, filter, box-shadow;
+      cursor: pointer;
     }
     body.is-view-plain .releases a {
       overflow: hidden;
@@ -1148,6 +1150,7 @@
     body.is-view-plain .releases {
       perspective: none;
       transform-style: flat;
+      cursor: pointer;
     }
     body.is-view-plain .releases {
       gap: var(--releases-grid-gap);
@@ -1275,8 +1278,10 @@
       z-index: 2;
       opacity: 1;
       border-radius: inherit;
+      mix-blend-mode: difference;
       box-shadow:
-        inset 0 0 0 1px rgba(255, 255, 255, 0.44),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.88),
+        inset 0 0 0 2px rgba(255, 255, 255, 0.24),
         0 0 20px rgba(255, 255, 255, 0.22),
         0 0 44px rgba(108, 174, 255, 0.18);
     }
@@ -1309,8 +1314,10 @@
     }
     .releases.has-cloth-release-focus a.is-cloth-release-active::after {
       opacity: 1;
+      mix-blend-mode: difference;
       box-shadow:
-        inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.9),
+        inset 0 0 0 2px rgba(255, 255, 255, 0.24),
         0 0 18px rgba(255, 255, 255, 0.2),
         0 0 36px rgba(255, 151, 89, 0.42),
         0 0 72px rgba(108, 174, 255, 0.28);
@@ -2089,8 +2096,8 @@
         inset 0 0 0 1px rgba(255, 255, 255, 0.24);
     }
     .cloth-release-footer__tags-list a svg {
-      width: var(--cloth-release-tag-icon-size, 12px);
-      height: var(--cloth-release-tag-icon-size, 12px);
+      width: var(--cloth-release-tag-icon-size, 20px);
+      height: var(--cloth-release-tag-icon-size, 20px);
       box-sizing: border-box;
       display: block;
       fill: currentColor;
@@ -2194,7 +2201,7 @@
       justify-content: center;
       --cloth-release-frame-width: min(184px, calc(100vw - 24px));
       --cloth-release-frame-height: calc(var(--cloth-release-frame-width) * 2.19);
-      --cloth-release-tag-icon-size: 12px;
+      --cloth-release-tag-icon-size: 20px;
       padding: 0;
       pointer-events: none;
       overflow: hidden;
@@ -3378,13 +3385,38 @@
     .cloth-release-footer__volume-row {
       position: absolute;
       top: 8px;
-      right: 8px;
+      left: 8px;
       z-index: 3;
       display: flex;
       align-items: flex-start;
-      justify-content: flex-end;
+      justify-content: flex-start;
       min-width: 0;
       padding: 0;
+    }
+    .cloth-release-footer__close {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 4;
+    }
+    .cloth-release-footer__button.cloth-release-footer__restore {
+      display: none;
+      width: 100%;
+      height: 44px;
+      border-radius: 14px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .cloth-release-footer.is-player-collapsed .cloth-release-footer__button.cloth-release-footer__restore {
+      display: inline-flex;
+    }
+    .cloth-release-footer.is-player-collapsed .cloth-release-footer__orb,
+    .cloth-release-footer.is-player-collapsed .cloth-release-footer__orb-video,
+    .cloth-release-footer.is-player-collapsed .cloth-release-footer__volume-row,
+    .cloth-release-footer.is-player-collapsed .cloth-release-footer__close {
+      display: none;
     }
     .cloth-release-footer__progress-row {
       grid-area: progress;
@@ -3411,8 +3443,8 @@
     .cloth-release-footer__volume-panel {
       position: absolute;
       top: calc(100% + 6px);
-      right: 0;
-      left: auto;
+      right: auto;
+      left: 0;
       bottom: auto;
       display: none;
       align-items: center;
@@ -3614,7 +3646,7 @@
       .cloth-release-panel {
         --cloth-release-frame-width: min(100%, 154px);
         --cloth-release-frame-height: calc(var(--cloth-release-frame-width) * 2.19);
-        --cloth-release-tag-icon-size: 10px;
+        --cloth-release-tag-icon-size: 16px;
       }
       body.is-view-3d.canvas-active .cloth-release-panel__layout {
         padding: 12px 0 10px;
@@ -3933,7 +3965,7 @@
 	      <span class="control-label">View</span>
 	      <div class="control-pill" role="radiogroup" aria-label="View">
 	        <button type="button" id="viewPlainBtn" class="is-active"><span>Plain</span></button>
-	        <button type="button" id="view3dBtn"><span>Player</span></button>
+	        <button type="button" id="view3dBtn"><span>Video</span></button>
 	        <button type="button" id="viewCardsBtn"><span>Wave</span></button>
 	      </div>
 	    </div>
@@ -4443,9 +4475,11 @@
               </div>
             </div>
           </div>
+          <button type="button" class="cloth-release-footer__button cloth-release-footer__restore" id="clothFooterRestore" hidden aria-hidden="true">Video</button>
           <div class="cloth-release-footer__player cloth-release-footer__panel">
             <div class="cloth-release-footer__controls">
               <canvas class="cloth-release-footer__orb" id="clothFooterOrbCanvas" aria-hidden="true"></canvas>
+              <button type="button" class="cloth-release-footer__button cloth-release-footer__close" id="clothFooterClose" aria-label="Close player"></button>
               <div class="cloth-release-footer__transport">
                 <button type="button" class="cloth-release-footer__button cloth-release-footer__button--nav cloth-release-footer__button--small" id="clothFooterPrev" aria-label="Previous release"></button>
                 <button type="button" class="cloth-release-footer__button cloth-release-footer__button--play" id="clothFooterPlay" aria-label="Play or pause"></button>
@@ -4540,6 +4574,8 @@
       const clothReleaseTitle = document.getElementById('clothReleaseTitle');
       const clothReleaseFooter = document.getElementById('clothReleaseFooter');
       const clothFooterOrbCanvas = document.getElementById('clothFooterOrbCanvas');
+      const clothFooterClose = document.getElementById('clothFooterClose');
+      const clothFooterRestore = document.getElementById('clothFooterRestore');
       const clothFooterPrev = document.getElementById('clothFooterPrev');
       const clothFooterPlay = document.getElementById('clothFooterPlay');
       const clothFooterVolume = document.getElementById('clothFooterVolume');
@@ -4564,7 +4600,8 @@
           prev: 'skip_previous',
           next: 'skip_next',
           play: active ? 'pause' : 'play_arrow',
-          volume: 'volume_up'
+          volume: 'volume_up',
+          close: 'close'
         }[kind] || '';
         button.textContent = '';
         const icon = document.createElement('span');
@@ -4573,12 +4610,14 @@
         icon.textContent = iconName;
         button.appendChild(icon);
         button.classList.toggle('is-active', !!active);
-        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        if (kind === 'close') button.removeAttribute('aria-pressed');
+        else button.setAttribute('aria-pressed', active ? 'true' : 'false');
       }
       setClothFooterButtonIcon(clothFooterPrev, 'prev', false);
       setClothFooterButtonIcon(clothFooterPlay, 'play', false);
       setClothFooterButtonIcon(clothFooterVolume, 'volume', false);
       setClothFooterButtonIcon(clothFooterNext, 'next', false);
+      setClothFooterButtonIcon(clothFooterClose, 'close', false);
       const compactSectionCluster = document.getElementById('compactSectionCluster');
       const compactTypeBtn = document.getElementById('compactTypeBtn');
       const compactViewBtn = document.getElementById('compactViewBtn');
@@ -12821,6 +12860,7 @@
       let activeClothReleaseIndex = '';
       let clothReleaseAnimationToken = 0;
       let clothReleaseNavigationInFlight = false;
+      let clothReleasePlayerCollapsed = false;
       let clothReleaseExperience = null;
       let clothReleaseFooterRafId = 0;
       let clothReleaseWarmupHandle = 0;
@@ -14658,10 +14698,10 @@
         releaseHoverTitleIndex = normalizedIndex;
         releaseHoverTitleSource = nextSource;
         if (window.BassfunkSileoHover && typeof window.BassfunkSileoHover.show === 'function') {
-          window.BassfunkSileoHover.show({ artistName: artistName, releaseTitle: releaseTitle });
+          window.BassfunkSileoHover.show({ artistName: artistName, releaseTitle: releaseTitle, sourceTile: sourceTile });
         } else {
           document.dispatchEvent(new CustomEvent('bassfunk:sileo-show', {
-            detail: { artistName: artistName, releaseTitle: releaseTitle }
+            detail: { artistName: artistName, releaseTitle: releaseTitle, sourceTile: sourceTile }
           }));
         }
       }
@@ -14672,6 +14712,24 @@
           return;
         }
         showReleaseHoverTitle(tile.getAttribute('data-index') || '', tile);
+      }
+
+      function getReleaseHoverTargetFromEvent(event) {
+        const targetTile = event.target && event.target.closest ? event.target.closest('a[data-index]') : null;
+        if (targetTile) return targetTile;
+        const currentTile = releaseHoverTitleSource && releaseHoverTitleSource.getAttribute ? releaseHoverTitleSource : null;
+        if (!currentTile) return null;
+        const rect = currentTile.getBoundingClientRect();
+        const hoverSlack = viewMode === 'plain' ? 18 : 8;
+        if (
+          event.clientX >= rect.left - hoverSlack &&
+          event.clientX <= rect.right + hoverSlack &&
+          event.clientY >= rect.top - hoverSlack &&
+          event.clientY <= rect.bottom + hoverSlack
+        ) {
+          return currentTile;
+        }
+        return null;
       }
 
       function showReleaseHoverTitleForTileState(tileState) {
@@ -15175,6 +15233,18 @@
         }
       }
 
+      function setClothReleasePlayerCollapsed(nextState) {
+        clothReleasePlayerCollapsed = !!nextState;
+        if (clothReleaseFooter) {
+          clothReleaseFooter.classList.toggle('is-player-collapsed', clothReleasePlayerCollapsed);
+        }
+        if (clothFooterRestore) {
+          clothFooterRestore.hidden = !clothReleasePlayerCollapsed;
+          clothFooterRestore.setAttribute('aria-hidden', clothReleasePlayerCollapsed ? 'false' : 'true');
+        }
+        updateClothReleaseFooter();
+      }
+
       function updateClothReleaseFooter() {
         if (!clothReleaseFooter) return;
         const snapshot = clothReleaseExperience && typeof clothReleaseExperience.getAudioSnapshot === 'function'
@@ -15184,6 +15254,11 @@
         clothReleaseFooter.hidden = !isVisible;
         clothReleaseFooter.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
         clothReleaseFooter.classList.toggle('is-visible', isVisible);
+        clothReleaseFooter.classList.toggle('is-player-collapsed', isVisible && clothReleasePlayerCollapsed);
+        if (clothFooterRestore) {
+          clothFooterRestore.hidden = !(isVisible && clothReleasePlayerCollapsed);
+          clothFooterRestore.setAttribute('aria-hidden', isVisible && clothReleasePlayerCollapsed ? 'false' : 'true');
+        }
         if (!isVisible) {
           stopClothReleaseFooterLoop();
           return;
@@ -15627,7 +15702,7 @@
       releases.addEventListener('pointermove', function (event) {
         if ((viewMode !== '3d' && viewMode !== 'plain') || isCoarsePointer) return;
         if (releases.classList.contains('has-cloth-release-focus')) return;
-        const releaseHoverTarget = event.target && event.target.closest ? event.target.closest('a[data-index]') : null;
+        const releaseHoverTarget = getReleaseHoverTargetFromEvent(event);
         if (releaseHoverTarget) {
           showReleaseHoverTitleForTile(releaseHoverTarget);
         } else {
@@ -15691,6 +15766,12 @@
       });
       if (clothFooterNext) clothFooterNext.addEventListener('click', function () {
         navigateClothRelease(1);
+      });
+      if (clothFooterClose) clothFooterClose.addEventListener('click', function () {
+        setClothReleasePlayerCollapsed(true);
+      });
+      if (clothFooterRestore) clothFooterRestore.addEventListener('click', function () {
+        setClothReleasePlayerCollapsed(false);
       });
       if (clothFooterPlay) clothFooterPlay.addEventListener('click', function () {
         if (clothReleaseExperience && typeof clothReleaseExperience.toggleAudioPlayback === 'function') {
