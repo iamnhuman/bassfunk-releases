@@ -3,13 +3,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:sileo-hover": "esbuild scripts/sileo-hover.jsx --bundle --format=esm --minify --outfile=scripts/sileo-hover.bundle.js"
+    "build:sileo-hover": "esbuild scripts/sileo-hover.jsx --bundle --format=esm --minify --outfile=scripts/sileo-hover.bundle.js",
+    "build:wave-voroforce": "node scripts/build-wave-voroforce.mjs",
+    "build:wave-title": "node scripts/build-wave-title.mjs"
   },
   "dependencies": {
     "motion": "latest",
+    "ogl": "^1.0.11",
     "react": "latest",
     "react-dom": "latest",
-    "sileo": "0.1.5"
+    "sileo": "0.1.5",
+    "three": "0.160.1",
+    "troika-three-text": "0.52.4"
   },
   "devDependencies": {
     "esbuild": "latest"

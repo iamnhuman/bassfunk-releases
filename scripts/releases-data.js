@@ -170,7 +170,9 @@ export function normalizeReleaseItem(item, fallbackIndex) {
   return {
     index: normalizeIndex(item && item.index, fallbackIndex),
     imageUrl: normalizeUrl(item && item.imageUrl),
-    audioUrl: normalizeUrl(item && item.audioUrl),
+    audioUrl: /(?:^|\/)placeholder\.mp3(?:[?#]|$)/i.test(normalizeUrl(item && item.audioUrl))
+      ? ''
+      : normalizeUrl(item && item.audioUrl),
     artistName: normalizeText(item && item.artistName) || 'Release #' + String(fallbackIndex + 1),
     releaseTitle: normalizeText(item && item.releaseTitle) || 'Untitled release',
     releaseUrl,
@@ -263,13 +265,13 @@ export function syncPlainReleaseDetailsByIndex(target, items) {
   return target;
 }
 
-export function getAssignedAudioMap(items, fallbackUrl) {
+export function getAssignedAudioMap(items) {
   const assignedAudio = {};
   const normalizedItems = normalizeReleaseCatalog({ items }).items;
 
   for (let index = 0; index < normalizedItems.length; index += 1) {
     const item = normalizedItems[index];
-    assignedAudio[item.index] = item.audioUrl || normalizeUrl(fallbackUrl);
+    assignedAudio[item.index] = item.audioUrl;
   }
 
   return assignedAudio;

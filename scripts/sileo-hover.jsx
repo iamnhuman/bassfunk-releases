@@ -428,7 +428,7 @@ function injectSileoOverrides() {
       height: var(--_h, var(--sileo-height)) !important;
     }
     .bassfunk-sileo-toast[data-expanded="true"] {
-      --sileo-width: min(560px, calc(100vw - 32px));
+      --sileo-width: min(380px, calc(100vw - 32px));
       --sileo-lobe-width: min(220px, calc(100vw - 64px));
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
@@ -558,14 +558,14 @@ function injectSileoOverrides() {
         inset 0 0 0 1px rgba(255, 255, 255, 0.24);
     }
     .bassfunk-sileo-card__link svg {
-      width: 12px;
-      height: 12px;
+      width: 10px;
+      height: 10px;
       display: block;
       fill: currentColor;
     }
     .bassfunk-sileo-card__link[data-platform="soundcloud"] svg {
-      width: 16px;
-      height: 16px;
+      width: 13px;
+      height: 13px;
     }
     .bassfunk-sileo-card__arrow {
       width: 32px;
@@ -577,8 +577,8 @@ function injectSileoOverrides() {
       padding: 0;
     }
     .bassfunk-sileo-card__arrow svg {
-      width: 12px;
-      height: 12px;
+      width: 10px;
+      height: 10px;
       fill: none;
       stroke: currentColor;
       stroke-linecap: round;
@@ -594,8 +594,8 @@ function injectSileoOverrides() {
       height: 32px;
     }
     .bassfunk-sileo-card__close svg {
-      width: 12px;
-      height: 12px;
+      width: 10px;
+      height: 10px;
     }
     .bassfunk-sileo-side-arrow {
       border: 0;
@@ -629,8 +629,8 @@ function injectSileoOverrides() {
         inset 0 0 0 1px rgba(255, 255, 255, 0.24);
     }
     .bassfunk-sileo-side-arrow svg {
-      width: 12px;
-      height: 12px;
+      width: 10px;
+      height: 10px;
       fill: none;
       stroke: currentColor;
       stroke-linecap: round;
@@ -695,8 +695,8 @@ function injectSileoOverrides() {
         right: 18px;
       }
       .bassfunk-sileo-card__arrow svg {
-        width: 14px;
-        height: 14px;
+        width: 12px;
+        height: 12px;
       }
     }
     .bassfunk-sileo-title {
@@ -937,7 +937,7 @@ function SileoHoverToaster() {
 
   const isExpanded = !!toast.expanded && !!toast.description;
   const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 800px)').matches;
-  const toastWidth = isExpanded && isDesktop ? 560 : 350;
+  const toastWidth = isExpanded && isDesktop ? 380 : 350;
   const lobeWidth = isExpanded && isDesktop ? 220 : 350;
   const lobeX = (toastWidth - lobeWidth) / 2;
   const toastHeight = isExpanded && isDesktop ? 202 : isExpanded ? 154 : 40;

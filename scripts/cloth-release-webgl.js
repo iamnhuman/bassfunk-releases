@@ -3560,6 +3560,7 @@
       currentCardSetToken = setToken;
       currentCardData = Object.assign({}, cardData || {});
       const shouldResumeAudio = audioState.isPlaying;
+      if (!currentCardData.audioUrl) pauseAudioPlayback();
       if (shouldAnimateSwitch) {
         await runCardSwitchPhase(switchDirection, 'out', CARD_SWITCH_OUT_MS);
       }

@@ -1,0 +1,22 @@
+Exo 2
+Copyright 2013 The Exo 2 Project Authors (https://github.com/googlefonts/Exo-2.0)
+
+Unbounded
+Copyright 2022 The Unbounded Project Authors (https://github.com/googlefonts/unbounded)
+
+Noto Sans JP
+(c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+
+Noto Sans Symbols 2
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/symbols)
+
+Noto Sans Canadian Aboriginal
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/canadian-aboriginal)
+
+Noto Sans Symbols
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/symbols)
+
+Noto Sans Math
+Copyright 2022 Google LLC. All Rights Reserved.
+
+All fonts licensed under SIL Open Font License 1.1.
